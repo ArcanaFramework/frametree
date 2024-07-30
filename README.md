@@ -6,7 +6,7 @@
 ![Latest Version](https://img.shields.io/pypi/v/frametree.svg)
 ![Docs](https://github.com/ArcanaFramework/frametree/actions/workflows/docs.yml/badge.svg)
 
-FrameTree_ is Python framework that is used to map categorical data organised into trees
+FrameTree is Python framework that is used to map categorical data organised into trees
 (e.g. subject data organised in file-system directory) onto virtual "data frames". Cell in
 these data frames can be scalars, arrays or a set of files and/or directories stored at
 each node across a level in the given tree. Metrics extracted from the data in these frames
@@ -30,9 +30,15 @@ Detailed documentation on FrameTree can be found at [https://frametree.readthedo
 
 ## Quick Installation
 
-FrameTree-core can be installed for Python 3 using *pip*::
+FrameTree can be installed for Python 3 using *pip*::
 
    $ python3 -m pip install frametree
+
+## Extensions
+
+The core FrameTree package only supports directory data trees, however, it is designed to
+be extended to support in-place analysis of data within data repository platforms such 
+as XNAT and formalised data structures such as Brain Imaging Data Structure (BIDS).
 
 
 ## License
@@ -44,7 +50,8 @@ This work is licensed under a [Creative Commons Attribution-NonCommercial-ShareA
 
 ### Acknowledgements
 
-The authors acknowledge the facilities and scientific and technical assistance of the National Imaging Facility, a National Collaborative Research Infrastructure Strategy (NCRIS) capability.
+The authors acknowledge the facilities and scientific and technical assistance of the
+National Imaging Facility, a National Collaborative Research Infrastructure Strategy (NCRIS) capability.
 
 [FrameTree]: http://frametree.readthedocs.io
 [Pydra]: http://pydra.readthedocs.io
