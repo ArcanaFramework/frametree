@@ -1,0 +1,4 @@
+[run]
+omit = */tests/*, frametree/core/_version.py
+branch = true
+concurrency = multiprocessing

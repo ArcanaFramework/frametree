@@ -1,9 +1,9 @@
 from operator import itemgetter
 import click
-from arcana.core.data.store import DataStore
-from arcana.core.utils.serialize import ClassResolver
-from arcana.core.utils.misc import get_home_dir
-from arcana.core.exceptions import ArcanaUsageError
+from frametree.core.store import DataStore
+from frametree.core.serialize import ClassResolver
+from frametree.core.utils import get_home_dir
+from frametree.core.exceptions import FrameTreeUsageError
 from .base import cli
 
 
@@ -14,7 +14,7 @@ def store():
 
 @store.command(
     help="""Saves the details for a new data store in the configuration
-file ('~/.arcana/stores.yaml').
+file ('~/.frametree/stores.yaml').
 
 Arguments
 ---------
@@ -22,7 +22,7 @@ name
     The name given to the store for reference in other commands
 type
     The storage class and the module it is defined in, e.g.
-    `arcana.data.store.xnat:Xnat`
+    `frametree.data.store.xnat:Xnat`
 location
     The location of the store, e.g. server address
 *varargs
@@ -76,7 +76,7 @@ def add(name, type, option, cache, **kwargs):
         options = dict(option)
         conflicting = set(options) & set(kwargs)
         if conflicting:
-            raise ArcanaUsageError(
+            raise FrameTreeUsageError(
                 f"Custom options {conflicting} conflict with in-built options, please "
                 "use them instead"
             )
@@ -93,7 +93,7 @@ def add(name, type, option, cache, **kwargs):
 
 @store.command(
     help="""
-Gives a data store saved in the config file ('~/.arcana/stores.yaml') a new
+Gives a data store saved in the config file ('~/.frametree/stores.yaml') a new
 nickname.
 
 Arguments

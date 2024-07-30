@@ -1,4 +1,4 @@
-class ArcanaException(Exception):
+class FrameTreeException(Exception):
     @property
     def msg(self):
         return self.args[0]
@@ -8,204 +8,204 @@ class ArcanaException(Exception):
         self.args = (msg,) + self.args[1:]
 
 
-class ArcanaError(ArcanaException):
+class FrameTreeError(FrameTreeException):
     pass
 
 
-class ArcanaRuntimeError(ArcanaError):
+class FrameTreeRuntimeError(FrameTreeError):
     pass
 
 
-class ArcanaNotBoundToAnalysisError(ArcanaError):
+class FrameTreeNotBoundToAnalysisError(FrameTreeError):
     pass
 
 
-class ArcanaVersionError(ArcanaError):
+class FrameTreeVersionError(FrameTreeError):
     pass
 
 
-class ArcanaRequirementNotFoundError(ArcanaVersionError):
+class FrameTreeRequirementNotFoundError(FrameTreeVersionError):
     pass
 
 
-class ArcanaVersionNotDetectableError(ArcanaVersionError):
+class FrameTreeVersionNotDetectableError(FrameTreeVersionError):
     pass
 
 
-class ArcanaEnvModuleNotLoadedError(ArcanaError):
+class FrameTreeEnvModuleNotLoadedError(FrameTreeError):
     pass
 
 
-class ArcanaMissingInputError(ArcanaException):
+class FrameTreeMissingInputError(FrameTreeException):
     pass
 
 
-class ArcanaProtectedOutputConflictError(ArcanaError):
+class FrameTreeProtectedOutputConflictError(FrameTreeError):
     pass
 
 
-class ArcanaCantPickleAnalysisError(ArcanaError):
+class FrameTreeCantPickleAnalysisError(FrameTreeError):
     pass
 
 
-class ArcanaRepositoryError(ArcanaError):
+class FrameTreeRepositoryError(FrameTreeError):
     pass
 
 
-class ArcanaUsageError(ArcanaError):
+class FrameTreeUsageError(FrameTreeError):
     pass
 
 
-class ArcanaCacheError(ArcanaError):
+class FrameTreeCacheError(FrameTreeError):
     pass
 
 
-class ArcanaDesignError(ArcanaError):
+class FrameTreeDesignError(FrameTreeError):
     pass
 
 
-class NamedArcanaError(ArcanaError):
+class NamedFrameTreeError(FrameTreeError):
     def __init__(self, name, msg):
-        super(NamedArcanaError, self).__init__(msg)
+        super(NamedFrameTreeError, self).__init__(msg)
         self.name = name
 
 
-class ArcanaNameError(NamedArcanaError):
+class FrameTreeNameError(NamedFrameTreeError):
     pass
 
 
-class ArcanaWrongFrequencyError(NamedArcanaError):
+class FrameTreeWrongFrequencyError(NamedFrameTreeError):
     pass
 
 
-class ArcanaIndexError(ArcanaError):
+class FrameTreeIndexError(FrameTreeError):
     def __init__(self, index, msg):
-        super(ArcanaIndexError, self).__init__(msg)
+        super(FrameTreeIndexError, self).__init__(msg)
         self.index = index
 
 
-class ArcanaDataMatchError(ArcanaUsageError):
+class FrameTreeDataMatchError(FrameTreeUsageError):
     pass
 
 
-class ArcanaPipelinesStackError(ArcanaError):
+class FrameTreePipelinesStackError(FrameTreeError):
     pass
 
 
-class ArcanaMissingDataException(ArcanaPipelinesStackError):
+class FrameTreeMissingDataException(FrameTreePipelinesStackError):
     pass
 
 
-class ArcanaOutputNotProducedException(ArcanaPipelinesStackError):
+class FrameTreeOutputNotProducedException(FrameTreePipelinesStackError):
     """
     Raised when a given spec is not produced due to switches and inputs
     provided to the analysis
     """
 
 
-class ArcanaInsufficientRepoDepthError(ArcanaError):
+class FrameTreeInsufficientRepoDepthError(FrameTreeError):
     pass
 
 
-class ArcanaLicenseNotFoundError(ArcanaNameError):
+class FrameTreeLicenseNotFoundError(FrameTreeNameError):
     pass
 
 
-class ArcanaUnresolvableFormatException(ArcanaException):
+class FrameTreeUnresolvableFormatException(FrameTreeException):
     pass
 
 
-class ArcanaFileSetNotCachedException(ArcanaException):
+class FrameTreeFileSetNotCachedException(FrameTreeException):
     pass
 
 
-class NoMatchingPipelineException(ArcanaException):
+class NoMatchingPipelineException(FrameTreeException):
     pass
 
 
-class ArcanaModulesError(ArcanaError):
+class FrameTreeModulesError(FrameTreeError):
     pass
 
 
-class ArcanaModulesNotInstalledException(ArcanaException):
+class FrameTreeModulesNotInstalledException(FrameTreeException):
     pass
 
 
-class ArcanaJobSubmittedException(ArcanaException):
+class FrameTreeJobSubmittedException(FrameTreeException):
     """
     Signifies that a pipeline has been submitted to a scheduler and
     a return value won't be returned.
     """
 
 
-class ArcanaNoRunRequiredException(ArcanaException):
+class FrameTreeNoRunRequiredException(FrameTreeException):
     """
     Used to signify when a pipeline doesn't need to be run as all
     required outputs are already present in the store
     """
 
 
-class ArcanaFileFormatClashError(ArcanaError):
+class FrameTreeFileFormatClashError(FrameTreeError):
     """
     Used when two mismatching data formats are registered with the same
     name or extension
     """
 
 
-class ArcanaConverterNotAvailableError(ArcanaError):
+class FrameTreeConverterNotAvailableError(FrameTreeError):
     "The converter required to convert between formats is not"
     "available"
 
 
-class ArcanaReprocessException(ArcanaException):
+class FrameTreeReprocessException(FrameTreeException):
     pass
 
 
-class ArcanaWrongRepositoryError(ArcanaError):
+class FrameTreeWrongRepositoryError(FrameTreeError):
     pass
 
 
-class ArcanaIvalidParameterError(ArcanaError):
+class FrameTreeIvalidParameterError(FrameTreeError):
     pass
 
 
-class ArcanaRequirementVersionsError(ArcanaError):
+class FrameTreeRequirementVersionsError(FrameTreeError):
     pass
 
 
-class ArcanaXnatCommandError(ArcanaRepositoryError):
+class FrameTreeXnatCommandError(FrameTreeRepositoryError):
     """
     Error in the command file used to access an XNAT repository via the XNAT
     container service.
     """
 
 
-class ArcanaUriAlreadySetException(ArcanaException):
+class FrameTreeUriAlreadySetException(FrameTreeException):
     """Raised when attempting to set the URI of an item is already set"""
 
 
-class ArcanaDataTreeConstructionError(ArcanaError):
+class FrameTreeConstructionError(FrameTreeError):
     "Error in constructing data tree by store find_rows method"
 
 
-class ArcanaBadlyFormattedIDError(ArcanaDataTreeConstructionError):
+class FrameTreeBadlyFormattedIDError(FrameTreeConstructionError):
     "Error attempting to extract an ID from a tree path using a user provided regex"
 
 
-class ArcanaWrongDataSpaceError(ArcanaError):
+class FrameTreeWrongDataSpaceError(FrameTreeError):
     "Provided row_frequency is not a valid member of the dataset's dimensions"
 
 
-class ArcanaNoDirectXnatMountException(ArcanaException):
+class FrameTreeNoDirectXnatMountException(FrameTreeException):
     "Raised when attemptint to access a file-system mount for a row that hasn't been mounted directly"
     pass
 
 
-class ArcanaEmptyDatasetError(ArcanaException):
+class FrameTreeEmptyDatasetError(FrameTreeException):
     pass
 
 
-class ArcanaBuildError(ArcanaError):
+class FrameTreeBuildError(FrameTreeError):
     pass
 
 
@@ -223,7 +223,7 @@ class DataNotDerivedYetError(NamedError):
     pass
 
 
-class DatatypeUnsupportedByStoreError(ArcanaError):
+class DatatypeUnsupportedByStoreError(FrameTreeError):
     """Raised when a data store doesn't support a given datatype"""
 
     def __init__(self, datatype, store):

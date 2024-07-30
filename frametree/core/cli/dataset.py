@@ -1,11 +1,16 @@
 from __future__ import annotations
 import click
+import logging
+from pathlib import Path
 from .base import cli
-from arcana.core.data.set.base import Dataset
-from arcana.core.data.store import DataStore
-from arcana.core.data.space import DataSpace
+from frametree.core.set.base import Dataset
+from frametree.core.store import DataStore
+from frametree.core.space import DataSpace
 from fileformats.core import DataType
-from arcana.core.utils.serialize import ClassResolver
+from frametree.core.serialize import ClassResolver
+
+
+logger = logging.getLogger(__name__)
 
 
 @cli.group()
@@ -18,7 +23,7 @@ def dataset():
     help=(
         """Define the tree structure and IDs to include in a
 dataset. Where possible, the definition file is saved inside the dataset for
-use by multiple users, if not possible it is stored in the ~/.arcana directory.
+use by multiple users, if not possible it is stored in the ~/.frametree directory.
 
 DATASET_LOCATOR string containing the nick-name of the store, the ID of the dataset
 (e.g. XNAT project ID or file-system directory) and the dataset's name in the
@@ -263,7 +268,7 @@ datatype
     "-s",
     help=(
         "The salience of the column, i.e. whether it will show up on "
-        "'arcana derive menu'"
+        "'frametree derive menu'"
     ),
 )
 def add_sink(dataset_locator, name, datatype, row_frequency, path, salience):
@@ -384,3 +389,58 @@ NEW_NAME for the dataset
 def copy(dataset_locator, new_name):
     dataset = Dataset.load(dataset_locator)
     dataset.save(new_name)
+
+
+@dataset.command(
+    name="install-license",
+    help="""Installs a license within a store (i.e. site-wide) or dataset (project-specific)
+for use in a deployment pipeline
+
+LICENSE_NAME the name of the license to upload. Must match the name of the license specified
+in the deployment specification
+
+SOURCE_FILE path to the license file to upload
+
+INSTALL_LOCATIONS a list of installation locations, which are either the "nickname" of a
+store (as saved by `arcana store add`) or the ID of a dataset in form
+<store-nickname>//<dataset-id>[@<dataset-name>], where the dataset ID
+is either the location of the root directory (for file-system based stores) or the
+project ID for managed data repositories.
+""",
+)
+@click.argument("license_name")
+@click.argument("source_file", type=click.Path(exists=True, path_type=Path))
+@click.argument("install_locations", nargs=-1)
+@click.option(
+    "--logfile",
+    default=None,
+    type=click.Path(path_type=Path),
+    help="Log output to file instead of stdout",
+)
+@click.option("--loglevel", default="info", help="The level to display logs at")
+def install_license(install_locations, license_name, source_file, logfile, loglevel):
+    logging.basicConfig(filename=logfile, level=getattr(logging, loglevel.upper()))
+
+    if isinstance(source_file, bytes):  # FIXME: This shouldn't be necessary
+        source_file = Path(source_file.decode("utf-8"))
+
+    if not install_locations:
+        install_locations = ["dirtree"]
+
+    for install_loc in install_locations:
+        if "//" in install_loc:
+            dataset = Dataset.load(install_loc)
+            store_name, _, _ = Dataset.parse_id_str(install_loc)
+            msg = f"for '{dataset.name}' dataset on {store_name} store"
+        else:
+            store = DataStore.load(install_loc)
+            dataset = store.site_licenses_dataset()
+            if dataset is None:
+                raise ValueError(
+                    f"{install_loc} store doesn't support the installation of site-wide "
+                    "licenses, please specify a dataset to install it for"
+                )
+            msg = f"site-wide on {install_loc} store"
+
+        dataset.install_license(license_name, source_file)
+        logger.info("Successfully installed '%s' license %s", license_name, msg)

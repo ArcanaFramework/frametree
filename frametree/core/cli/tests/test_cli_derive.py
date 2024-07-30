@@ -1,8 +1,8 @@
 from functools import reduce
 from operator import mul
-from arcana.core.cli.apply import apply_pipeline
-from arcana.core.cli.derive import derive_column
-from arcana.core.utils.misc import show_cli_trace
+from frametree.core.cli.apply import apply_pipeline
+from frametree.core.cli.derive import derive_column
+from frametree.core.utils import show_cli_trace
 from fileformats.text import TextFile
 
 
@@ -17,7 +17,7 @@ def test_derive_cli(saved_dataset, concatenate_task, cli_runner):
         [
             saved_dataset.locator,
             "a_pipeline",
-            "arcana.testing.tasks:" + concatenate_task.__name__,
+            "frametree.testing.tasks:" + concatenate_task.__name__,
             "--source",
             "file1",
             "in_file1",

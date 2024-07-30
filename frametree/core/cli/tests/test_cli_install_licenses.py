@@ -1,10 +1,10 @@
 from pathlib import Path
 import tempfile
 import pytest
-from arcana.core.data.set import Dataset
-from arcana.core.cli.deploy import install_license
-from arcana.core.utils.misc import show_cli_trace
-from arcana.testing import MockRemote
+from frametree.core.set import Dataset
+from frametree.core.cli.dataset import install_license
+from frametree.core.utils import show_cli_trace
+from frametree.testing import MockRemote
 
 LICENSE_CONTENTS = "test license"
 
@@ -18,7 +18,7 @@ def test_license():
 
 
 def test_cli_install_dataset_license(
-    saved_dataset: Dataset, test_license, arcana_home, cli_runner, tmp_path
+    saved_dataset: Dataset, test_license, frametree_home, cli_runner, tmp_path
 ):
     store_nickname = saved_dataset.id + "_store"
     license_name = "test-license"
@@ -58,7 +58,7 @@ def test_cli_install_dataset_license(
 def test_cli_install_site_license(
     data_store,
     test_license: str,
-    arcana_home,
+    frametree_home,
     cli_runner,
 ):
     store_nickname = "site_license_store"

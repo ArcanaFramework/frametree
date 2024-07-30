@@ -1,8 +1,8 @@
 import click
 import typing as ty
-from arcana.core.data.set.base import Dataset
+from frametree.core.set.base import Dataset
 from pydra.engine.core import TaskBase
-from arcana.core.utils.serialize import ClassResolver, parse_value
+from frametree.core.serialize import ClassResolver, parse_value
 from fileformats.core import from_mime
 from .base import cli
 

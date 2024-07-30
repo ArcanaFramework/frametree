@@ -1,2 +1,2 @@
-from arcana.core import __version__
-from .data import MockRemote, AlternateMockRemote, TestDataSpace
+from .space import TestDataSpace
+from .store import MockRemote, AlternateMockRemote

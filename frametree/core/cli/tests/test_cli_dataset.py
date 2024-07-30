@@ -1,16 +1,22 @@
 from pathlib import Path
 import pytest
-from arcana.core.data.set.base import Dataset
-from arcana.core.analysis.salience import ColumnSalience
-from arcana.core.data.quality import DataQuality
-from arcana.testing import TestDataSpace
-from arcana.core.cli.dataset import define, add_source, add_sink, missing_items, export
+from frametree.core.set.base import Dataset
+from frametree.core.salience import ColumnSalience
+from frametree.core.quality import DataQuality
+from frametree.testing import TestDataSpace
+from frametree.core.cli.dataset import (
+    define,
+    add_source,
+    add_sink,
+    missing_items,
+    export,
+)
 from fileformats.text import TextFile
 from fileformats.generic import Directory
-from arcana.core.utils.misc import show_cli_trace
-from arcana.testing.data.blueprint import TEST_DATASET_BLUEPRINTS
-from arcana.testing.data import MockRemote
-from arcana.common import DirTree
+from frametree.core.utils import show_cli_trace
+from frametree.testing.blueprint import TEST_DATASET_BLUEPRINTS
+from frametree.testing import MockRemote
+from frametree.common import DirTree
 
 
 ARBITRARY_INTS_A = [234221, 93380, 43271, 137483, 30009, 214205, 363526]
@@ -113,7 +119,7 @@ def test_define_cli(dataset: Dataset, cli_runner):
         args.extend(["--include", axis, slce])
     for axis, slce in excluded.items():
         args.extend(["--exclude", axis, slce])
-    args.extend(["--space", "arcana.testing:TestDataSpace"])
+    args.extend(["--space", "frametree.testing:TestDataSpace"])
     # Run the command line
     result = cli_runner(define, [path, *args])
     # Check tool completed successfully
@@ -126,7 +132,7 @@ def test_define_cli(dataset: Dataset, cli_runner):
     assert loaded_dataset.exclude == excluded
 
 
-def test_export_import_roundtrip(cli_runner, work_dir: Path, arcana_home):
+def test_export_import_roundtrip(cli_runner, work_dir: Path, frametree_home):
     blueprint = TEST_DATASET_BLUEPRINTS["skip_single"]
     cache_dir = work_dir / "remote-cache"
     cache_dir.mkdir()

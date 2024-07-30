@@ -1,5 +1,5 @@
-import arcana
-from arcana.core.utils.packaging import submodules
+import frametree
+from frametree.core.packaging import submodules
 from .base import cli
 
 
@@ -10,4 +10,4 @@ def ext():
 
 # Ensure that all sub-packages under CLI are loaded so they are added to the
 # base command
-extensions = list(submodules(arcana, subpkg="cli"))
+extensions = list(submodules(frametree, subpkg="cli"))
