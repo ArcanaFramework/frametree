@@ -4,7 +4,7 @@
 ![Codecov](https://codecov.io/gh/ArcanaFramework/frametree/branch/main/graph/badge.svg?token=UIS0OGPST7)
 ![Python versions](https://img.shields.io/pypi/pyversions/frametree.svg)
 ![Latest Version](https://img.shields.io/pypi/v/frametree.svg)
-[![Docs](https://img.shields.io/badge/docs-green)](https://arcanaframework.github.io/frametree/)
+[![Docs](https://img.shields.io/badge/docs-passing-dark-green)](https://arcanaframework.github.io/frametree/)
 
 FrameTree is Python framework that is used to map categorical data organised into trees
 (e.g. subject data organised in file-system directory) onto virtual "data frames". Cell in
