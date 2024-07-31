@@ -21,6 +21,7 @@ from pydra.utils.typing import TypeParser
 from frametree.core.exceptions import FrameTreeUsageError
 from .packaging import pkg_versions, package_from_module
 from .utils import add_exc_note
+from frametree.core import PACKAGE_NAME
 
 
 logger = logging.getLogger("frametree")
@@ -64,6 +65,7 @@ class ClassResolver:
     base_class: ty.Optional[type] = None
     allow_none: bool = False
     alternative_types: ty.List[type] = attrs.field(factory=list)
+    package: str = PACKAGE_NAME
 
     def __call__(self, class_str: str) -> type:
         """
@@ -81,7 +83,7 @@ class ClassResolver:
         """
         if class_str is None and self.allow_none:
             return None
-        klass = self.fromstr(class_str, subpkg=True)
+        klass = self.fromstr(class_str, subpkg=True, pkg=self.package)
         self._check_type(klass)
         return klass
 
@@ -93,7 +95,7 @@ class ClassResolver:
             return None
 
     @classmethod
-    def fromstr(cls, class_str, subpkg=None):
+    def fromstr(cls, class_str, subpkg=None, pkg=PACKAGE_NAME):
         """Resolves a class/function from a string containing its module an its name
         separated by a ':'
 
@@ -144,7 +146,7 @@ class ClassResolver:
         module = None
 
         if subpkg:
-            full_mod_path = ".".join(("frametree", module_path))
+            full_mod_path = ".".join((pkg, module_path))
             if isinstance(subpkg, str):
                 full_mod_path += "." + subpkg
         else:
