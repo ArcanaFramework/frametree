@@ -3,7 +3,6 @@ import logging
 from pathlib import Path
 from datetime import datetime
 import shutil
-import docker
 from tempfile import mkdtemp
 from unittest.mock import patch
 import pytest
@@ -279,31 +278,3 @@ def command_spec():
         },
         "row_frequency": "common:Samples[sample]",
     }
-
-
-@pytest.fixture(scope="session")
-def docker_registry():
-
-    IMAGE = "docker.io/registry"
-    PORT = "5557"
-    CONTAINER = "test-docker-registry"
-
-    dc = docker.from_env()
-    try:
-        image = dc.images.get(IMAGE)
-    except docker.errors.ImageNotFound:
-        image = dc.images.pull(IMAGE)
-
-    try:
-        container = dc.containers.get(CONTAINER)
-    except docker.errors.NotFound:
-        container = dc.containers.run(
-            image.tags[0],
-            detach=True,
-            ports={"5000/tcp": PORT},
-            remove=True,
-            name=CONTAINER,
-        )
-
-    yield f"localhost:{PORT}"
-    container.stop()
