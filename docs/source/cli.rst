@@ -12,20 +12,20 @@ Store
 
 Commands used to access remove data stores and save them for further use
 
-.. click:: arcana.core.cli.store:add
-   :prog: arcana store add
+.. click:: frametree.core.cli.store:add
+   :prog: frametree store add
 
-.. click:: arcana.core.cli.store:rename
-   :prog: arcana store rename
+.. click:: frametree.core.cli.store:rename
+   :prog: frametree store rename
 
-.. click:: arcana.core.cli.store:remove
-   :prog: arcana store remove
+.. click:: frametree.core.cli.store:remove
+   :prog: frametree store remove
 
-.. click:: arcana.core.cli.store:refresh
-   :prog: arcana store refresh
+.. click:: frametree.core.cli.store:refresh
+   :prog: frametree store refresh
 
-.. click:: arcana.core.cli.store:ls
-   :prog: arcana store ls
+.. click:: frametree.core.cli.store:ls
+   :prog: frametree store ls
 
 
 Dataset
@@ -33,17 +33,17 @@ Dataset
 
 Commands used to define and work with datasets
 
-.. click:: arcana.core.cli.dataset:define
-   :prog: arcana dataset define
+.. click:: frametree.core.cli.dataset:define
+   :prog: frametree dataset define
 
-.. click:: arcana.core.cli.dataset:add_source
-   :prog: arcana dataset add-source
+.. click:: frametree.core.cli.dataset:add_source
+   :prog: frametree dataset add-source
 
-.. click:: arcana.core.cli.dataset:add_sink
-   :prog: arcana dataset add-sink
+.. click:: frametree.core.cli.dataset:add_sink
+   :prog: frametree dataset add-sink
 
-.. click:: arcana.core.cli.dataset:missing_items
-   :prog: arcana dataset missing-items
+.. click:: frametree.core.cli.dataset:missing_items
+   :prog: frametree dataset missing-items
 
 
 Apply
@@ -51,12 +51,12 @@ Apply
 
 Commands for applying workflows and analyses to datasets
 
-.. click:: arcana.core.cli.apply:apply_pipeline
-   :prog: arcana apply pipeline
+.. click:: frametree.core.cli.apply:apply_pipeline
+   :prog: frametree apply pipeline
 
 
-.. click:: arcana.core.cli.apply:apply_analysis
-   :prog: arcana apply analysis
+.. click:: frametree.core.cli.apply:apply_analysis
+   :prog: frametree apply analysis
 
 
 Derive
@@ -64,33 +64,33 @@ Derive
 
 Commands for calling workflows/analyses to derive derivative data
 
-.. click:: arcana.core.cli.derive:derive_column
-   :prog: arcana derive column
+.. click:: frametree.core.cli.derive:derive_column
+   :prog: frametree derive column
 
-.. click:: arcana.core.cli.derive:derive_output
-   :prog: arcana derive output
+.. click:: frametree.core.cli.derive:derive_output
+   :prog: frametree derive output
 
-.. click:: arcana.core.cli.derive:menu
-   :prog: arcana derive menu
+.. click:: frametree.core.cli.derive:menu
+   :prog: frametree derive menu
 
-.. click:: arcana.core.cli.derive:ignore_diff
-   :prog: arcana derive ignore-diff
+.. click:: frametree.core.cli.derive:ignore_diff
+   :prog: frametree derive ignore-diff
 
 
 Deploy
 ------
 
-Commands for deploying arcana pipelines
+Commands for deploying frametree pipelines
 
 
-.. click:: arcana.core.cli.deploy:build
-   :prog: arcana deploy build
+.. click:: frametree.core.cli.deploy:build
+   :prog: frametree deploy build
 
-.. click:: arcana.core.cli.deploy:test
-   :prog: arcana deploy test
+.. click:: frametree.core.cli.deploy:test
+   :prog: frametree deploy test
 
-.. click:: arcana.core.cli.deploy:make_docs
-   :prog: arcana deploy docs
+.. click:: frametree.core.cli.deploy:make_docs
+   :prog: frametree deploy docs
 
-.. click:: arcana.core.cli.deploy:inspect_docker_exec
-   :prog: arcana deploy inspect-docker
+.. click:: frametree.core.cli.deploy:inspect_docker_exec
+   :prog: frametree deploy inspect-docker

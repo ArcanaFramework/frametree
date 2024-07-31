@@ -27,7 +27,7 @@ remote repository, but also how the data are accessed, e.g. whether to assume th
 they are in BIDS format, or whether files in an XNAT archive mount can be
 accessed directly (i.e. as exposed to the container service), or only via the API.
 
-There are currently four supported store classes in the main, `arcana-bids` and `arcana-xnat`
+There are currently four supported store classes in the main, `frametree-bids` and `frametree-xnat`
 packages
 
 * :class:`.DirTree` - access data organised within an arbitrary directory tree on the file system
@@ -37,30 +37,30 @@ packages
 
 For instructions on how to add support for new systems see :ref:`alternative_stores`.
 
-To configure access to a store via the CLI use the ':ref:`arcana store add`' command.
+To configure access to a store via the CLI use the ':ref:`frametree store add`' command.
 The store type is specified by the path to the data store sub-class,
-*<module-path>:<class-name>*,  e.g. ``arcana.xnat:Xnat``.
-However, if the store is in a submodule of ``arcana`` then that
+*<module-path>:<class-name>*,  e.g. ``frametree.xnat:Xnat``.
+However, if the store is in a submodule of ``frametree`` then that
 prefix can be dropped for convenience, e.g. ``xnat:Xnat``.
 
 .. code-block:: console
 
-    $ arcana store add xnat-central xnat:Xnat https://central.xnat.org \
+    $ frametree store add xnat-central xnat:Xnat https://central.xnat.org \
       --user user123 --cache /work/xnat-cache
     Password:
 
 This command will create a YAML configuration file for the store in the
-`~/.arcana/stores/` directory. Authentication tokens are saved in the config
+`~/.frametree/stores/` directory. Authentication tokens are saved in the config
 file instead of usernames and passwords, and will need to be
-refreshed when they expire (see ':ref:`arcana store refresh`').
+refreshed when they expire (see ':ref:`frametree store refresh`').
 
 The CLI also contains commands for working with store entries that have already
 been created
 
-* :ref:`arcana store ls` - list saved stores
-* :ref:`arcana store rename` - rename a store
-* :ref:`arcana store remove` - remove a store
-* :ref:`arcana store refresh` - refreshes authentication tokens saved for the store
+* :ref:`frametree store ls` - list saved stores
+* :ref:`frametree store rename` - rename a store
+* :ref:`frametree store remove` - remove a store
+* :ref:`frametree store refresh` - refreshes authentication tokens saved for the store
 
 Alternatively, data stores can be configured via the Python API by initialising the
 data store classes directly.
@@ -68,7 +68,7 @@ data store classes directly.
 .. code-block:: python
 
     import os
-    from arcana.xnat import Xnat
+    from frametree.xnat import Xnat
 
     # Initialise the data store object
     xnat_store = Xnat(
@@ -78,7 +78,7 @@ data store classes directly.
         cache_dir='/work/xnat-cache'
     )
 
-    # Save it to the configuration file stored at '~/.arcana/stores.yaml' with
+    # Save it to the configuration file stored at '~/.frametree/stores.yaml' with
     # the nickname 'xnat-central'
     xnat_store.save('xnat-central')
 
@@ -183,7 +183,7 @@ the subject level of the tree sit in special *SUBJECT* branches
 
 
 In the CLI, datasets are referred to by ``<store-nickname>//<dataset-id>[@<dataset-name>]``,
-where *<store-name>* is the nickname of the store as saved by ':ref:`arcana store add`'
+where *<store-name>* is the nickname of the store as saved by ':ref:`frametree store add`'
 (see :ref:`Stores`), and *<dataset-id>* is
 
 * the file-system path to the data directory for file-system (and BIDS) stores
@@ -299,16 +299,16 @@ Each column is assigned a name when it is created, which is used when
 connecting pipeline inputs and outputs to the dataset and accessing the data directly.
 The column name is used as the default value for the path of sink columns.
 
-Use the ':ref:`arcana dataset add-source`' and ':ref:`arcana dataset add-sink`'
+Use the ':ref:`frametree dataset add-source`' and ':ref:`frametree dataset add-sink`'
 commands to add columns to a dataset using the CLI.
 
 .. code-block:: console
 
-    $ arcana dataset add-source 'xnat-central//MYXNATPROJECT' T1w \
+    $ frametree dataset add-source 'xnat-central//MYXNATPROJECT' T1w \
       medimage/dicom-series --path '.*t1_mprage.*' \
       --order 1 --quality usable --regex
 
-    $ arcana dataset add-sink '/data/imaging/my-project' fmri_activation_map \
+    $ frametree dataset add-sink '/data/imaging/my-project' fmri_activation_map \
       medimage/nifti-gz --row-frequency group
 
 
@@ -317,7 +317,7 @@ methods can be used directly to add sources and sinks via the Python API.
 
 .. code-block:: python
 
-    from arcana.common import Clinical
+    from frametree.common import Clinical
     from fileformats.medimage import DicomSeries, NiftiGz
 
     xnat_dataset.add_source(
@@ -341,7 +341,7 @@ operator
 .. code-block:: python
 
     import matplotlib.pyplot as plt
-    from arcana.core.data.set import Dataset
+    from frametree.core.data.set import Dataset
 
     # Get a column containing all T1-weighted MRI images across the dataset
     xnat_dataset = Dataset.load('xnat-central//MYXNATPROJECT')
@@ -360,7 +360,7 @@ initialised.
 
 .. code-block:: python
 
-    from arcana.bids import Bids
+    from frametree.bids import Bids
 
     bids_dataset = Bids().dataset(
         id='/data/openneuro/ds00014')
@@ -553,13 +553,13 @@ For stores that support datasets with arbitrary tree structures
 (i.e. :class:`.DirTree`), the "data space" and the hierarchy of layers
 in the data tree needs to be provided. Data spaces are explained in more
 detail in :ref:`data_spaces`. However, for the majority of datasets in the
-medical imaging field, the :class:`arcana.medimage.data.Clinical` space is
+medical imaging field, the :class:`frametree.medimage.data.Clinical` space is
 appropriate.
 
 .. code-block:: python
 
-    from arcana.dirtree import DirTree
-    from arcana.common import Clinical
+    from frametree.dirtree import DirTree
+    from frametree.common import Clinical
 
     fs_dataset = DirTree().dataset(
         id='/data/imaging/my-project',
@@ -606,7 +606,7 @@ the IDs to be inferred, e.g.
 
 .. code-block:: console
 
-    $ arcana dataset define 'xnat-central//MYXNATPROJECT' \
+    $ frametree dataset define 'xnat-central//MYXNATPROJECT' \
       --id-inference subject '(?P<group>[A-Z]+)_(?P<member>\d+)' \
       --id-inference session '[A-Z0-9]+_MR(?P<timepoint>\d+)'
 
@@ -638,7 +638,7 @@ a dataset.
 
 .. code-block:: console
 
-    $ arcana dataset define '/data/imaging/my-project@manually_qcd' \
+    $ frametree dataset define '/data/imaging/my-project@manually_qcd' \
       common:Clinical subject session \
       --exclude member 03,11,27
 
@@ -650,7 +650,7 @@ frequencies.
 
 .. code-block:: console
 
-    $ arcana dataset define '/data/imaging/my-project@manually_qcd' \
+    $ frametree dataset define '/data/imaging/my-project@manually_qcd' \
       common:Clinical subject session \
       --exclude member 03,11,27 \
       --include timepoint 1,2
@@ -665,11 +665,11 @@ CLI, append the name to the dataset's ID string separated by '::', e.g.
 
 .. code-block:: console
 
-    $ arcana dataset define '/data/imaging/my-project@training' \
+    $ frametree dataset define '/data/imaging/my-project@training' \
       common:Clinical group subject \
       --include member 10:20
 
 
-.. _Arcana: https://arcana.readthedocs.io
+.. _Arcana: https://frametree.readthedocs.io
 .. _XNAT: https://xnat.org
 .. _BIDS: https://bids.neuroimaging.io

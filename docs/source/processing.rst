@@ -51,16 +51,16 @@ to appropriate columns in the dataset (``T1w``, ``T2w`` and
 
 .. code-block:: console
 
-    $ arcana dataset add-source 'myuni-xnat//myproject:training' T1w \
+    $ frametree dataset add-source 'myuni-xnat//myproject:training' T1w \
       medimage/dicom --path '.*mprage.*' --regex
 
-    $ arcana dataset add-source 'myuni-xnat//myproject:training' T2w \
+    $ frametree dataset add-source 'myuni-xnat//myproject:training' T2w \
       medimage/dicom --path '.*t2spc.*' --regex
 
-    $ arcana dataset add-sink 'myuni-xnat//myproject:training' freesurfer/recon-all \
+    $ frametree dataset add-sink 'myuni-xnat//myproject:training' freesurfer/recon-all \
       application/zip
 
-    $ arcana apply pipeline 'myuni-xnat//myproject:training' freesurfer \
+    $ frametree apply pipeline 'myuni-xnat//myproject:training' freesurfer \
       pydra.tasks.freesurfer:Freesurfer \
       --input T1w in_file medimage/niftiGz \
       --input T2w peel medimage/niftiGz \
@@ -78,7 +78,7 @@ To add a workflow to a dataset via the API use the :meth:`Dataset.apply_pipeline
 .. code-block:: python
 
     from pydra.tasks.freesurfer import Freesurfer
-    from arcana.data.types import common, medimage
+    from frametree.data.types import common, medimage
 
     dataset = Dataset.load('myuni-xnat//myproject:training')
 
@@ -106,7 +106,7 @@ can all add the sources and sinks in one step
 
 .. code-block:: console
 
-    $ arcana apply pipeline '/data/enigma/alzheimers:test' segmentation \
+    $ frametree apply pipeline '/data/enigma/alzheimers:test' segmentation \
       pydra.tasks.fsl.preprocess.fast:FAST \
       --source T1w in_file medimage:NiftiGz \
       --sink fast/gm gm medimage:NiftiGz \
@@ -131,8 +131,8 @@ back to the dataset.
 .. code-block:: python
 
     from myworkflows import vbm_template
-    from arcana.data.types import common, medimage
-    from arcana.medimage.data import Clinical
+    from frametree.data.types import common, medimage
+    from frametree.medimage.data import Clinical
 
     dataset = Dataset.load('bids///data/openneuro/ds00014')
 
@@ -175,12 +175,12 @@ three column placeholders, ``preprocessed``, ``derived_image`` and
 one of the two implemented pipeline builder methods ``preprocess_pipeline``
 (*Line 26*) and ``create_image_pipeline`` (*Line 56*).
 
-The :func:`arcana.core.mark.analysis` decorator is used to specify an
+The :func:`frametree.core.mark.analysis` decorator is used to specify an
 analysis class (*Line 6*), taking the dataset space that the class operates on
 as an argument. By default, class attributes are assumed to be
-column placeholders of :func:`arcana.core.mark.column` type (*Line 13-17*).
+column placeholders of :func:`frametree.core.mark.column` type (*Line 13-17*).
 Class attributes can also be free parameters of the analysis by using the
-:func:`arcana.core.mark.parameter` instead (*Line 21*).
+:func:`frametree.core.mark.parameter` instead (*Line 21*).
 
 The :func:`arca.acore.mark.pipeline` decorator specifies pipeline builder
 methods, and takes the columns the pipeline outputs are connected to as arguments
@@ -192,8 +192,8 @@ methods, and takes the columns the pipeline outputs are connected to as argument
 
     import pydra
     from some.example.pydra.tasks import Preprocess, ExtractFromJson, MakeImage
-    from arcana.core.mark import analysis, pipeline, parameter
-    from arcana.example.data import ExampleDataSpace
+    from frametree.core.mark import analysis, pipeline, parameter
+    from frametree.example.data import ExampleDataSpace
     from fileformats.application import Zip
     from fileformats.generic import Directory
     from fileformats.application import Json
@@ -273,7 +273,7 @@ column specs in the class with existing columns in the dataset.
 
 .. code-block:: console
 
-  $ arcana apply analysis '/data/a-dataset' example:ExampleAnalysis \
+  $ frametree apply analysis '/data/a-dataset' example:ExampleAnalysis \
     --column recorded_datafile datafile \
     --column recorded_metadata metadata \
     --parameter contrast 0.75
@@ -285,9 +285,9 @@ parameters.
 
 .. code-block:: python
 
-  from arcana.core.data.set import Dataset
+  from frametree.core.data.set import Dataset
   from fileformats.application import Yaml
-  from arcana.examples import ExampleAnalysis
+  from frametree.examples import ExampleAnalysis
 
   a_dataset = Dataset.load('/data/a-dataset')
 
@@ -324,7 +324,7 @@ To generate derivatives via the CLI
 
 .. code-block:: console
 
-  $ arcana derive column 'myuni-xnat//myproject:training' freesurfer/recon-all
+  $ frametree derive column 'myuni-xnat//myproject:training' freesurfer/recon-all
 
 To generate derivatives via the API
 
@@ -345,7 +345,7 @@ options to it with ``pydra_option``.
 
 .. code-block:: console
 
-  $ arcana derive column 'myuni-xnat//myproject:training' freesurfer/recon-all \
+  $ frametree derive column 'myuni-xnat//myproject:training' freesurfer/recon-all \
     --plugin slurm --pydra-option poll_delay 5 --pydra-option max_jobs 10
 
 
@@ -354,7 +354,7 @@ have been applied you can use the ``menu`` command
 
 .. code-block:: console
 
-  $ arcana derive menu '/data/a-dataset'
+  $ frametree derive menu '/data/a-dataset'
 
   Derivatives
   -----------
@@ -381,7 +381,7 @@ salience >= 'qa' and 'recommended', respectively.
 
 .. code-block:: console
 
-  $ arcana derive menu '/data/another-dataset' --columns qa --parameters recommended
+  $ frametree derive menu '/data/another-dataset' --columns qa --parameters recommended
 
 The ``salience_threshold`` argument can also be used to filter out derivatives
 from the data store when applying an analysis to a dataset. This
@@ -392,7 +392,7 @@ remaining only in local cache.
 
 .. code-block:: console
 
-  $ arcana apply analysis 'my-unis-xnat//MYPROJECT:test' example:ExampleAnalysis \
+  $ frametree apply analysis 'my-unis-xnat//MYPROJECT:test' example:ExampleAnalysis \
     --link recorded_datafile datafile \
     --link recorded_metadata metadata \
     --parameter contrast 0.75 \
@@ -418,7 +418,7 @@ would look like
 
   {
     "store": {
-      "class": "<arcana.medimage.data.xnat.api:Xnat>",
+      "class": "<frametree.medimage.data.xnat.api:Xnat>",
       "server": "https://central.xnat.org"
     },
     "dataset": {
@@ -514,7 +514,7 @@ would look like
           "processor": "intel9999",
           "python-packages": {
             "pydra-mrtrix3": "0.1.0",
-            "arcana-medimage": "0.1.0"
+            "frametree-medimage": "0.1.0"
           }
         },
       },
@@ -538,7 +538,7 @@ or
 
 .. code-block:: console
 
-  $ arcana derive column 'myuni-xnat//myproject:training' freesurfer/recon-all  --reprocess
+  $ frametree derive column 'myuni-xnat//myproject:training' freesurfer/recon-all  --reprocess
 
 
 To ignore differences between pipeline configurations you can use the :meth:`.Dataset.ignore`
@@ -552,7 +552,7 @@ or via the CLI
 
 .. code-block:: console
 
-  $ arcana derive ignore-diff 'myuni-xnat//myproject:training' freesurfer --param freesurfer_task num_iterations 3
+  $ frametree derive ignore-diff 'myuni-xnat//myproject:training' freesurfer --param freesurfer_task num_iterations 3
 
 
 

@@ -36,7 +36,7 @@ on some high-performance computing clusters) you will obviously need to have
 installed these dependencies on the system and ensure they are on the `system
 path <https://learn.sparkfun.com/tutorials/configuring-the-path-system-variable/all>`_.
 
-Two command-line tools that the the `arcana-medimage` sub-package uses
+Two command-line tools that the the `frametree-medimage` sub-package uses
 for implicit file-format conversions are
 
 * `Dcm2Niix <https://github.com/rordenlab/dcm2niix>`_
@@ -55,7 +55,7 @@ Arcana can be installed along with its Python dependencies from the
 
 .. code-block:: console
 
-    $ pip3 install arcana
+    $ pip3 install frametree
 
 
 Basic usage
@@ -79,22 +79,22 @@ over all sessions using the command line interface
 .. code-block:: console
 
     # Define dataset
-    $ arcana dataset define '/data/my-project' subject session
+    $ frametree dataset define '/data/my-project' subject session
 
     # Add source column to select a single T1-weighted image in each session subdirectory
-    $ arcana dataset add-source '/data/my-dataset' T1w '.*mprage.*' medimage:Dicom --regex
+    $ frametree dataset add-source '/data/my-dataset' T1w '.*mprage.*' medimage:Dicom --regex
 
     # Add sink column to store brain mask
-    $ arcana dataset add-sink '/data/my-dataset' brain_mask medimage:NiftiGz
+    $ frametree dataset add-sink '/data/my-dataset' brain_mask medimage:NiftiGz
 
     # Apply BET Pydra task, connecting it between the source and sink
-    $ arcana apply pipeline '/data/my-dataset' pydra.tasks.fsl.preprocess.bet:BET \
+    $ frametree apply pipeline '/data/my-dataset' pydra.tasks.fsl.preprocess.bet:BET \
       --arg name brain_extraction \
       --input T1w in_file medimage:NiftiGz \
       --output brain_mask out_file .
 
     # Derive brain masks for all imaging sessions in dataset
-    $ arcana derive column '/data/my-dataset' brain_maskAPI
+    $ frametree derive column '/data/my-dataset' brain_maskAPI
 
 This code will iterate over all imaging sessions in the directory tree, find and
 convert T1-weighted images (which contain 'mprage' in their names) from
@@ -106,10 +106,10 @@ Alternatively, the same steps can be performed using the Python API:
 
 .. code-block:: python
 
-    # Import arcana module
+    # Import frametree module
     from pydra.tasks.fsl.preprocess.bet import BET
-    from arcana.core.data import Dataset
-    from arcana.medimage.data import Clinical
+    from frametree.core.data import Dataset
+    from frametree.medimage.data import Clinical
     from fileformats.medimage.data import Dicom, NiftiGz
 
     # Define dataset
@@ -140,8 +140,8 @@ each session of each subject.
 
 .. code-block:: console
 
-    $ arcana apply analysis '/data/my-project' bids.mri:T1wAnalysis
-    $ arcana derive column '/data/my-project' avg_cortical_thickness
+    $ frametree apply analysis '/data/my-project' bids.mri:T1wAnalysis
+    $ frametree derive column '/data/my-project' avg_cortical_thickness
 
 
 Doing the same steps via the Python API provides convenient access to the
@@ -152,7 +152,7 @@ Timepoint 'T3' can be plotted.
 .. code-block:: python
 
     import matplotlib.pyplot as plt
-    from arcana.analyses.bids.mri import T1wAnalysis
+    from frametree.analyses.bids.mri import T1wAnalysis
 
     # Apply the T1wAnalysis class to the dataset
     my_dataset.apply(T1wAnalysis())
@@ -169,9 +169,9 @@ Timepoint 'T3' can be plotted.
 
 .. note::
 
-    When referencing objects within the ``arcana`` package from the CLI such
+    When referencing objects within the ``frametree`` package from the CLI such
     as file-datatype classes or data spaces (see :ref:`data_spaces`), the
-    standard ``arcana.*.`` prefix can be dropped, e.g. ``medimage:Dicom``
+    standard ``frametree.*.`` prefix can be dropped, e.g. ``medimage:Dicom``
     instead of the full path ``fileformats.medimage.data:Dicom``.
     Classes installed outside of the Arcana package, should be referred to
     with their full import path.
@@ -181,11 +181,11 @@ Licence
 -------
 
 Arcana >=v2.0 is licenced under the `Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International Public License <https://creativecommons.org/licenses/by-nc-sa/4.0/>`_
-(see `LICENCE <https://raw.githubusercontent.com/Australian-Imaging-Service/arcana/master/LICENSE>`_).
+(see `LICENCE <https://raw.githubusercontent.com/Australian-Imaging-Service/frametree/master/LICENSE>`_).
 Non-commercial usage is permitted freely on the condition that Arcana is
 appropriately acknowledged in related publications. Commercial usage is encouraged,
 but permission from the authors for specific uses must be granted first
-(see `AUTHORS <https://raw.githubusercontent.com/Australian-Imaging-Service/arcana/master/AUTHORS>`_).
+(see `AUTHORS <https://raw.githubusercontent.com/Australian-Imaging-Service/frametree/master/AUTHORS>`_).
 
 
 

@@ -5,7 +5,7 @@ New formats and spaces
 
 Arcana was initially developed for medical-imaging analysis. Therefore, with
 the notable exceptions of the generic data spaces and file-formats defined in
-:mod:`arcana.core.standard`, the
+:mod:`frametree.core.standard`, the
 majority of file-formats and data spaces are specific to medical imaging.
 However, new formats and data spaces used in other fields can be implemented as
 required with just a few lines of code.
@@ -84,7 +84,7 @@ axes for the date and weather station of the recordings, with the following code
 
 .. code-block:: python
 
-    from arcana.core.data.space import DataSpace
+    from frametree.core.data.space import DataSpace
 
     class Weather(DataSpace):
 
