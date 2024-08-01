@@ -1,6 +1,6 @@
 # FrameTree
 
-[![Tests](https://github.com/ArcanaFramework/frametree/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/ArcanaFramework/frametree/actions)
+[![Tests](https://github.com/ArcanaFramework/frametree/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/ArcanaFramework/frametree/actions/workflows/ci-cd.yml)
 ![Codecov](https://codecov.io/gh/ArcanaFramework/frametree/branch/main/graph/badge.svg?token=UIS0OGPST7)
 ![Python versions](https://img.shields.io/pypi/pyversions/frametree.svg)
 ![Latest Version](https://img.shields.io/pypi/v/frametree.svg)
