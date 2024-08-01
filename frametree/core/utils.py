@@ -5,9 +5,7 @@ import re
 import traceback
 import yaml
 import difflib
-from pathlib import Path, PosixPath
-import tempfile
-import tarfile
+from pathlib import Path
 import logging
 import os.path
 import attrs
