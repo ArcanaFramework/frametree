@@ -28,16 +28,16 @@ CONVERTER_ANNOTATIONS = "__frametree_converter__"
 SWICTH_ANNOTATIONS = "__frametree_switch__"
 CHECK_ANNOTATIONS = "__frametree_check__"
 
-ARCANA_SPEC = "__frametree_type__"
+FRAMETREE_SPEC = "__frametree_type__"
 
 
 PATH_SUFFIX = "_path"
 FIELD_SUFFIX = "_field"
 CHECKSUM_SUFFIX = "_checksum"
 
-ARCANA_HOME_DIR = Path.home() / ".frametree"
+FRAMETREE_HOME_DIR = Path.home() / ".frametree"
 
-ARCANA_PIP = "git+ssh://git@github.com/australian-imaging-service/frametree.git"
+FRAMETREE_PIP = "git+ssh://git@github.com/australian-imaging-service/frametree.git"
 
 HASH_CHUNK_SIZE = 2**20  # 1MB in calc. checksums to avoid mem. issues
 
@@ -86,9 +86,9 @@ class NestedContext:
 
 def get_home_dir():
     try:
-        home_dir = Path(os.environ["ARCANA_HOME"])
+        home_dir = Path(os.environ["FRAMETREE_HOME"])
     except KeyError:
-        home_dir = ARCANA_HOME_DIR
+        home_dir = FRAMETREE_HOME_DIR
     if not home_dir.exists():
         home_dir.mkdir()
     return home_dir

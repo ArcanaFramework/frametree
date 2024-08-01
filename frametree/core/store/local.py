@@ -46,7 +46,7 @@ class LocalStore(DataStore):
     """
 
     LOCK_SUFFIX = ".lock"
-    ARCANA_DIR = "__frametree__"
+    FRAMETREE_DIR = "__frametree__"
     SITE_LICENSES_DIR = "site-licenses"
 
     name: str
@@ -383,4 +383,4 @@ class LocalStore(DataStore):
             )
 
     def definition_save_path(self, dataset_id, name):
-        return Path(dataset_id) / self.ARCANA_DIR / name / "definition.yaml"
+        return Path(dataset_id) / self.FRAMETREE_DIR / name / "definition.yaml"

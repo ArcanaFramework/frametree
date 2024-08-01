@@ -27,7 +27,7 @@ from frametree.core import PACKAGE_NAME
 logger = logging.getLogger("frametree")
 
 
-ARCANA_PIP = "git+ssh://git@github.com/australian-imaging-service/frametree.git"
+FRAMETREE_PIP = "git+ssh://git@github.com/australian-imaging-service/frametree.git"
 
 HASH_CHUNK_SIZE = 2**20  # 1MB in calc. checksums to avoid mem. issues
 

@@ -70,7 +70,7 @@ class DirTree(LocalStore):
             tree_path = tuple(Path(dpath).relative_to(tree.dataset_id).parts)
             if len(tree_path) != len(tree.hierarchy):
                 continue
-            if self.ARCANA_DIR in tree_path:
+            if self.FRAMETREE_DIR in tree_path:
                 continue
             tree.add_leaf(tree_path)
 
@@ -89,7 +89,7 @@ class DirTree(LocalStore):
                 entry_name = subpath.name
                 if (
                     not entry_name.startswith(".")
-                    and entry_name != self.ARCANA_DIR
+                    and entry_name != self.FRAMETREE_DIR
                     and entry_name
                     not in (
                         self.FIELDS_FNAME,
@@ -384,14 +384,14 @@ class DirTree(LocalStore):
             for freq in row.dataset.hierarchy:
                 relpath /= row.frequency_id(freq)
             if dataset_name is not None:
-                relpath /= self.ARCANA_DIR
+                relpath /= self.FRAMETREE_DIR
                 if dataset_name:
                     relpath /= dataset_name
                 else:
                     relpath /= self.EMPTY_DATASET_NAME
         else:
             relpath = relpath.joinpath(
-                self.ARCANA_DIR,
+                self.FRAMETREE_DIR,
                 str(row.frequency),
             )
             if isinstance(row.id, tuple):
@@ -399,7 +399,7 @@ class DirTree(LocalStore):
             elif row.id:
                 relpath /= row.id
             if dataset_name is None:
-                relpath /= self.ARCANA_DIR
+                relpath /= self.FRAMETREE_DIR
             elif not dataset_name:
                 relpath /= self.EMPTY_DATASET_NAME
             else:
@@ -427,7 +427,7 @@ class DirTree(LocalStore):
             dataset_names.extend(
                 ("" if d.name == self.EMPTY_DATASET_NAME else d.name)
                 for d in derivs_dir.iterdir()
-                if d.name != self.ARCANA_DIR
+                if d.name != self.FRAMETREE_DIR
             )
         return dataset_names
 
