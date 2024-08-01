@@ -7,21 +7,13 @@
 [![Docs](https://img.shields.io/badge/docs-passing-green)](https://arcanaframework.github.io/frametree/)
 
 FrameTree is Python framework that is used to map categorical data organised into trees
-(e.g. subject data organised in file-system directory) onto virtual "data frames". Cell in
-these data frames can be scalars, arrays or a set of files and/or directories stored at
-each node across a level in the given tree. Metrics extracted from the data in these frames
-are stored alongside the original data, and are able to be fed into statistical analysis.
+(e.g. MRI sessions for multiple subjects and visits, saved in a file-system directory)
+onto virtual "data frames" for analysis. Cells in these data frames can be scalars, arrays
+or a set of files and/or directories stored at each node across a level in the given tree.
+Derivitives are stored along with the parameters used to derive them back into
+the store for reference and reuse by subsequent analysis steps.
+Extracted metrics can be exported to actual data frames for statistical analysis.
 
-FrameTree_ manages all interactions with data stores. Support for specific 
-specific repository software or data structures (e.g. XNAT or BIDS).
-Intermediate outputs are stored, along with the parameters used to derive them, back into
-the store for reuse by subsequent analysis steps.
-
-Analysis workflows are constructed and executed using the Pydra_ dataflow API, and can
-either be run locally or submitted to cloud or HPC clusters using Pydra_'s various
-execution plugins. For a requested output, FrameTree determines the required processing
-steps by querying the store to check for missing intermediate outputs and parameter
-changes before constructing the required workflow graph.
 
 ## Documentation
 
@@ -36,10 +28,9 @@ FrameTree can be installed for Python 3 using *pip*::
 
 ## Extensions
 
-The core FrameTree package only supports directory data trees, however, it is designed to
-be extended to support in-place analysis of data within data repository platforms such 
-as XNAT and formalised data structures such as Brain Imaging Data Structure (BIDS).
-
+Support for specific  specific repository software or data structures (e.g. XNAT or BIDS)
+are provided by extension packages (see [frametree-xnat](https://github.com/ArcanaFramework/frametree-xnat) 
+and [frametree-bids](https://github.com/ArcanaFramework/frametree-bids)). 
 
 ## License
 
