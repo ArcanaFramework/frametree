@@ -83,6 +83,30 @@ class ClassResolver:
         """
         if class_str is None and self.allow_none:
             return None
+        # If only provided with name, assume it is a submodule/package of the package
+        # and there is only one subclass of the base class in the module
+        if isinstance(class_str, str) and ":" not in class_str and "/" not in class_str:
+            mod = import_module(self.package + "." + class_str)
+            mod_attrs = [getattr(mod, name) for name in dir(mod)]
+            classes = [
+                a for a in mod_attrs if isclass(a) and issubclass(a, self.base_class)
+            ]
+            if not classes:
+                raise ValueError(
+                    f"Did not find a class in module '{class_str}' that is a subclass of "
+                    f"{self.base_class}"
+                )
+            if len(classes) > 1:
+                superclasses = [
+                    c for c in classes if all(issubclass(sc, c) for sc in classes)
+                ]
+                if len(superclasses) == 1:
+                    return superclasses[0]
+                raise ValueError(
+                    f"Found multiple classes in module '{class_str}' that are subclasses of "
+                    f"{self.base_class}: {classes}"
+                )
+            return classes[0]
         klass = self.fromstr(class_str, subpkg=True, pkg=self.package)
         self._check_type(klass)
         return klass
@@ -322,7 +346,8 @@ def fromdict(dct: dict, **kwargs):
     # except (TypeError, KeyError):
     #     pass
     #     else:
-    #         if packaging.version.parse(frametree_version) < packaging.version.parse(MIN_SERIAL_VERSION):
+    #         if (packaging.version.parse(frametree_version)
+    #               < packaging.version.parse(MIN_SERIAL_VERSION)):
     #             raise FrameTreeVersionError(
     #                 f"Serialised version ('{frametree_version}' is too old to be "
     #                 f"read by this version of frametree ('{__version__}'), the minimum "

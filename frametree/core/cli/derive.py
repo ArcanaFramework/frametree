@@ -16,8 +16,7 @@ def derive():
 
 @derive.command(
     name="column",
-    help="""Derive data for a data sink column and
-all prerequisite columns.
+    help="""Derive data for a data sink column and all prerequisite columns.
 
 DATASET_LOCATOR string containing the nickname of the data store, the ID of the dataset
 (e.g. XNAT project ID or file-system directory) and the dataset's name in the
