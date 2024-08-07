@@ -55,11 +55,14 @@ class ClassResolver:
     ----------
     base_class : type
         the target class to resolve the string representation to
-    prefixes : Sequence[str]
-        List of allowable module prefixes to try to append if the fully
-        resolved path fails, e.g. ['pydra.tasks'] would allow
-        'fsl.preprocess.first.First' to resolve to
-        pydra.tasks.fsl.preprocess.first.First
+    allow_none : bool
+        whether None is a valid value, if True, None is returned if the string is None
+    alternative_types : list[type]
+        alternative types that are allowed to be resolved to
+    package : str
+        the package to resolve the class from if a partial path is given
+    resolve_from_module : bool
+        whether to resolve the class from the module if only the module name is given
     """
 
     base_class: ty.Optional[type] = None
@@ -83,30 +86,36 @@ class ClassResolver:
         """
         if class_str is None and self.allow_none:
             return None
-        # If only provided with name, assume it is a submodule/package of the package
+        # If only provided with name, attempt to treat it as a submodule/package of the package
         # and there is only one subclass of the base class in the module
         if isinstance(class_str, str) and ":" not in class_str and "/" not in class_str:
-            mod = import_module(self.package + "." + class_str)
-            mod_attrs = [getattr(mod, name) for name in dir(mod)]
-            classes = [
-                a for a in mod_attrs if isclass(a) and issubclass(a, self.base_class)
-            ]
-            if not classes:
-                raise ValueError(
-                    f"Did not find a class in module '{class_str}' that is a subclass of "
-                    f"{self.base_class}"
-                )
-            if len(classes) > 1:
-                superclasses = [
-                    c for c in classes if all(issubclass(sc, c) for sc in classes)
+            try:
+                mod = import_module(self.package + "." + class_str)
+            except ModuleNotFoundError:
+                pass
+            else:
+                mod_attrs = [getattr(mod, name) for name in dir(mod)]
+                classes = [
+                    a
+                    for a in mod_attrs
+                    if isclass(a) and issubclass(a, self.base_class)
                 ]
-                if len(superclasses) == 1:
-                    return superclasses[0]
-                raise ValueError(
-                    f"Found multiple classes in module '{class_str}' that are subclasses of "
-                    f"{self.base_class}: {classes}"
-                )
-            return classes[0]
+                if not classes:
+                    raise ValueError(
+                        f"Did not find a class in module '{class_str}' that is a "
+                        f"subclass of {self.base_class}"
+                    )
+                if len(classes) > 1:
+                    superclasses = [
+                        c for c in classes if all(issubclass(sc, c) for sc in classes)
+                    ]
+                    if len(superclasses) == 1:
+                        return superclasses[0]
+                    raise ValueError(
+                        f"Found multiple classes in module '{class_str}' that are "
+                        f"subclasses of {self.base_class}: {classes}"
+                    )
+                return classes[0]
         klass = self.fromstr(class_str, subpkg=True, pkg=self.package)
         self._check_type(klass)
         return klass
