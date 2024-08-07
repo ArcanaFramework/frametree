@@ -13,8 +13,8 @@ def test_store_cli(cli_runner, frametree_home, work_dir):
     result = cli_runner(
         add,
         [
-            store_name,
             "testing:MockRemote",
+            store_name,
             "--server",
             STORE_URI,
             "--user",
@@ -40,8 +40,8 @@ def test_store_cli_remove(cli_runner, frametree_home, work_dir):
     cli_runner(
         add,
         [
-            new_store_name,
             "testing:MockRemote",
+            new_store_name,
             "--server",
             STORE_URI,
             "--user",
@@ -70,8 +70,8 @@ def test_store_cli_rename(cli_runner, frametree_home, work_dir):
     cli_runner(
         add,
         [
-            old_store_name,
             "testing:MockRemote",
+            old_store_name,
             "--server",
             STORE_URI,
             "--user",
@@ -100,8 +100,8 @@ def test_store_cli_encrypt_credentials(cli_runner, frametree_home, work_dir):
     result = cli_runner(
         add,
         [
-            store_name,
             "testing:MockRemote",
+            store_name,
             "--server",
             STORE_URI,
             "--user",
