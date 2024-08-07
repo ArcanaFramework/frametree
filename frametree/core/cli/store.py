@@ -13,24 +13,18 @@ def store():
 
 
 @store.command(
-    help="""Saves the details for a new data store in the configuration
-file ('~/.frametree/stores.yaml').
+    help="""Saves the details for a new data store in the configuration file ('~/.frametree/stores.yaml').
 
-Arguments
----------
-name
-    The name given to the store for reference in other commands
-type
-    The storage class and the module it is defined in, e.g.
-    `frametree.data.store.xnat:Xnat`
-location
-    The location of the store, e.g. server address
-*varargs
-    Parameters that are specific to the 'type' of storage class to be added
+TYPE of the storage class, typically the name of the package the type is defined, e.g. 'xnat'
+or 'bids'. More specific types can be given by using a colon to separate the package name and
+type, e.g. frametree.xnat:XnatViaCS
+
+NAME The name the store will be saved as in the configuration file. This is used to refer to the
+store when using the frametree CLI.
 """
 )
-@click.argument("name")
 @click.argument("type")
+@click.argument("name")
 @click.option(
     "--server",
     "-s",
@@ -93,40 +87,38 @@ def add(name, type, option, cache, **kwargs):
 
 @store.command(
     help="""
-Gives a data store saved in the config file ('~/.frametree/stores.yaml') a new
-nickname.
+Renames a store in the configuration file
 
-Arguments
+OLD_KNAME The current name of the store.
 
-OLD_NICKNAME The current name of the store.
-NEW_NICKNAME The new name for the store."""
+NEW_NAME The new name for the store.
+"""
 )
-@click.argument("old_nickname")
-@click.argument("new_nickname")
-def rename(old_nickname, new_nickname):
-    DataStore.load(old_nickname).save(new_nickname)
-    DataStore.remove(old_nickname)
+@click.argument("old_name")
+@click.argument("new_name")
+def rename(old_name, new_name):
+    DataStore.load(old_name).save(new_name)
+    DataStore.remove(old_name)
 
 
 @store.command(
     help="""Remove a saved data store from the config file
 
-nickname
-    The nickname the store was given when its details were saved"""
+NAME The name the store was given when its details were saved
+"""
 )
-@click.argument("nickname")
-def remove(nickname):
-    DataStore.remove(nickname)
+@click.argument("name")
+def remove(name):
+    DataStore.remove(name)
 
 
 @store.command(
-    help="""Refreshes credentials saved for the given store
-(typically a token that expires)
+    help="""Refreshes credentials saved for the given store (typically a token that expires)
 
-nickname
-    Nickname given to the store to refresh the credentials of"""
+NAME The name the store was given when its details were saved
+"""
 )
-@click.argument("nickname")
+@click.argument("name")
 @click.option(
     "--user", "-u", default=None, help="The username to use to connect to the store"
 )
@@ -137,14 +129,14 @@ nickname
     hide_input=True,
     help="The password to use to connect to the store",
 )
-def refresh(nickname, user, password):
-    store = DataStore.load(nickname)
+def refresh(name, user, password):
+    store = DataStore.load(name)
     if user is not None:
         store.user = user
     store.password = password
     store.save()
-    DataStore.remove(nickname)
-    store.save(nickname)
+    DataStore.remove(name)
+    store.save(name)
 
 
 @store.command(help="""List available stores that have been saved""")
