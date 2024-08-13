@@ -40,8 +40,8 @@ class DirTree(LocalStore):
     """
 
     PROV_SUFFIX = ".provenance"
-    FIELDS_FNAME = "__fields__"
-    FIELDS_PROV_FNAME = "__fields_provenance__"
+    FIELDS_FNAME = "__fields__.json"
+    FIELDS_PROV_FNAME = "__fields_provenance__.json"
 
     # Note this name will be constant, as there is only ever one store,
     # which covers whole FS

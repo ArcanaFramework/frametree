@@ -9,7 +9,7 @@ import pkg_resources
 from pathlib import Path
 from collections.abc import Iterable
 from frametree.core.exceptions import FrameTreeUsageError
-from frametree.core import __version__
+from frametree.core import __version__, PACKAGE_NAME
 
 
 def submodules(package, subpkg=None):
@@ -179,5 +179,5 @@ def installed_module_paths(pkg: pkg_resources.DistInfoDistribution):
 
 def pkg_versions(modules):
     versions = {p.key: p.version for p in package_from_module(modules)}
-    versions["arcana"] = __version__
+    versions[PACKAGE_NAME] = __version__
     return versions
