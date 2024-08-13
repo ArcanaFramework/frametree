@@ -25,11 +25,14 @@ from .metadata import DatasetMetadata, metadata_converter
 
 
 if ty.TYPE_CHECKING:  # pragma: no cover
-    from frametree.core.licence import License
     from frametree.core.entry import DataEntry
     from frametree.core.pipeline import Pipeline
 
 logger = logging.getLogger("frametree")
+
+
+def hierarchy_converter(hierarchy: ty.List[ty.Union[str, DataSpace]]) -> ty.List[str]:
+    return [str(f) for f in hierarchy]
 
 
 @attrs.define(kw_only=True)
@@ -113,7 +116,7 @@ class Dataset:
     id_patterns: ty.Dict[str, str] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict)
     )
-    hierarchy: ty.List[str] = attrs.field(converter=list)
+    hierarchy: ty.List[str] = attrs.field(converter=hierarchy_converter)
     metadata: DatasetMetadata = attrs.field(
         factory=DatasetMetadata,
         converter=metadata_converter,
@@ -547,7 +550,12 @@ class Dataset:
         with self.tree:
             if frequency == self.root_freq:
                 return [self.root]
-            rows = self.root.children[frequency].values()
+            try:
+                rows = self.root.children[frequency].values()
+            except KeyError:
+                raise RuntimeError(
+                    f"{frequency} was not present in {self}: {self.root.children}"
+                )
             if ids is not None:
                 rows = (n for n in rows if n.id in set(ids))
             return rows

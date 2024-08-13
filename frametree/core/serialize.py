@@ -169,7 +169,8 @@ class ClassResolver:
                     f"Class location '{class_str}' should contain a ':' unless it is in the "
                     "builtins module"
                 ) from None
-
+        if not module_path:
+            module_path = "common"  # default package
         if "." in module_path:
             # Interpret as an absolute path not a relative path from an extension
             module_path = module_path.rstrip(
@@ -542,6 +543,7 @@ class ObjectConverter:
     allow_none: bool = False
     default_if_none: ty.Any = None
     accept_metadata: bool = False
+    package: str = PACKAGE_NAME
 
     def __call__(self, value):
         return self._create_object(value)
