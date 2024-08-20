@@ -95,6 +95,8 @@ jobs:
       # checkout@v2 adds a header that makes branch protection report errors
       # because the Github action bot is not a collaborator on the repo
       run: git config --local --unset http.https://github.com/.extraheader
+    - name: Fetch tags
+      run: git fetch --prune --unshallow
     - name: Configure GitHub Pages
       uses: actions/configure-pages@v3
     - name: Setup Python
@@ -118,9 +120,6 @@ jobs:
   deploy:
     needs: [build, build-docs]
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
     - name: Download build
       uses: actions/download-artifact@v3
@@ -144,9 +143,9 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    needs: [test, build-docs]
+    if: github.event_name == 'release'
+    needs: [build, build-docs]
     runs-on: ubuntu-latest
-    name: Deploy
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
