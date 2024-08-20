@@ -81,7 +81,6 @@ jobs:
 
   build-docs:
     runs-on: ubuntu-latest
-    needs: [build]
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
@@ -89,6 +88,8 @@ jobs:
       # checkout@v2 adds a header that makes branch protection report errors
       # because the Github action bot is not a collaborator on the repo
       run: git config --local --unset http.https://github.com/.extraheader
+    - name: Configure GitHub Pages
+      uses: actions/configure-pages@v3
     - name: Setup Python
       uses: actions/setup-python@v2
       with:
@@ -106,10 +107,6 @@ jobs:
       uses: actions/upload-pages-artifact@v3
       with:
         path: docs/build/html
-    # - uses: actions/upload-artifact@v3
-    #   with:
-    #     name: built-docs
-    #     path: docs/build/html
 
   deploy:
     needs: [build, build-docs]
