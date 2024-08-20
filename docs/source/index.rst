@@ -1,11 +1,14 @@
 .. _home:
 
-Arcana
-======
+FrameTree
+=========
 
-Arcana (Abstraction of Repository-Centric ANAlysis) is an informatics framework for
-analysing datasets "in-place", i.e. pulling data from a data store to a
-(typically neighbouring) computing resource, performing computations on the
+FrameTree is a Python package used to analyse file-based datasets stored in tree-like
+structures "in-place". It does this by virtually mapping the tree structures onto
+"data frames" with rows and columns, so that metrics derived from them can be fed
+directly into statistical packages such as Pandas and R.
+
+i.e. pulling data from a data store to a (typically neighbouring) computing resource, performing computations on the
 data, and then uploading the processed data back to the store alongside the
 original data. Arcana has been designed to address many of the challenges typically
 faced when analysing large medical-imaging projects, but should make your
@@ -17,21 +20,10 @@ workflow design, such as iteration, file-format conversions and management of
 provenance data are also abstracted away from the designer, enabling them
 to focus on the core logic of the analysis to be implemented.
 
-Arcana's approach has several advantages over typical workflow design, particularly
-when analysing large datasets:
-
 * Derivatives are kept in central location, avoiding duplication of processing
 * Incremental processing facilitates manual-QC of intermediate products at key milestones in the workflow (e.g. brain masks)
 * Abstraction of implementation details promotes development of shared workflow libraries, which can be refined over time to capture the domain-specific **frametree of data analysis** *(the obscure knowledge required to apply an appropriate combination of tools and parameters to analyse complex datasets)*.
 
-The Arcana framework can be broken down into four conceptual layers:
-
-* **Core layer** - abstract base classes and core pipeline logic
-* **Infrastructure layer** - Repository system connectors, file formats and data structures
-* **Processing layer** - Preprocessing pipelines and methods to derive standard markers
-* **Analysis layer** - Statistical analysis methods and study-specific customisations
-
-|
 
 .. image:: _static/images/layers.png
    :width: 600

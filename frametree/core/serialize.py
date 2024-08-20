@@ -165,12 +165,12 @@ class ClassResolver:
             try:
                 return getattr(builtins, class_str)
             except AttributeError:
-                raise ValueError(
-                    f"Class location '{class_str}' should contain a ':' unless it is in the "
-                    "builtins module"
-                ) from None
+                module_path = None
+                class_name = class_str
+        assumed_common = False
         if not module_path:
             module_path = "common"  # default package
+            assumed_common = True
         if "." in module_path:
             # Interpret as an absolute path not a relative path from an extension
             module_path = module_path.rstrip(
@@ -191,10 +191,17 @@ class ClassResolver:
             if cls.FALLBACK_TO_STR.permit:
                 return class_str
             else:
-                raise FrameTreeUsageError(
+                msg = (
                     f"Did not find module {full_mod_path}' when resolving {class_str} "
-                    f"with subpkg={subpkg}"
+                    f"with subpkg={subpkg}.\n"
                 )
+                if assumed_common:
+                    msg += (
+                        "NB: No module path was provided, so the default 'common' "
+                        "package was assumed. Please check it isn't meant to be a builtin "
+                        "class or function instead"
+                    )
+                raise FrameTreeUsageError(msg)
         try:
             klass = getattr(module, class_name)
         except AttributeError:
