@@ -1,26 +1,12 @@
 .. _adding_formats:
 
-New formats and spaces
-======================
+New spaces
+==========
 
-Arcana was initially developed for medical-imaging analysis. Therefore, with
-the notable exceptions of the generic data spaces and file-formats defined in
-:mod:`frametree.core.standard`, the
-majority of file-formats and data spaces are specific to medical imaging.
-However, new formats and data spaces used in other fields can be implemented as
-required with just a few lines of code.
-
-.. _file_formats:
-
-File formats
-------------
-
-File formats are specified using the FileFormats_ package. Please refer to its documentation
-on how to add new file formats
-
-
-Data spaces
------------
+FrameTree was initially developed for medical-imaging analysis. Therefore, if you
+planning to use it for alternative domains you may need to add support for domain-specific
+file formats and "data spaces". File formats are specified using the FileFormats_ package.
+Please refer to its documentation on how to add new file formats.
 
 New data spaces (see :ref:`data_spaces`) are defined by extending the
 :class:`.DataSpace` abstract base class. :class:`.DataSpace` subclasses are be
@@ -84,7 +70,7 @@ axes for the date and weather station of the recordings, with the following code
 
 .. code-block:: python
 
-    from frametree.core.data.space import DataSpace
+    from frametree.core.space import DataSpace
 
     class Weather(DataSpace):
 

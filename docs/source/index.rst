@@ -6,63 +6,37 @@ FrameTree
 FrameTree is a Python package used to analyse file-based datasets stored in tree-like
 structures "in-place". It does this by virtually mapping the tree structures onto
 "data frames" with rows and columns, so that metrics derived from them can be fed
-directly into statistical packages such as Pandas and R.
+directly into statistical packages such as Pandas and R. This facilitates, pulling data
+from the data store to a (typically neighbouring) computing resource, and then uploading
+the processed data alongside the original data.
 
-i.e. pulling data from a data store to a (typically neighbouring) computing resource, performing computations on the
-data, and then uploading the processed data back to the store alongside the
-original data. Arcana has been designed to address many of the challenges typically
-faced when analysing large medical-imaging projects, but should make your
-life easier no matter the size of your dataset or field of study!
+Data store interactions are abstracted by modular handlers, making it possible to write
+backens for different storage systems. Currently, XNAT_ and BIDS_ backends are supported,
+with a prototype started for Flywheel_.
 
-Data store interactions are abstracted by modular handlers, making
-worklows portable between different storage systems. Other tedious aspects of
-workflow design, such as iteration, file-format conversions and management of
-provenance data are also abstracted away from the designer, enabling them
-to focus on the core logic of the analysis to be implemented.
+FrameTree's data model sets out to bridge the gap between
+the semi-structured data trees that file-based data are typically stored in,
+and the tabular data frames used in statistical analysis. Note that this
+transformation is abstract, with the source data remaining within original data
+tree and generated derivatives stored alongside them.
 
-* Derivatives are kept in central location, avoiding duplication of processing
-* Incremental processing facilitates manual-QC of intermediate products at key milestones in the workflow (e.g. brain masks)
-* Abstraction of implementation details promotes development of shared workflow libraries, which can be refined over time to capture the domain-specific **frametree of data analysis** *(the obscure knowledge required to apply an appropriate combination of tools and parameters to analyse complex datasets)*.
+The key elements of FrameTree's data model are:
+
+* :ref:`Stores` - encapsulations of tree-based file storage systems
+* :ref:`Datasets` - sets of comparable data to be jointly analysed
+* :ref:`data_columns` - abstract tables within datasets
 
 
-.. image:: _static/images/layers.png
-   :width: 600
-   :alt: Arcana layer structure
-   :align: center
-
-|
-
-The core and infrastructure layers are largely developed by the main Arcana developer team
-(see `Authors  <https://github.com/Australian-Imaging-Service/frametree/blob/main/AUTHORS>`_).
-Processing layers for neuro-MRI and molecular imaging are being developed as part of the
-Australian Imaging Service in the `core pipelines repository <https://github.com/Australian-Imaging-Service/pipelines-core>`_.
-Since the analysis layer is typically study-specific, it is often left to the
-end user to implement (noting that outputs from the processing layer
-can be used directly if desired)
-
-Although designed to efficiently handle the requirements typical of medical imaging
-workflows (i.e. manipulation of file-based images by various third-party
-tools), at its core, Arcana is a general framework, which could be
-used to design analyses in any field. If you do end up using Arcana in a
-different domain please post an issue about it in the
-`issue tracker <https://github.com/Australian-Imaging-Service/frametree/issues>`_
-to let us know!
-
-Arcana also includes tools for deploying pipelines in Docker images that
-can be run in `XNAT's container service <https://wiki.xnat.org/container-service/>`_
-(`BIDS apps <https://bids-apps.neuroimaging.io/>`_ support is planned in the future)
-. These tools can be used
-to maintain continuous integration and deployment of pipeline suites (see
-`Australian Imaging Service Pipelines <https://github.com/australian-imaging-service/pipelines-core>`_).
 
 .. toctree::
    :maxdepth: 2
    :hidden:
 
-   getting_started
-   data_model
-   processing
-   deployment
+   installation
+   basic_usage
+   stores
+   datasets
+   columns
 
 .. toctree::
    :maxdepth: 2
@@ -70,9 +44,8 @@ to maintain continuous integration and deployment of pipeline suites (see
    :hidden:
 
    contributing
-   design_analyses
-   adding_formats
-   Alternative storage <alternative_stores.rst>
+   new_domains
+   alternative_backends
 
 .. toctree::
    :maxdepth: 2
@@ -83,18 +56,16 @@ to maintain continuous integration and deployment of pipeline suites (see
    API <api.rst>
 
 
-|
+Licence
+-------
 
-.. note::
-   For the legacy version of Arcana as described in
-   *Close TG, et. al. Neuroinformatics. 2020 18(1):109-129. doi:* `10.1007/s12021-019-09430-1 <https://doi.org/10.1007/s12021-019-09430-1>`_
-   please see `<https://github.com/MonashBI/frametree-legacy>`_.
-   Conceptually, the legacy version and the versions in this repository (version >= 2.0) are similar.
-   However, instead of Nipype, versions >= 2 use the Pydra_ workflow engine (Nipype's successor)
-   and the syntax has been rewritten from scratch to make it more streamlined and intuitive.
+FrameTree is licenced under the `Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International Public License <https://creativecommons.org/licenses/by-nc-sa/4.0/>`_
+(see `LICENCE <https://raw.githubusercontent.com/Australian-Imaging-Service/frametree/master/LICENSE>`_).
+Non-commercial usage is permitted freely on the condition that FrameTree is
+appropriately acknowledged in related publications.
 
 
 .. _Pydra: http://pydra.readthedocs.io
 .. _XNAT: http://xnat.org
 .. _BIDS: http://bids.neuroimaging.io/
-.. _`Environment Modules`: http://modules.sourceforge.net
+.. _Flywheel: http://flywheel.io/

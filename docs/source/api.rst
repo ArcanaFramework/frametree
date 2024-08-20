@@ -1,7 +1,7 @@
 Application Programming Interface
 =================================
 
-The core of Arcana's framework is located under the ``frametree.core`` sub-package,
+The core of FrameTree's framework is located under the ``frametree.core`` sub-package,
 which contains all the domain-independent logic. Domain-specific extensions
 for alternative data stores, dimensions and formats should be placed in
 ``frametree.data.stores``, ``frametree.data.spaces`` and ``frametree.data.types``

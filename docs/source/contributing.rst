@@ -9,7 +9,7 @@ for details.
 Code structure
 --------------
 
-The core Arcana code base is implemented in the :mod:`frametree.core` module. Extensions
+The core FrameTree code base is implemented in the :mod:`frametree.core` module. Extensions
 which implement data store connectors and analyses are installed in separate namesapces
 (e.g. ``frametree-xnat``, ``frametree-bids``).
 

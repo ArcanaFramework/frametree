@@ -68,7 +68,7 @@ source_suffix = ".rst"
 master_doc = "index"
 
 # General information about the project.
-project = "Arcana"
+project = "FrameTree"
 author = ", ".join(a for a, _ in __authors__)
 copyright = "{}, {}".format(datetime.datetime.now().year, author)
 
@@ -87,7 +87,7 @@ release = __version__
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = "English"
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
@@ -153,10 +153,10 @@ html_theme_options = {
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-html_title = "Arcana v{}".format(__version__)
+html_title = "FrameTree v{}".format(__version__)
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
-# html_short_title = 'Arcana v<release>'
+# html_short_title = 'FrameTree v<release>'
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
@@ -233,7 +233,7 @@ html_static_path = ["_static"]
 # html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "Arcana"
+htmlhelp_basename = "FrameTree"
 
 # -- Options for LaTeX output ---------------------------------------------
 
@@ -252,7 +252,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, "frametree.tex", "Arcana Documentation", author, "manual"),
+    (master_doc, "frametree.tex", "FrameTree Documentation", author, "manual"),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -280,7 +280,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [(master_doc, "frametree", "Arcana Documentation", [author], 1)]
+man_pages = [(master_doc, "frametree", "FrameTree Documentation", [author], 1)]
 
 # If true, show URL addresses after external links.
 # man_show_urls = False
@@ -294,10 +294,10 @@ man_pages = [(master_doc, "frametree", "Arcana Documentation", [author], 1)]
 texinfo_documents = [
     (
         master_doc,
-        "Arcana",
-        "Arcana Documentation",
+        "FrameTree",
+        "FrameTree Documentation",
         author,
-        "Arcana",
+        "FrameTree",
         "Archive-centered analysis of neuroimaging data",
         "Miscellaneous",
     ),

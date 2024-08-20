@@ -1,9 +1,9 @@
 Command-line interface
 ======================
 
-Arcana's command line interface is grouped into five categories, `store`,
+FrameTree's command line interface is grouped into five categories, `store`,
 `dataset`, `apply`, `derive`, and `deploy`. Below these categories are the
-commands that interact with Arcana's data model, processing and deployment
+commands that interact with FrameTree's data model, processing and deployment
 streams.
 
 

@@ -1,11 +1,11 @@
 .. _alternative_stores:
 
-Alternative storage systems
-===========================
+Alternative Backends
+====================
 
 Alternative storage systems can be implemented by writing a new subclass of
 :class:`.DataStore`. The developers are interested in adding support for new systems,
-so if you would help to use Arcana with a different storage system please
+so if you would help to use FrameTree with a different storage system please
 create an issue for it in the `GitHub Issue Tracker <https://github.com/Australian-Imaging-Service/frametree/issues>`__.
 
 Required methods
@@ -13,9 +13,9 @@ Required methods
 
 When subclassing :class:`.DataStore`, the following abstract methods must be
 overridden to implement the appropriate functionality of the data store. For
-a reference implementation please see :class:`frametree.dirtree.data.SimpleStore`.
+a reference implementation please see :class:`frametree.common.DirTree`.
 
-.. autoclass:: frametree.core.data.store.DataStore
+.. autoclass:: frametree.core.store.DataStore
     :noindex:
     :members: find_rows, find_cells, get_file_group_paths, download_value, put_file_group_paths, upload_value, save_dataset_definition, load_dataset_definition
 
