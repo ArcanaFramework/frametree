@@ -134,6 +134,7 @@ jobs:
         password: ${{ secrets.PYPI_API_TOKEN }}
 
   deploy-docs:
+    if: github.event_name == 'release'
     permissions:
       contents: read
       pages: write
@@ -145,7 +146,6 @@ jobs:
       url: ${{steps.deployment.outputs.page_url}}
     steps:
       - name: Deploy artifact
-        if: github.event_name == 'release'
         id: deployment
         uses: actions/deploy-pages@v4
 
