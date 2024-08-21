@@ -23,19 +23,19 @@ over all sessions using the command line interface
     $ frametree dataset define '/data/my-project' subject session
 
     # Add source column to select a single T1-weighted image in each session subdirectory
-    $ frametree dataset add-source '/data/my-dataset' T1w '.*mprage.*' medimage:Dicom --regex
+    $ frametree dataset add-source '/data/my-dataset' T1w '.*mprage.*' medimage/dicom-series --regex
 
     # Add sink column to store brain mask
-    $ frametree dataset add-sink '/data/my-dataset' brain_mask medimage:NiftiGz
+    $ frametree dataset add-sink '/data/my-dataset' brain_mask medimage/nifti-gz
 
     # Apply BET Pydra task, connecting it between the source and sink
     $ frametree apply pipeline '/data/my-dataset' pydra.tasks.fsl.preprocess.bet:BET \
       --arg name brain_extraction \
-      --input T1w in_file medimage:NiftiGz \
+      --input T1w in_file medimage/nifti-gz \
       --output brain_mask out_file .
 
     # Derive brain masks for all imaging sessions in dataset
-    $ frametree derive column '/data/my-dataset' brain_maskAPI
+    $ frametree derive column '/data/my-dataset' brain_mask
 
 This code will iterate over all imaging sessions in the directory tree, find and
 convert T1-weighted images (which contain 'mprage' in their names) from

@@ -10,7 +10,7 @@ FrameTree is Python framework that is used to map categorical data organised int
 (e.g. MRI sessions for multiple subjects and visits, saved in a file-system directory)
 onto virtual "data frames" for analysis. Cells in these data frames can be scalars, arrays
 or a set of files and/or directories stored at each node across a level in the given tree.
-Derivitives are stored along with the parameters used to derive them back into
+Derivatives are stored along with the parameters used to derive them back into
 the store for reference and reuse by subsequent analysis steps.
 Extracted metrics can be exported to actual data frames for statistical analysis.
 
@@ -22,15 +22,17 @@ Detailed documentation on FrameTree can be found at [https://frametree.readthedo
 
 ## Quick Installation
 
-FrameTree can be installed for Python 3 using *pip*::
+FrameTree can be installed for Python 3 using *pip*
 
+```bash
    $ python3 -m pip install frametree
+```
 
 ## Extensions
 
 Support for specific  specific repository software or data structures (e.g. XNAT or BIDS)
-are provided by extension packages (see [frametree-xnat](https://github.com/ArcanaFramework/frametree-xnat) 
-and [frametree-bids](https://github.com/ArcanaFramework/frametree-bids)). 
+are provided by extension packages (see [frametree-xnat](https://github.com/ArcanaFramework/frametree-xnat)
+and [frametree-bids](https://github.com/ArcanaFramework/frametree-bids)).
 
 ## License
 
