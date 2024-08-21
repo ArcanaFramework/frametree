@@ -49,12 +49,12 @@ Alternatively, the same steps can be performed using the Python API:
 
     # Import frametree module
     from pydra.tasks.fsl.preprocess.bet import BET
-    from frametree.core import Dataset
+    from frametree.core import Grid
     from frametree.medimage.data import Clinical
     from fileformats.medimage.data import Dicom, NiftiGz
 
     # Define dataset
-    my_dataset = Dataset.load('/data/my-dataset', space=Clinical,
+    my_dataset = Grid.load('/data/my-dataset', space=Clinical,
                               hierarchy=['subject', 'session'])
 
     # Add source column to select a single T1-weighted image in each session subdirectory

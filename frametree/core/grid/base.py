@@ -36,7 +36,7 @@ def hierarchy_converter(hierarchy: ty.List[ty.Union[str, Axes]]) -> ty.List[str]
 
 
 @attrs.define(kw_only=True)
-class Dataset:
+class Grid:
     """
     A representation of a "dataset", the complete collection of data
     (file-sets and fields) to be used in an analysis.
@@ -299,7 +299,7 @@ class Dataset:
 
         Returns
         -------
-        Dataset
+        Grid
             the loaded dataset"""
         if store is None:
             store_name, id, parsed_name = cls.parse_id_str(id)
@@ -859,5 +859,5 @@ class SplitDataset:
     ----------
     """
 
-    source_dataset: Dataset = attrs.field()
-    sink_dataset: Dataset = attrs.field()
+    source_dataset: Grid = attrs.field()
+    sink_dataset: Grid = attrs.field()

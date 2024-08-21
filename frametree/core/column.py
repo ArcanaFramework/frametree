@@ -18,7 +18,7 @@ from .entry import DataEntry
 
 if ty.TYPE_CHECKING:  # pragma: no cover
     from .row import DataRow
-    from .set.base import Dataset
+    from .set.base import Grid
 
 
 logger = logging.getLogger("frametree")
@@ -31,7 +31,7 @@ class DataColumn(metaclass=ABCMeta):
     datatype: type = attrs.field()
     row_frequency: Axes = attrs.field(validator=attrs.validators.instance_of(Axes))
     path: ty.Optional[str] = None
-    dataset: Dataset = attrs.field(
+    dataset: Grid = attrs.field(
         default=None, metadata={"asdict": False}, eq=False, hash=False, repr=False
     )
     _mismatch_log: list = attrs.field(
@@ -241,7 +241,7 @@ class DataSource(DataColumn):
         the frequency of the "rows" (data nodes) within the dataset tree, e.g. for the
         ``Clinical`` data spce the row frequency can be per 'session', 'subject',
         'timepoint', 'group', 'dataset', et...
-    dataset: Dataset
+    dataset: Grid
         the dataset the column belongs to
     path : str
         A regex name_path to match the fileset names with. Must match
@@ -382,7 +382,7 @@ class DataSink(DataColumn):
         the frequency of the "rows" (data nodes) within the dataset tree, e.g. for the
         ``Clinical`` data spce the row frequency can be per 'session', 'subject',
         'timepoint', 'group', 'dataset', et...
-    dataset: Dataset
+    dataset: Grid
         the dataset the column belongs to
     path : str
         A regex name_path to match the fileset names with. Must match

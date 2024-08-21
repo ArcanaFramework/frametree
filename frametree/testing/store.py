@@ -54,11 +54,11 @@ class MockRemote(RemoteStore):
     def populate_tree(self, tree: DataTree):
         """
         Find all data rows for a dataset in the store and populate the
-        Dataset object using its `add_leaf` method.
+        Grid object using its `add_leaf` method.
 
         Parameters
         ----------
-        dataset : Dataset
+        dataset : Grid
             The dataset to populate with rows
         """
         with self.connection:
@@ -111,7 +111,7 @@ class MockRemote(RemoteStore):
         dataset_id: str
             The ID/path of the dataset within the store
         definition: ty.Dict[str, Any]
-            A dictionary containing the dct Dataset to be saved. The
+            A dictionary containing the dct Grid to be saved. The
             dictionary is in a format ready to be dumped to file as JSON or
             YAML.
         name: str
@@ -139,7 +139,7 @@ class MockRemote(RemoteStore):
         Returns
         -------
         definition: ty.Dict[str, Any]
-            A dct Dataset object that was saved in the data store
+            A dct Grid object that was saved in the data store
         """
         self._check_connected()
         fpath = self.definition_save_path(dataset_id, name)

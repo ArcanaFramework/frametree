@@ -6,7 +6,7 @@ Core
 
 .. autoclass:: frametree.core.store.Store
 
-.. autoclass:: frametree.core.set.Dataset
+.. autoclass:: frametree.core.grid.Grid
     :members: add_source, add_sink
 
 .. autoclass:: frametree.core.axes.Axes

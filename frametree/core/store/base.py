@@ -32,7 +32,7 @@ logger = logging.getLogger("frametree")
 
 
 if ty.TYPE_CHECKING:  # pragma: no cover
-    from ..set import Dataset
+    from ..grid import Grid
     from ..tree import DataTree
     from ..entry import DataEntry
     from ..row import DataRow
@@ -187,7 +187,7 @@ class Store(metaclass=ABCMeta):
 
     def define_dataset(
         self, id, space=None, hierarchy=None, id_patterns=None, **kwargs
-    ) -> Dataset:
+    ) -> Grid:
         """
         Creates a FrameTree dataset definition for an existing data in the
         data store.
@@ -209,11 +209,11 @@ class Store(metaclass=ABCMeta):
             The Axes enum that defines the frequencies (e.g.
             per-session, per-subject,...) present in the dataset.
         **kwargs:
-            Keyword args passed on to the Dataset init method
+            Keyword args passed on to the Grid init method
 
         Returns
         -------
-        Dataset
+        Grid
             the newly defined dataset
         """
         if space is None:
@@ -234,11 +234,11 @@ class Store(metaclass=ABCMeta):
         #         id_patterns = dict(self.DEFAULT_ID_PATTERNS)
         #     except AttributeError:
         #         pass
-        from frametree.core.set import (
-            Dataset,
+        from frametree.core.grid import (
+            Grid,
         )  # avoid circular imports it is imported here rather than at the top of the file
 
-        dataset = Dataset(
+        dataset = Grid(
             id=id,
             store=self,
             space=space,
@@ -248,12 +248,12 @@ class Store(metaclass=ABCMeta):
         )
         return dataset
 
-    def save_dataset(self, dataset: Dataset, name: str = ""):
+    def save_dataset(self, dataset: Grid, name: str = ""):
         """Save metadata in project definition file for future reference
 
         Parameters
         ----------
-        dataset : Dataset
+        dataset : Grid
             the dataset to save
         name : str, optional
             the name for the definition to distinguish from other definitions on
@@ -269,7 +269,7 @@ class Store(metaclass=ABCMeta):
         with self.connection:
             self.save_dataset_definition(dataset.id, definition, name=save_name)
 
-    def load_dataset(self, id, name: str = "", **kwargs) -> Dataset:
+    def load_dataset(self, id, name: str = "", **kwargs) -> Grid:
         """Load an existing dataset definition
 
         Parameters
@@ -282,7 +282,7 @@ class Store(metaclass=ABCMeta):
 
         Returns
         -------
-        Dataset
+        Grid
             the loaded dataset
 
         Raises
@@ -310,7 +310,7 @@ class Store(metaclass=ABCMeta):
         name: ty.Optional[str] = None,
         id_patterns: ty.Optional[ty.Dict[str, str]] = None,
         **kwargs,
-    ) -> Dataset:
+    ) -> Grid:
         """Creates a new dataset with new rows to store data in
 
         Parameters
@@ -332,7 +332,7 @@ class Store(metaclass=ABCMeta):
 
         Returns
         -------
-        Dataset
+        Grid
             the newly created dataset
         """
         self.create_data_tree(
@@ -355,7 +355,7 @@ class Store(metaclass=ABCMeta):
     def import_dataset(
         self,
         id: str,
-        dataset: Dataset,
+        dataset: Grid,
         column_names: ty.Optional[ty.List[ty.Union[str, ty.Tuple[str, type]]]] = None,
         hierarchy: ty.Optional[ty.List[str]] = None,
         id_patterns: ty.Optional[ty.Dict[str, str]] = None,
@@ -369,7 +369,7 @@ class Store(metaclass=ABCMeta):
         ----------
         id : str
             the ID of the dataset within this store
-        dataset : Dataset
+        dataset : Grid
             the dataset to import
         column_names : list[str or tuple[str, type]], optional
             list of columns to the to be included in the imported dataset. Items of the
@@ -777,7 +777,7 @@ class Store(metaclass=ABCMeta):
         dataset_id: str
             The ID/path of the dataset within the store
         definition: ty.Dict[str, Any]
-            A dictionary containing the dct Dataset to be saved. The
+            A dictionary containing the dct Grid to be saved. The
             dictionary is in a format ready to be dumped to file as JSON or
             YAML.
         name: str
@@ -802,7 +802,7 @@ class Store(metaclass=ABCMeta):
         Returns
         -------
         definition: ty.Dict[str, Any]
-            A dct Dataset object that was saved in the data store
+            A dct Grid object that was saved in the data store
         """
 
     @abstractmethod

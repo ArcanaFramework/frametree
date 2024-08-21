@@ -1,2 +1,2 @@
-from .base import Dataset
+from .base import Grid
 from .metadata import DatasetMetadata

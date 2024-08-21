@@ -13,7 +13,7 @@ from .entry import DataEntry
 
 
 if ty.TYPE_CHECKING:  # pragma: no cover
-    from .set.base import Dataset
+    from .set.base import Grid
 
 
 @attrs.define(kw_only=True)
@@ -26,7 +26,7 @@ class DataRow:
     ids : Dict[Axes, str]
         The ids for the frequency of the row and all "parent" frequencies
         within the tree
-    dataset : Dataset
+    dataset : Grid
         A reference to the root of the data tree
     frequency : str
         The frequency of the row
@@ -39,7 +39,7 @@ class DataRow:
     """
 
     ids: ty.Dict[Axes, str] = attrs.field()
-    dataset: Dataset = attrs.field(repr=False)
+    dataset: Grid = attrs.field(repr=False)
     frequency: str = attrs.field()
     tree_path: ty.List[str] = None
     uri: ty.Optional[str] = None
@@ -56,10 +56,10 @@ class DataRow:
 
     @dataset.validator
     def dataset_validator(self, _, dataset):
-        from .set import Dataset
+        from .grid import Grid
 
-        if not isinstance(dataset, Dataset):
-            raise ValueError(f"provided dataset {dataset} is not of type {Dataset}")
+        if not isinstance(dataset, Grid):
+            raise ValueError(f"provided dataset {dataset} is not of type {Grid}")
 
     @frequency.validator
     def frequency_validator(self, _, frequency):

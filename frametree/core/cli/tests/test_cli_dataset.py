@@ -1,6 +1,6 @@
 from pathlib import Path
 import pytest
-from frametree.core.set.base import Dataset
+from frametree.core.grid.base import Grid
 from frametree.core.salience import ColumnSalience
 from frametree.core.quality import DataQuality
 from frametree.testing import TestAxes
@@ -31,7 +31,7 @@ def get_arbitrary_slice(i, dim_length):
     return lower, upper
 
 
-def test_add_column_cli(saved_dataset: Dataset, cli_runner):
+def test_add_column_cli(saved_dataset: Grid, cli_runner):
     # Get CLI name for dataset (i.e. file system path prepended by 'file_system//')
     # Add source to loaded dataset
     saved_dataset.add_source(
@@ -88,17 +88,17 @@ def test_add_column_cli(saved_dataset: Dataset, cli_runner):
     assert result.exit_code == 0, show_cli_trace(result)
     # Reload the saved dataset and check the parameters were saved/loaded
     # correctly
-    loaded_dataset = Dataset.load(saved_dataset.locator)
+    loaded_dataset = Grid.load(saved_dataset.locator)
     assert saved_dataset.columns == loaded_dataset.columns
 
 
 @pytest.mark.skip("Not implemented")
-def test_add_missing_items_cli(saved_dataset: Dataset, cli_runner):
+def test_add_missing_items_cli(saved_dataset: Grid, cli_runner):
     result = cli_runner(missing_items, [])
     assert result.exit_code == 0, show_cli_trace(result)
 
 
-def test_define_cli(dataset: Dataset, cli_runner):
+def test_define_cli(dataset: Grid, cli_runner):
     blueprint = dataset.__annotations__["blueprint"]
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
     path = dataset.locator
@@ -126,7 +126,7 @@ def test_define_cli(dataset: Dataset, cli_runner):
     assert result.exit_code == 0, show_cli_trace(result)
     # Reload the saved dataset and check the parameters were saved/loaded
     # correctly
-    loaded_dataset = Dataset.load(path)
+    loaded_dataset = Grid.load(path)
     assert loaded_dataset.hierarchy == blueprint.hierarchy
     assert loaded_dataset.include == included
     assert loaded_dataset.exclude == excluded

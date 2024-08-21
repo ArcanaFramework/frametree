@@ -314,7 +314,7 @@ class TestDatasetBlueprint:
 
     #     Returns
     #     -------
-    #     Dataset
+    #     Grid
     #         the accessed dataset
     #     """
     #     num_attempts = 0

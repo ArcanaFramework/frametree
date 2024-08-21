@@ -14,7 +14,7 @@ from frametree.core.exceptions import (
 from .row import DataRow
 
 if ty.TYPE_CHECKING:  # pragma: no cover
-    from .set.base import Dataset
+    from .set.base import Grid
 
 
 logger = logging.getLogger("frametree")
@@ -27,7 +27,7 @@ def auto_ids_default():
 @attrs.define
 class DataTree(NestedContext):
 
-    dataset: ty.Optional[Dataset] = None
+    dataset: ty.Optional[Grid] = None
     root: ty.Optional[DataRow] = None
     _auto_ids: ty.Dict[ty.Tuple[str, ...], ty.Dict[str, int]] = attrs.field(
         factory=auto_ids_default
@@ -71,7 +71,7 @@ class DataTree(NestedContext):
         exclusions : list[str]
             the list of frequencies that caused the leaf to be excluded (empty if it
             was added) according to the the exclusion criteria provided to the dataset
-            (see ``Dataset.include`` and ``Dataset.exclude``)
+            (see ``Grid.include`` and ``Grid.exclude``)
 
         Raises
         ------

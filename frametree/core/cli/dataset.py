@@ -3,7 +3,7 @@ import click
 import logging
 from pathlib import Path
 from .base import cli
-from frametree.core.set.base import Dataset
+from frametree.core.grid.base import Grid
 from frametree.core.store import Store
 from frametree.core.axes import Axes
 from fileformats.core import DataType
@@ -101,7 +101,7 @@ the inferred IDs
 )
 def define(dataset_locator, hierarchy, include, exclude, space, id_pattern):
 
-    store_name, id, name = Dataset.parse_id_str(dataset_locator)
+    store_name, id, name = Grid.parse_id_str(dataset_locator)
 
     if not hierarchy:
         hierarchy = None
@@ -209,7 +209,7 @@ def add_source(
     is_regex,
     header,
 ):
-    dataset = Dataset.load(dataset_locator)
+    dataset = Grid.load(dataset_locator)
     dataset.add_source(
         name=name,
         path=path,
@@ -272,7 +272,7 @@ datatype
     ),
 )
 def add_sink(dataset_locator, name, datatype, row_frequency, path, salience):
-    dataset = Dataset.load(dataset_locator)
+    dataset = Grid.load(dataset_locator)
     dataset.add_sink(
         name=name,
         path=path,
@@ -297,7 +297,7 @@ COLUMN_NAMES, [COLUMN_NAMES, ...] for the columns to check, defaults to all sour
 @click.argument("dataset_locator")
 @click.argument("column_names", nargs=-1)
 def missing_items(dataset_locator, column_names):
-    dataset = Dataset.load(dataset_locator)
+    dataset = Grid.load(dataset_locator)
     if not column_names:
         column_names = [n for n, c in dataset.columns.items() if not c.is_sink]
     for column_name in column_names:
@@ -358,7 +358,7 @@ def export(
     hierarchy,
     use_original_paths,
 ):
-    dataset = Dataset.load(dataset_locator)
+    dataset = Grid.load(dataset_locator)
     store = Store.load(store_nickname)
     if hierarchy:
         hierarchy = hierarchy.split(",")
@@ -387,7 +387,7 @@ NEW_NAME for the dataset
 @click.argument("dataset_locator")
 @click.argument("new_name")
 def copy(dataset_locator, new_name):
-    dataset = Dataset.load(dataset_locator)
+    dataset = Grid.load(dataset_locator)
     dataset.save(new_name)
 
 
@@ -429,8 +429,8 @@ def install_license(install_locations, license_name, source_file, logfile, logle
 
     for install_loc in install_locations:
         if "//" in install_loc:
-            dataset = Dataset.load(install_loc)
-            store_name, _, _ = Dataset.parse_id_str(install_loc)
+            dataset = Grid.load(install_loc)
+            store_name, _, _ = Grid.parse_id_str(install_loc)
             msg = f"for '{dataset.name}' dataset on {store_name} store"
         else:
             store = Store.load(install_loc)

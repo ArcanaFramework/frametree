@@ -1,10 +1,10 @@
-from frametree.core.set.base import Dataset
+from frametree.core.grid.base import Grid
 from fileformats.text import TextFile
 from frametree.core.cli.apply import apply_pipeline
 from frametree.core.utils import show_cli_trace
 
 
-def test_apply_pipeline_cli(saved_dataset: Dataset, concatenate_task, cli_runner):
+def test_apply_pipeline_cli(saved_dataset: Grid, concatenate_task, cli_runner):
     # Get CLI name for dataset (i.e. file system path prepended by 'file_system//')
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
@@ -43,5 +43,5 @@ def test_apply_pipeline_cli(saved_dataset: Dataset, concatenate_task, cli_runner
         ],
     )
     assert result.exit_code == 0, show_cli_trace(result)
-    loaded_dataset = Dataset.load(saved_dataset.locator)
+    loaded_dataset = Grid.load(saved_dataset.locator)
     assert saved_dataset.pipelines == loaded_dataset.pipelines

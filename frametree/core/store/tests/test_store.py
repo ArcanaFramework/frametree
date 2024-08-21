@@ -7,7 +7,7 @@ import pytest
 from fileformats.generic import File
 from fileformats.text import TextFile
 from fileformats.field import Text as TextField
-from frametree.core.set.base import Dataset
+from frametree.core.grid.base import Grid
 from frametree.core.store import Store
 from frametree.core.entry import DataEntry
 from frametree.core.serialize import asdict
@@ -20,7 +20,7 @@ from frametree.testing.blueprint import (
 from frametree.testing import MockRemote
 
 
-def test_populate_tree(dataset: Dataset):
+def test_populate_tree(dataset: Grid):
     blueprint = dataset.__annotations__["blueprint"]
     for freq in dataset.space:
         # For all non-zero bases in the row_frequency, multiply the dim lengths
@@ -50,7 +50,7 @@ def test_populate_row(dataset):
         assert entry_paths == expected_paths
 
 
-def test_get(dataset: Dataset):
+def test_get(dataset: Grid):
     blueprint = dataset.__annotations__["blueprint"]
     for entry_bp in blueprint.entries:
         dataset.add_source(entry_bp.path, datatype=entry_bp.datatype)
@@ -66,7 +66,7 @@ def test_get(dataset: Dataset):
                 assert item.value == entry_bp.expected_value
 
 
-def test_post(dataset: Dataset):
+def test_post(dataset: Grid):
     blueprint = dataset.__annotations__["blueprint"]
 
     def check_inserted():
@@ -104,7 +104,7 @@ def test_post(dataset: Dataset):
     check_inserted()  # Check that objects can be recreated from store
 
 
-def test_dataset_definition_roundtrip(dataset: Dataset):
+def test_dataset_definition_roundtrip(dataset: Grid):
     definition = asdict(dataset, omit=["store", "name"])
     definition["store-version"] = "1.0.0"
 
@@ -122,7 +122,7 @@ def test_dataset_definition_roundtrip(dataset: Dataset):
 
 # We use __file__ here as we just need any old file and can guarantee it exists
 @pytest.mark.parametrize("datatype,value", [(File, __file__), (TextField, "value")])
-def test_provenance_roundtrip(datatype: type, value: str, saved_dataset: Dataset):
+def test_provenance_roundtrip(datatype: type, value: str, saved_dataset: Grid):
     provenance = {"a": 1, "b": [1, 2, 3], "c": {"x": True, "y": "foo", "z": "bar"}}
     data_store = saved_dataset.store
 

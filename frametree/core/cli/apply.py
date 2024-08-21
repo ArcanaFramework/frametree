@@ -1,6 +1,6 @@
 import click
 import typing as ty
-from frametree.core.set.base import Dataset
+from frametree.core.grid.base import Grid
 from pydra.engine.core import TaskBase
 from frametree.core.serialize import ClassResolver, parse_value
 from fileformats.core import from_mime
@@ -124,7 +124,7 @@ def apply_pipeline(
     overwrite,
 ):
 
-    dataset = Dataset.load(dataset_locator)
+    dataset = Grid.load(dataset_locator)
     workflow = ClassResolver(TaskBase, alternative_types=[ty.Callable])(
         workflow_location
     )(name="workflow", **{n: parse_value(v) for n, v in parameter})

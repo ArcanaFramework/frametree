@@ -1,7 +1,7 @@
 from pathlib import Path
 import tempfile
 import pytest
-from frametree.core.set import Dataset
+from frametree.core.grid import Grid
 from frametree.core.cli.dataset import install_license
 from frametree.core.utils import show_cli_trace
 from frametree.testing import MockRemote
@@ -18,7 +18,7 @@ def test_license():
 
 
 def test_cli_install_dataset_license(
-    saved_dataset: Dataset, test_license, frametree_home, cli_runner, tmp_path
+    saved_dataset: Grid, test_license, frametree_home, cli_runner, tmp_path
 ):
     store_nickname = saved_dataset.id + "_store"
     license_name = "test-license"

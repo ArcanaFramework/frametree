@@ -8,7 +8,7 @@ import json
 import attrs
 from fileformats.core import FileSet, Field
 from frametree.core.exceptions import FrameTreeUsageError
-from frametree.core.set.base import DataTree
+from frametree.core.grid.base import DataTree
 from frametree.core.row import DataRow
 from frametree.core.entry import DataEntry
 from frametree.core.store import LocalStore
@@ -57,7 +57,7 @@ class FileSystem(LocalStore):
 
         Parameters
         ----------
-        dataset : Dataset
+        dataset : Grid
             The dataset to construct the tree dimensions for
         """
         if not os.path.exists(tree.dataset_id):

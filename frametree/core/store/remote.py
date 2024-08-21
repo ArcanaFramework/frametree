@@ -314,7 +314,7 @@ class RemoteStore(Store):
 
         Returns
         -------
-        Dataset or None
+        Grid or None
             the dataset that holds site-wide licenses
         user: str, optional
             Username with which to connect to XNAT with, by default None

@@ -1,10 +1,10 @@
 from operator import mul
 from functools import reduce
 from fileformats.core import FileSet
-from frametree.core.set.base import Dataset
+from frametree.core.grid.base import Grid
 
 
-def test_column_api_access(dataset: Dataset):
+def test_column_api_access(dataset: Grid):
 
     bp = dataset.__annotations__["blueprint"]
 
