@@ -1,14 +1,14 @@
-Stores
-======
+Tree Stores
+===========
 
-Support for different file storage systems (e.g. `XNAT <https://xnat.org>`__, `BIDS <https://bids.neuroimaging.io>`__)
-is provided by sub-classes of :class:`.Store`. Data store
-classes not only encapsulate where the data are stored, e.g. on local disk or
-remote repository, but also how the data are accessed, e.g. whether to assume that
-they are in BIDS format, or whether files in an XNAT archive mount can be
-accessed directly (i.e. as exposed to the container service), or only via the API.
+Support for different tree-like storage systems (e.g. plain file systems, XNAT_) and
+structures (e.g. BIDS_) is provided by sub-classes of :class:`.Store`. Tree store classes
+not only encapsulate where the data are stored, e.g. on local disk or remote repository,
+but also how data are accessed, e.g. whether to assume that they are in BIDS format, or
+whether files in an XNAT archive mount can be accessed directly (i.e. as exposed to the
+container service) or only via the API.
 
-There are currently four supported store classes in the main, `frametree-bids` and `frametree-xnat`
+There are currently four supported store classes in the common, `frametree-bids` and `frametree-xnat`
 packages
 
 * :class:`.FileSystem` - access data organised within an arbitrary directory tree on the file system
@@ -22,11 +22,12 @@ To configure access to a store via the CLI use the ':ref:`frametree store add`' 
 The store type is specified by the path to the data store sub-class,
 *<module-path>:<class-name>*,  e.g. ``frametree.xnat:Xnat``.
 However, if the store is in a submodule of ``frametree`` then that
-prefix can be dropped for convenience, e.g. ``xnat:Xnat``.
+prefix can be dropped for convenience, e.g. ``xnat:Xnat``, and if there is only one store
+in that module, just the module name, e.g. ``bids``.
 
 .. code-block:: console
 
-    $ frametree save-token xnat xnat-central https://central.xnat.org \
+    $ frametree store add xnat xnat-central https://central.xnat.org \
       --user user123 --cache /work/xnat-cache
     Password:
 
@@ -68,9 +69,9 @@ data store classes directly.
 
 .. note::
 
-    Data stores that don't require any parameters such as :class:`.SimpleStore` and
+    Data stores that don't require any parameters such as :class:`.FileSystem` and
     :class:`.Bids` don't need to be configured and can be accessed via their aliases,
-    ``file`` and ``bids`` when defining a dataset.
+    ``file`` and ``bids`` when defining a dataset, e.g. ``bids///path/to/bids/dataset``.
 
 
 .. _XNAT: https://xnat.org

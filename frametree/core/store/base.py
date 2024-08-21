@@ -241,7 +241,7 @@ class Store(metaclass=ABCMeta):
         dataset = Grid(
             id=id,
             store=self,
-            space=space,
+            axes=space,
             hierarchy=hierarchy,
             id_patterns=id_patterns,
             **kwargs,
@@ -408,7 +408,7 @@ class Store(metaclass=ABCMeta):
             # Create a new dataset in the store to import the data into
             imported = self.create_dataset(
                 id,
-                space=dataset.space,
+                space=dataset.axes,
                 hierarchy=hierarchy,
                 leaves=[
                     tuple(r.frequency_id(h) for h in hierarchy) for r in dataset.rows()
@@ -445,7 +445,7 @@ class Store(metaclass=ABCMeta):
                     if not isinstance(item, imported_col.datatype):
                         item = imported_col.datatype.convert(item)
                     imported_col[
-                        tuple(cell.row.frequency_id(a) for a in dataset.space.axes())
+                        tuple(cell.row.frequency_id(a) for a in dataset.axes.axes())
                     ] = item
             imported.save(name="")
 

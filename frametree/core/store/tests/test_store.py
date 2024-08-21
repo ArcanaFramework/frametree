@@ -22,7 +22,7 @@ from frametree.testing import MockRemote
 
 def test_populate_tree(dataset: Grid):
     blueprint = dataset.__annotations__["blueprint"]
-    for freq in dataset.space:
+    for freq in dataset.axes:
         # For all non-zero bases in the row_frequency, multiply the dim lengths
         # together to get the combined number of rows expected for that
         # row_frequency

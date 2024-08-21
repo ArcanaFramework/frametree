@@ -9,3 +9,16 @@ with its dependencies from the `Python Package Index <http://pypi.org>`_ using *
 .. code-block:: console
 
     $ pip3 install frametree
+
+To add support for XNAT_ or BIDS_ stores you will also need to install the respective
+extension modules ``frametree-xnat`` and ``frametree-bids``, e.g.
+
+
+.. code-block:: console
+
+    $ pip3 install frametree-xnat frametree-bids
+
+
+
+.. _XNAT: https://xnat.org
+.. _BIDS: https://bids.neuroimaging.io

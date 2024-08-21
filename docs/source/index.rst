@@ -35,8 +35,8 @@ The key elements of FrameTree's data model are:
    installation
    basic_usage
    stores
-   datasets
-   columns
+   grids
+   frames
    contributing
 
 .. toctree::

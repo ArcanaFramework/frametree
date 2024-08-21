@@ -108,7 +108,7 @@ def test_define_cli(dataset: Grid, cli_runner):
     # and index
     included = {}
     excluded = {}
-    for i, (dim_length, axis) in enumerate(zip(blueprint.dim_lengths, dataset.space)):
+    for i, (dim_length, axis) in enumerate(zip(blueprint.dim_lengths, dataset.axes)):
         a, b = get_arbitrary_slice(i, dim_length)
         if i % 2:
             included[str(axis)] = f"{a}:{b}"

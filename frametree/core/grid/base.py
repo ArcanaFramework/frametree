@@ -21,7 +21,7 @@ from ..column import DataColumn, DataSink, DataSource
 from .. import store as datastore
 from ..tree import DataTree
 from ..axes import Axes
-from .metadata import DatasetMetadata, metadata_converter
+from .metadata import Metadata, metadata_converter
 
 
 if ty.TYPE_CHECKING:  # pragma: no cover
@@ -49,14 +49,14 @@ class Grid:
     store : Repository
         The store the dataset is stored into. Can be the local file
         system by providing a MockRemote repo.
-    space: Axes
+    axes: Axes
         The space of the dataset. See https://frametree.readthedocs.io/en/latest/data_model.html#spaces)
         for a description
     id_patterns : dict[str, str]
         Patterns for inferring IDs of rows not explicitly present in the hierarchy of
         the data tree. See ``Store.infer_ids()`` for syntax
     hierarchy : list[str]
-        The data frequencies that are explicitly present in the data tree.
+        The categorical variables that are explicitly present in the data tree.
         For example, if a MockRemote dataset (i.e. directory) has
         two layer hierarchy of sub-directories, the first layer of
         sub-directories labelled by unique subject ID, and the second directory
@@ -84,7 +84,7 @@ class Grid:
         space defined in the Axes enum, i.e. the "bitwise or" of the
         layer values of the hierarchy must be 1 across all bits
         (e.g. 'session': 0b111).
-    metadata : dict or DatasetMetadata
+    metadata : dict or Metadata
         Generic metadata associated with the dataset, e.g. authors, funding sources, etc...
     include : list[tuple[Axes, str or ty.List[str]]]
         The IDs to be included in the dataset per row_frequency. E.g. can be
@@ -112,13 +112,13 @@ class Grid:
 
     id: str = attrs.field(converter=str, metadata={"asdict": False})
     store: datastore.Store = attrs.field()
-    space: ty.Type[Axes] = attrs.field()
+    axes: ty.Type[Axes] = attrs.field()
     id_patterns: ty.Dict[str, str] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict)
     )
     hierarchy: ty.List[str] = attrs.field(converter=hierarchy_converter)
-    metadata: DatasetMetadata = attrs.field(
-        factory=DatasetMetadata,
+    metadata: Metadata = attrs.field(
+        factory=Metadata,
         converter=metadata_converter,
         repr=False,
     )
@@ -165,17 +165,17 @@ class Grid:
     @columns.validator
     def columns_validator(self, _, columns):
         wrong_freq = [
-            m for m in columns.values() if not isinstance(m.row_frequency, self.space)
+            m for m in columns.values() if not isinstance(m.row_frequency, self.axes)
         ]
         if wrong_freq:
             raise FrameTreeUsageError(
                 f"Data hierarchy of {wrong_freq} column specs do(es) not match "
-                f"that of dataset {self.space}"
+                f"that of dataset {self.axes}"
             )
 
     @include.validator
     def include_validator(self, _, include: ty.Dict[str, ty.Union[str, ty.List[str]]]):
-        valid = set(str(f) for f in self.space)
+        valid = set(str(f) for f in self.axes)
         freqs = set(include)
         unrecognised = freqs - valid
         if unrecognised:
@@ -214,16 +214,16 @@ class Grid:
 
     @hierarchy.validator
     def hierarchy_validator(self, _, hierarchy):
-        not_valid = [f for f in hierarchy if str(f) not in self.space.__members__]
+        not_valid = [f for f in hierarchy if str(f) not in self.axes.__members__]
         if not_valid:
             raise FrameTreeWrongAxesError(
-                f"hierarchy items {not_valid} are not part of the {self.space} data space"
+                f"hierarchy items {not_valid} are not part of the {self.axes} data space"
             )
         # Check that all data frequencies are "covered" by the hierarchy and
         # each subsequent
-        covered = self.space(0)
+        covered = self.axes(0)
         for i, layer_str in enumerate(hierarchy):
-            layer = self.space[str(layer_str)]
+            layer = self.axes[str(layer_str)]
             diff = (layer ^ covered) & layer
             if not diff:
                 raise FrameTreeUsageError(
@@ -231,13 +231,13 @@ class Grid:
                     f"previous layers {hierarchy[i:]}"
                 )
             covered |= layer
-        if covered != max(self.space):
+        if covered != max(self.axes):
             raise FrameTreeUsageError(
                 "The data hierarchy ['"
                 + "', '".join(hierarchy)
                 + "'] does not cover the following basis frequencies ['"
-                + "', '".join(str(m) for m in (covered ^ max(self.space)).span())
-                + f"'] the '{self.space.__module__}.{self.space.__name__}' data space"
+                + "', '".join(str(m) for m in (covered ^ max(self.axes)).span())
+                + f"'] the '{self.axes.__module__}.{self.axes.__name__}' data space"
             )
         # if missing_axes:
         #     raise FrameTreeConstructionError(
@@ -254,19 +254,19 @@ class Grid:
 
     @id_patterns.validator
     def id_patterns_validator(self, _, id_patterns):
-        non_valid_keys = [f for f in id_patterns if f not in self.space.__members__]
+        non_valid_keys = [f for f in id_patterns if f not in self.axes.__members__]
         if non_valid_keys:
             raise FrameTreeWrongAxesError(
                 f"Keys for the id_patterns dictionary {non_valid_keys} are not part "
-                f"of the {self.space} data space"
+                f"of the {self.axes} data space"
             )
         for key, expr in id_patterns.items():
             groups = list(re.compile(expr).groupindex)
-            non_valid_groups = [f for f in groups if f not in self.space.__members__]
+            non_valid_groups = [f for f in groups if f not in self.axes.__members__]
             if non_valid_groups:
                 raise FrameTreeWrongAxesError(
                     f"Groups in the {key} id_patterns expression {non_valid_groups} "
-                    f"are not part of the {self.space} data space"
+                    f"are not part of the {self.axes} data space"
                 )
 
     def save(self, name=""):
@@ -310,7 +310,7 @@ class Grid:
 
     @property
     def root_freq(self):
-        return self.space(0)
+        return self.axes(0)
 
     @property
     def root_dir(self):
@@ -318,7 +318,7 @@ class Grid:
 
     @property
     def leaf_freq(self):
-        return max(self.space)
+        return max(self.axes)
 
     @property
     def prov(self):
@@ -494,10 +494,10 @@ class Grid:
                 try:
                     return self.root.children[frequency][id]
                 except KeyError as e:
-                    if isinstance(id, tuple) and len(id) == self.space.ndim:
+                    if isinstance(id, tuple) and len(id) == self.axes.ndim:
                         # Expand ID tuple to see if it is an expansion of the ID axes
                         # instead of a direct label for the row
-                        id_kwargs = {a: i for a, i in zip(self.space.axes(), id)}
+                        id_kwargs = {a: i for a, i in zip(self.axes.axes(), id)}
                     else:
                         raise FrameTreeNameError(
                             id,
@@ -511,7 +511,7 @@ class Grid:
             # Iterate through the tree to find the row (i.e. tree node) matching the
             # provided IDs
             row = self.root
-            cum_freq = self.space(0)
+            cum_freq = self.axes(0)
             for freq, id in id_kwargs.items():
                 cum_freq |= freq
                 try:
@@ -544,7 +544,7 @@ class Grid:
             The sequence of the data row within the dataset
         """
         if frequency is None:
-            frequency = max(self.space)  # "leaf" nodes of the data tree
+            frequency = max(self.axes)  # "leaf" nodes of the data tree
         else:
             frequency = self.parse_frequency(frequency)
         with self.tree:
@@ -574,7 +574,7 @@ class Grid:
             The IDs of the rows
         """
         if frequency is None:
-            frequency = max(self.space)  # "leaf" nodes of the data tree
+            frequency = max(self.axes)  # "leaf" nodes of the data tree
         else:
             frequency = self.parse_frequency(frequency)
         if frequency == self.root_freq:
@@ -720,15 +720,15 @@ class Grid:
         """Parses the data row_frequency, converting from string if necessary and
         checks it matches the dimensions of the dataset"""
         if freq is None:
-            return max(self.space)
+            return max(self.axes)
         try:
             if isinstance(freq, str):
-                freq = self.space[freq]
-            elif not isinstance(freq, self.space):
+                freq = self.axes[freq]
+            elif not isinstance(freq, self.axes):
                 raise KeyError
         except KeyError as e:
             raise FrameTreeWrongAxesError(
-                f"{freq} is not a valid dimension for {self} " f"({self.space})"
+                f"{freq} is not a valid dimension for {self} " f"({self.axes})"
             ) from e
         return freq
 
@@ -844,7 +844,7 @@ class Grid:
         yield f"{type(self).__module__}.{type(self).__name__}(".encode()
         yield self.id.encode()
         yield bytes(hash_single(self.store, cache))
-        yield bytes(hash_single(self.space, cache))
+        yield bytes(hash_single(self.axes, cache))
         yield bytes(hash_single(self.include, cache))
         yield bytes(hash_single(self.exclude, cache))
         yield self.name.encode()

@@ -5,12 +5,12 @@ from frametree.core import PACKAGE_NAME, __version__, CODE_URL
 from frametree.core.utils import fromdict_converter
 
 
-class Metadata:
+class BaseMetadata:
     pass
 
 
 @attrs.define
-class ContainerMetadata(Metadata):
+class ContainerMetadata(BaseMetadata):
 
     type: ty.Optional[str] = None
     tag: ty.Optional[str] = None
@@ -18,7 +18,7 @@ class ContainerMetadata(Metadata):
 
 
 @attrs.define
-class GeneratorMetadata(Metadata):
+class GeneratorMetadata(BaseMetadata):
 
     name: str = PACKAGE_NAME
     version: str = __version__
@@ -30,7 +30,7 @@ class GeneratorMetadata(Metadata):
 
 
 @attrs.define
-class SourceDatasetMetadata(Metadata):
+class SourceMetadata(BaseMetadata):
 
     url: ty.Optional[str] = None
     doi: ty.Optional[str] = None
@@ -50,7 +50,7 @@ or via the Python API
 
 
 @attrs.define(kw_only=True)
-class DatasetMetadata(Metadata):
+class Metadata(BaseMetadata):
     """Metadata describing the dataset. Based on the Brain Imaging Data Structure (BIDS)
     specification for dataset metadata
 
@@ -76,7 +76,7 @@ class DatasetMetadata(Metadata):
         details on how to acknowledge the dataset in publications
     ethics_approvals : list[str]
         list of ethic approvals associated with the dataset
-    sources : list[SourceDatasetMetadata]
+    sources : list[SourceMetadata]
         for derivative datasets, a list of source dataset used to generate the derivative
     description : str
         a description of the dataset
@@ -100,8 +100,8 @@ class DatasetMetadata(Metadata):
     references: ty.List[str] = attrs.field(factory=list)
     how_to_acknowledge: str = attrs.field(default="see licence")
     ethics_approvals: ty.List[str] = attrs.field(factory=list)
-    sources: ty.List[SourceDatasetMetadata] = attrs.field(
-        factory=list, converter=fromdict_converter(ty.List[SourceDatasetMetadata])
+    sources: ty.List[SourceMetadata] = attrs.field(
+        factory=list, converter=fromdict_converter(ty.List[SourceMetadata])
     )
     description: str = attrs.field(default=DEFAULT_README)
     type: str = attrs.field(default="derivative", repr=False)
@@ -111,44 +111,10 @@ class DatasetMetadata(Metadata):
     def generated_by_default(self):
         return [GeneratorMetadata()]
 
-    # def tobids(self):
-    #     dct = {}
-    #     dct["Name"] = self.name
-    #     dct["Acknowledgements"] = self.acknowledgements
-    #     dct["Authors"] = self.authors
-    #     if self.doi:
-    #         dct["DOI"] = self.doi
-    #     dct["Funding"] = self.funding
-    #     dct["License"] = self.license
-    #     dct["References"] = self.references
-    #     dct["HowToAcknowledge"] = self.how_to_acknowledge
-    #     dct["EthicsApprovals"] = self.ethics_approvals
-    #     dct["Readme"] = self.description
-    #     dct["GeneratedBy"] = [gb.tobids() for gb in self.generated_by]
-    #     dct["Sources"] = [s.tobids() for s in self.sources]
-    #     return dct
-
-    # @classmethod
-    # def frombids(cls, dct):
-    #     return cls(
-    #         name=dct.get("Name"),
-    #         acknowledgements=dct.get("Acknowledgements"),
-    #         authors=dct.get("Authors"),
-    #         doi=dct.get("DOI"),
-    #         funding=dct.get("Funding"),
-    #         license=dct.get("License"),
-    #         references=dct.get("References"),
-    #         how_to_acknowledge=dct.get("HowToAcknowledge"),
-    #         ethics_approvals=dct.get("EthicsApprovals"),
-    #         description=dct.get("Readme"),
-    #         generated_by=[GeneratorMetadata(gb) for gb in dct["GeneratedBy"]],
-    #         sources=[SourceDatasetMetadata(s) for s in dct["Sources"]],
-    #     )
-
 
 def metadata_converter(metadata):
     if not metadata:
         metadata = {}
-    elif not isinstance(metadata, DatasetMetadata):
-        metadata = DatasetMetadata(**metadata)
+    elif not isinstance(metadata, Metadata):
+        metadata = Metadata(**metadata)
     return metadata

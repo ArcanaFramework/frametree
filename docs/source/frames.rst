@@ -1,18 +1,29 @@
 
 .. _data_columns:
 
-Columns
-=======
+Frames
+======
 
-Before data within a dataset can be manipulated by FrameTree, they must be
-assigned to a data frame. The "rows" of a data frame correspond to nodes
-across a single layer of the data tree, such as
+Before data within a dataset can be manipulated, they must be
+assigned to a data frames.
+
+Rows
+----
+
+The "rows" of a data frame correspond either to individual data points in the data grid
+(e.g. imaging sessions in the :class:`Clincial` axes) or lines, planes for higher layers
+in the hierarchy of the data tree (e.g. subjects or study groups). For example within the
+:class:`Clinical` axes, the potential frame rows are
 
 * imaging sessions
 * subjects
 * study groups (e.g. 'test' or 'control')
 
-and the "columns" are slices of comparable data items across each row, e.g.
+
+
+Columns
+-------
+The "columns" of a data frame are slices of comparable data items across each row, e.g.
 
 * T1-weighted MR acquisition for each imaging session
 * a genetic test for each subject
