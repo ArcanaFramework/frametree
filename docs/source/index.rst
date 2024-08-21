@@ -37,15 +37,7 @@ The key elements of FrameTree's data model are:
    stores
    datasets
    columns
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Development
-   :hidden:
-
    contributing
-   new_domains
-   alternative_backends
 
 .. toctree::
    :maxdepth: 2

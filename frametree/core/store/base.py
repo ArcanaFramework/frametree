@@ -813,7 +813,7 @@ class DataStore(metaclass=ABCMeta):
         If a connection session is required to the store manage it here
 
         Returns
-        ----------
+        -------
         session : Any
             a session object that will be stored in the connection manager and
             accessible at `DataStore.connection`
@@ -851,7 +851,7 @@ class DataStore(metaclass=ABCMeta):
         id : str
             ID for the newly created dataset
         leaves : list[tuple[str, ...]]
-                        list of IDs for each leaf node to be added to the dataset. The IDs for each
+            list of IDs for each leaf node to be added to the dataset. The IDs for each
             leaf should be a tuple with an ID for each level in the tree's hierarchy, e.g.
             for a hierarchy of [subject, timepoint] ->
             [("SUBJ01", "TIMEPOINT01"), ("SUBJ01", "TIMEPOINT02"), ....]
@@ -863,7 +863,7 @@ class DataStore(metaclass=ABCMeta):
             Patterns for inferring IDs of rows not explicitly present in the hierarchy of
             the data tree. See ``DataStore.infer_ids()`` for syntax
         **kwargs
-            implementing methods should take wildcard **kwargs to allow compatibility
+            implementing methods should take wildcard ``kwargs`` to allow compatibility
             with future arguments that might be added
         """
         raise NotImplementedError

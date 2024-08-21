@@ -63,10 +63,6 @@ class LocalStore(DataStore):
 
     # load_dataset_definition
 
-    # connect
-
-    # disconnect
-
     # put_provenance
 
     # get_provenance

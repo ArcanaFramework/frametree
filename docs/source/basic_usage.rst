@@ -9,8 +9,8 @@ The basic usage pattern is
 
 #. Define a dataset to work with (see :ref:`datasets`)
 #. Specify columns in the dataset to access data from and store data to (see :ref:`data_columns`)
-#. Connect a `Pydra task or workflow <https://pydra.readthedocs.io/en/latest/components.html#dataflows-components-task-and-workflow>`_, or an analysis class between columns (see :ref:`Analysis classes`)
-#. Select derivatives to generate (see :ref:`derivatives`)
+#. Connect a `Pydra task or workflow <https://pydra.readthedocs.io/en/latest/components.html#dataflows-components-task-and-workflow>`_
+#. Request derivative of the workflow
 
 For example, given a dataset stored within the ``/data/my-dataset`` directory,
 which contains two-layers of sub-directories, for subjects and sessions
@@ -49,7 +49,7 @@ Alternatively, the same steps can be performed using the Python API:
 
     # Import frametree module
     from pydra.tasks.fsl.preprocess.bet import BET
-    from frametree.core.data import Dataset
+    from frametree.core import Dataset
     from frametree.medimage.data import Clinical
     from fileformats.medimage.data import Dicom, NiftiGz
 
@@ -71,41 +71,6 @@ Alternatively, the same steps can be performed using the Python API:
 
     # Derive brain masks for all imaging sessions in dataset
     my_dataset['brain_mask'].derive()
-
-
-Applying an Analysis class instead of a Pydra task/workflow follows the same
-steps up to 'add-source' (sinks are automatically added by the analysis class).
-The following example applies methods for analysing T1-weighted MRI images to the
-dataset, then calls the methods calculates the average cortical thickness for
-each session of each subject.
-
-.. code-block:: console
-
-    $ frametree apply analysis '/data/my-project' bids.mri:T1wAnalysis
-    $ frametree derive column '/data/my-project' avg_cortical_thickness
-
-
-Doing the same steps via the Python API provides convenient access to the
-generated data, which a histogram of the distribution over all subjects at
-Timepoint 'T3' can be plotted.
-
-
-.. code-block:: python
-
-    import matplotlib.pyplot as plt
-    from frametree.analyses.bids.mri import T1wAnalysis
-
-    # Apply the T1wAnalysis class to the dataset
-    my_dataset.apply(T1wAnalysis())
-
-    # Generate the average cortical thickness derivative that was added by
-    # the T1wAnalysis class
-    my_dataset['avg_cortical_thickness'].derive()
-
-    # Get all members at the 'T3' timepoint. Indexing of a column can either
-    # be a single arg in order to use the IDs for the row_frequency of the column
-    # ('session') in this case, or the rank of the data space
-    plt.histogram(my_dataset['avg_cortical_thickness']['T3', None, :])
 
 
 .. note::

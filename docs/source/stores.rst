@@ -1,4 +1,3 @@
-
 Stores
 ======
 
@@ -17,7 +16,7 @@ packages
 * :class:`.Xnat` - access data stored in XNAT_ repositories vi its REST API
 * :class:`.XnatViaCS` - access data stored in XNAT_ via its `container service <https://wiki.xnat.org/container-service/using-the-container-service-122978908.html>`_
 
-For instructions on how to add support for new systems see :ref:`alternative_stores`.
+For instructions on how to add support for new systems see :ref:`alternative_backends`.
 
 To configure access to a store via the CLI use the ':ref:`frametree store add`' command.
 The store type is specified by the path to the data store sub-class,
@@ -73,4 +72,6 @@ data store classes directly.
     :class:`.Bids` don't need to be configured and can be accessed via their aliases,
     ``file`` and ``bids`` when defining a dataset.
 
-.. _datasets:
+
+.. _XNAT: https://xnat.org
+.. _BIDS: https://bids.neuroimaging.io

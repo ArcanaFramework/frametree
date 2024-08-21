@@ -24,7 +24,7 @@ A data frame is defined by adding "source" columns to access existing
 (typically acquired) data, and "sink" columns to define where
 derivatives will be stored within the data tree. The "row frequency" argument
 of the column (e.g. per 'session', 'subject', etc...) specifies which data frame
-the column belongs to. The datatype of a column's member items (see :ref:`Items`)
+the column belongs to. The datatype of a column's member items (see :ref:`Entries`)
 must be consistent and is also specified when the column is created.
 
 The data items (e.g. files, scans) within a source column do not need to have
@@ -99,7 +99,7 @@ operator
 .. code-block:: python
 
     import matplotlib.pyplot as plt
-    from frametree.core.data.set import Dataset
+    from frametree.core.set import Dataset
 
     # Get a column containing all T1-weighted MRI images across the dataset
     xnat_dataset = Dataset.load('xnat-central//MYXNATPROJECT')
@@ -158,3 +158,7 @@ or a "MIME-like" string, where their type name and registry correspond directly 
 fileformats to the fileformats
 sub-package/class name are specified in the CLI by *<module-path>:<class-name>*,
 e.g. ``mediamge/nifti-gz``.
+
+
+.. _XNAT: https://xnat.org
+.. _BIDS: https://bids.neuroimaging.io
