@@ -185,7 +185,7 @@ class Store(metaclass=ABCMeta):
         del entries[name]
         cls.save_configs(entries)
 
-    def define_dataset(
+    def define_grid(
         self, id, space=None, hierarchy=None, id_patterns=None, **kwargs
     ) -> Grid:
         """
@@ -248,12 +248,12 @@ class Store(metaclass=ABCMeta):
         )
         return dataset
 
-    def save_dataset(self, dataset: Grid, name: str = ""):
+    def save_grid(self, grid: Grid, name: str = ""):
         """Save metadata in project definition file for future reference
 
         Parameters
         ----------
-        dataset : Grid
+        grid : Grid
             the dataset to save
         name : str, optional
             the name for the definition to distinguish from other definitions on
@@ -262,14 +262,14 @@ class Store(metaclass=ABCMeta):
         if name is None:
             name = ""
         save_name = name if name else self.EMPTY_DATASET_NAME
-        definition = asdict(dataset, omit=["store", "name"])
+        definition = asdict(grid, omit=["store", "name"])
         definition[self.VERSION_KEY] = self.VERSION
         if name is None:
-            name = dataset.name
+            name = grid.name
         with self.connection:
-            self.save_dataset_definition(dataset.id, definition, name=save_name)
+            self.save_grid_definition(grid.id, definition, name=save_name)
 
-    def load_dataset(self, id, name: str = "", **kwargs) -> Grid:
+    def load_grid(self, id, name: str = "", **kwargs) -> Grid:
         """Load an existing dataset definition
 
         Parameters
@@ -294,7 +294,7 @@ class Store(metaclass=ABCMeta):
             name = ""
         saved_name = name if name else self.EMPTY_DATASET_NAME
         with self.connection:
-            dct = self.load_dataset_definition(id, saved_name)
+            dct = self.load_grid_definition(id, saved_name)
         if dct is None:
             raise KeyError(f"Did not find a dataset '{id}@{name}'")
         store_version = dct.pop(self.VERSION_KEY)
@@ -341,7 +341,7 @@ class Store(metaclass=ABCMeta):
             hierarchy=hierarchy,
             space=space,
         )
-        dataset = self.define_dataset(
+        dataset = self.define_grid(
             id=id,
             hierarchy=hierarchy,
             space=space,
@@ -445,7 +445,7 @@ class Store(metaclass=ABCMeta):
                     if not isinstance(item, imported_col.datatype):
                         item = imported_col.datatype.convert(item)
                     imported_col[
-                        tuple(cell.row.frequency_id(a) for a in dataset.axes.axes())
+                        tuple(cell.row.frequency_id(a) for a in dataset.axes.bases())
                     ] = item
             imported.save(name="")
 
@@ -767,7 +767,7 @@ class Store(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def save_dataset_definition(
+    def save_grid_definition(
         self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
     ):
         """Save definition of dataset within the store
@@ -786,9 +786,7 @@ class Store(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def load_dataset_definition(
-        self, dataset_id: str, name: str
-    ) -> ty.Dict[str, ty.Any]:
+    def load_grid_definition(self, dataset_id: str, name: str) -> ty.Dict[str, ty.Any]:
         """Load definition of a dataset saved within the store
 
         Parameters

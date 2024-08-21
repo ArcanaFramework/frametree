@@ -4,7 +4,7 @@ from frametree.core.grid.base import Grid
 from frametree.core.salience import ColumnSalience
 from frametree.core.quality import DataQuality
 from frametree.testing import TestAxes
-from frametree.core.cli.dataset import (
+from frametree.core.cli.grid import (
     define,
     add_source,
     add_sink,
@@ -169,7 +169,7 @@ def test_export_import_roundtrip(cli_runner, work_dir: Path, frametree_home):
         ],
     )
     assert result.exit_code == 0, show_cli_trace(result)
-    local_dataset = FileSystem().load_dataset(local_dataset_id)
+    local_dataset = FileSystem().load_grid(local_dataset_id)
     result = cli_runner(
         export,
         [
@@ -179,6 +179,6 @@ def test_export_import_roundtrip(cli_runner, work_dir: Path, frametree_home):
         ],
     )
     assert result.exit_code == 0, show_cli_trace(result)
-    reimported = mock_remote.load_dataset("reimported")
+    reimported = mock_remote.load_grid("reimported")
     reimported.id = "original"
     assert reimported == original

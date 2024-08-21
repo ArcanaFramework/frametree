@@ -1,13 +1,15 @@
-Datasets
-========
+Grids
+=====
 
-In FrameTree, a *dataset* refers to a collection of comparable data within a store,
-e.g. data from a single research study, or large collection such as the
-Human Connectome Project. FrameTree datasets consist of both source data and the
-derivatives derived from them. Datasets are organised into trees that classify a
-series of data points (e.g. imaging sessions) by a "hierarchy" of branches
-(e.g. groups > subjects > sessions). For example, the following dataset consisting
-of imaging sessions is sorted by subjects, then longintudinal timepoints
+FrameTree *Data grids* refer to all, or a subset thereof, of data points (e.g. imaging session)
+data within a dataset. The data points are conceptualised on a multi-dimensional grid
+within a space for which  the categorical variables form the bases. Data points within
+a consist of both source data and the derivatives derived from them.
+
+Grid definitions map the tree structure the data is stored within onto the grid by specifying
+"hierarchy" of branches (e.g. groups > subjects > sessions) expected within dataset trees.
+For example, the following dataset consisting of imaging sessions is sorted by subjects, then
+longintudinal timepoints
 
 .. code-block::
 
@@ -42,7 +44,8 @@ of imaging sessions is sorted by subjects, then longintudinal timepoints
 
 The leaves of the tree contain data from specific "imaging session" data points,
 as designated by the combination of one of the three subject IDs and
-one of the two timepoint IDs.
+one of the two timepoint IDs. Data items at the session level of the hierarchy will be
+mapped onto a data frame, where each session data point correspondds to a row.
 
 While the majority of data items are stored in the leaves of the tree,
 data can exist for any branch. For example, an analysis may use
@@ -86,8 +89,10 @@ the subject level of the tree sit in special *SUBJECT* branches
             ├── t2w_space
             └── bold_rest
 
+In this case, the genomics data maps onto a different conceptual data frame, in which
+each row corresponds to a subject instead of a session.
 
-In the CLI, datasets are referred to by ``<store-nickname>//<dataset-id>[@<dataset-name>]``,
+In the CLI, grids are referred to by ``<store-name>//<dataset-id>[@<dataset-name>]``,
 where *<store-name>* is the nickname of the store as saved by ':ref:`frametree store add`'
 (see :ref:`Stores`), and *<dataset-id>* is
 
@@ -103,19 +108,20 @@ For example, a project called "MYXNATPROJECT" stored in
 `XNAT Central <https://central.xnat.org>`__ using the *xnat-central* nickname
 created in the :ref:`Stores` Section, would be ``xnat-central//MYXNATPROJECT``.
 
-Alternatively, dataset objects can be created directly via the Python API using
-the :meth:`.Store.dataset` method. For example, to define a new dataset
-corresponding to *MYXNATPROJECT*
+Alternatively, grid objects can be created directly via the Python API using
+the :meth:`.Store.define_grid` method. For example, to define a new dataset
+corresponding to *MYXNATPROJECT*.
 
 .. code-block:: python
 
-    xnat_dataset = xnat_store.dataset(id='MYXNATPROJECT')
+    xnat_grid = xnat_store.define_grid(id='MYXNATPROJECT')
 
 
 Subsets
 -------
 
-Often there are data points that need to be removed from a given
+By default all data points within the dataset are included in the grid. However,
+often there are data points that need to be removed from a given
 analysis due to missing or corrupted data. Such sections need to be removed
 in a way that the data points still lie on a rectangular grid within the
 data space (see :ref:`data_spaces`) so derivatives computed over a given axis
@@ -138,7 +144,7 @@ a dataset.
 
 .. code-block:: console
 
-    $ frametree dataset define '/data/imaging/my-project@manually_qcd' \
+    $ frametree define-grid '/data/imaging/my-project@manually_qcd' \
       common:Clinical subject session \
       --exclude member 03,11,27
 
@@ -150,7 +156,7 @@ frequencies.
 
 .. code-block:: console
 
-    $ frametree dataset define '/data/imaging/my-project@manually_qcd' \
+    $ frametree define-grid '/data/imaging/my-project@manually_qcd' \
       common:Clinical subject session \
       --exclude member 03,11,27 \
       --include timepoint 1,2
@@ -165,16 +171,14 @@ CLI, append the name to the dataset's ID string separated by '::', e.g.
 
 .. code-block:: console
 
-    $ frametree dataset define '/data/imaging/my-project@training' \
+    $ frametree define-grid '/data/imaging/my-project@training' \
       common:Clinical group subject \
       --include member 10:20
 
 
 
-.. _data_spaces:
-
-Spaces
-------
+Axes
+----
 
 In addition to data frames corresponding to row frequencies that explicitly
 appear in the hierarchy of the data tree (see :ref:`data_columns`),

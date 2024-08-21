@@ -92,9 +92,9 @@ class RemoteStore(Store):
 
     # populate_row
 
-    # save_dataset_definition
+    # save_grid_definition
 
-    # load_dataset_definition
+    # load_grid_definition
 
     # connect
 
@@ -342,7 +342,7 @@ class RemoteStore(Store):
         del kwargs["connection"]
         store = type(self)(**kwargs)
         try:
-            return store.load_dataset(self.SITE_LICENSES_DATASET)
+            return store.load_grid(self.SITE_LICENSES_DATASET)
         except KeyError:
             # If no site-wide licenses dataset exists, try to create one
             try:
@@ -358,11 +358,11 @@ class RemoteStore(Store):
                     self.SITE_LICENSES_DATASET, [], hierarchy=hierarchy
                 )
             with store.connection:
-                dataset = store.define_dataset(
+                dataset = store.define_grid(
                     self.SITE_LICENSES_DATASET, space=space, hierarchy=hierarchy
                 )
                 dataset.save()
-            return store.load_dataset(self.SITE_LICENSES_DATASET)
+            return store.load_grid(self.SITE_LICENSES_DATASET)
 
     ###################
     # Get and putters #

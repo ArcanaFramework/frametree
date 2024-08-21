@@ -14,11 +14,11 @@ logger = logging.getLogger(__name__)
 
 
 @cli.group()
-def dataset():
+def grid():
     pass
 
 
-@dataset.command(
+@grid.command(
     name="define",
     help=(
         """Define the tree structure and IDs to include in a
@@ -111,7 +111,7 @@ def define(dataset_locator, hierarchy, include, exclude, space, id_pattern):
     if space:
         space = ClassResolver(Axes)(space)
 
-    dataset = store.define_dataset(
+    dataset = store.define_grid(
         id,
         hierarchy=hierarchy,
         space=space,
@@ -123,7 +123,7 @@ def define(dataset_locator, hierarchy, include, exclude, space, id_pattern):
     dataset.save(name)
 
 
-@dataset.command(
+@grid.command(
     name="add-source",
     help="""Adds a source column to a dataset. A source column
 selects comparable items along a dimension of the dataset to serve as
@@ -223,7 +223,7 @@ def add_source(
     dataset.save()
 
 
-@dataset.command(
+@grid.command(
     name="add-sink",
     help="""Adds a sink column to a dataset. A sink column
 specifies how data should be written into the dataset.
@@ -283,7 +283,7 @@ def add_sink(dataset_locator, name, datatype, row_frequency, path, salience):
     dataset.save()
 
 
-@dataset.command(
+@grid.command(
     name="missing-items",
     help="""Finds the IDs of rows that are missing a valid entry for an item in
 the column.
@@ -307,7 +307,7 @@ def missing_items(dataset_locator, column_names):
             click.echo(f"'{column.name}': " + ", ".join(c.row.id for c in empty_cells))
 
 
-@dataset.command(
+@grid.command(
     help="""
 Exports a dataset from one data store into another
 
@@ -374,7 +374,7 @@ def export(
     )
 
 
-@dataset.command(
+@grid.command(
     help="""
 Creates a copy of a dataset definition under a new name (so it can be modified, e.g.
 for different analysis)
@@ -391,7 +391,7 @@ def copy(dataset_locator, new_name):
     dataset.save(new_name)
 
 
-@dataset.command(
+@grid.command(
     name="install-license",
     help="""Installs a license within a store (i.e. site-wide) or dataset (project-specific)
 for use in a deployment pipeline

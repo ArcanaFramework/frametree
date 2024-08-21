@@ -101,7 +101,7 @@ class MockRemote(RemoteStore):
                     uri=full_path(path).relative_to(self.remote_dir),
                 )
 
-    def save_dataset_definition(
+    def save_grid_definition(
         self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
     ):
         """Save definition of dataset within the store
@@ -123,9 +123,7 @@ class MockRemote(RemoteStore):
         with open(definition_path, "w") as f:
             yaml.dump(definition, f)
 
-    def load_dataset_definition(
-        self, dataset_id: str, name: str
-    ) -> ty.Dict[str, ty.Any]:
+    def load_grid_definition(self, dataset_id: str, name: str) -> ty.Dict[str, ty.Any]:
         """Load definition of a dataset saved within the store
 
         Parameters
@@ -325,12 +323,12 @@ class MockRemote(RemoteStore):
         return self.dataset_fspath(dataset_id) / self.METADATA_DIR / (name + ".yml")
 
     def get_row_path(self, row: DataRow):
-        dataset_fspath = self.dataset_fspath(row.dataset)
+        dataset_fspath = self.dataset_fspath(row.grid)
         try:
             row_path = (
                 dataset_fspath
                 / self.LEAVES_DIR
-                / self.get_row_dirname_from_ids(row.ids, row.dataset.hierarchy)
+                / self.get_row_dirname_from_ids(row.ids, row.grid.hierarchy)
             )
         except NotInHierarchyException:
             if not row.frequency:  # root frequency

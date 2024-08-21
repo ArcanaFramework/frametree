@@ -62,12 +62,12 @@ class Axes(Enum):
         return max(cls)
 
     @classmethod
-    def axes(cls):
+    def bases(cls):
         return cls.leaf().span()
 
     @classproperty
     def ndim(self):
-        return len(self.axes())
+        return len(self.bases())
 
     def span(self):
         """Returns the basis dimensions in the data tree that the given

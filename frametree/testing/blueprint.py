@@ -60,13 +60,13 @@ class EntryBlueprint(metaclass=ABCMeta):
             return
         item = self.make_item(**kwargs)
         logger.debug("Creating entry at %s in %s", self.path, row)
-        entry = row.dataset.store.create_entry(
+        entry = row.grid.store.create_entry(
             path=self.path,
             datatype=self.datatype,
             row=row,
         )
         logger.debug("Putting %s at %s", item, entry)
-        row.dataset.store.put(item, entry)
+        row.grid.store.put(item, entry)
 
 
 @attrs.define(kw_only=True)
@@ -174,7 +174,7 @@ class FieldEntryBlueprint(EntryBlueprint):
 @attrs.define(slots=False, kw_only=True)
 class TestDatasetBlueprint:
 
-    space: ty.Type[Axes]
+    axes: ty.Type[Axes]
     hierarchy: ty.List[str]
     dim_lengths: ty.List[int]  # size of layers a-d respectively
     entries: ty.List[EntryBlueprint] = attrs.field(factory=list)
@@ -228,7 +228,7 @@ class TestDatasetBlueprint:
                 leaves=self.all_ids,
                 name=name,
                 hierarchy=self.hierarchy,
-                space=self.space,
+                space=self.axes,
                 metadata=metadata,
                 include=self.include,
                 exclude=self.exclude,
@@ -237,9 +237,9 @@ class TestDatasetBlueprint:
         with store.connection:
             logger.debug(
                 "Adding entries to test dataset for: %s",
-                dataset.rows(frequency=max(self.space)),
+                dataset.rows(frequency=max(self.axes)),
             )
-            for row in dataset.rows(frequency=max(self.space)):
+            for row in dataset.rows(frequency=max(self.axes)):
                 self.make_entries(row, source_data=source_data)
             dataset.metadata.type = orig_type
             dataset.save()
@@ -263,16 +263,16 @@ class TestDatasetBlueprint:
         # Create copy of the blueprint
         blueprint = deepcopy(self)
         try:
-            blueprint.space = data_store.DEFAULT_SPACE
+            blueprint.axes = data_store.DEFAULT_SPACE
         except AttributeError:
             space = TestAxes
         else:
             try:
                 blueprint.hierarchy = data_store.DEFAULT_HIERARCHY
             except AttributeError:
-                if space.ndim > self.space.ndim:
+                if space.ndim > self.axes.ndim:
                     raise RuntimeError(
-                        f"cannot translate hierarchy as from {self.space} to {space} "
+                        f"cannot translate hierarchy as from {self.axes} to {space} "
                         "as it has more dimensions"
                     )
                 # Translate frequencies into new space
@@ -320,7 +320,7 @@ class TestDatasetBlueprint:
     #     num_attempts = 0
     #     while num_attempts < max_num_attempts:
     #         try:
-    #             dataset = store.load_dataset(dataset_id, name=name)
+    #             dataset = store.load_grid(dataset_id, name=name)
     #         except KeyError:
     #             pass
     #         else:
@@ -369,18 +369,18 @@ class TestDatasetBlueprint:
         """Iterate all leaves of the data tree specified by the test blueprint and yield
         ID tuples corresponding to the IDs of each leaf node"""
         for id_tple in itertools.product(*(list(range(d)) for d in self.dim_lengths)):
-            base_ids = dict(zip(self.space.axes(), id_tple))
+            base_ids = dict(zip(self.axes.bases(), id_tple))
             ids = {}
             for layer in self.hierarchy:
                 ids[layer] = "".join(
-                    f"{b}{base_ids[b]}" for b in self.space[layer].span()
+                    f"{b}{base_ids[b]}" for b in self.axes[layer].span()
                 )
             yield tuple(ids[h] for h in self.hierarchy)
 
 
 TEST_DATASET_BLUEPRINTS = {
     "full": TestDatasetBlueprint(  # dataset name
-        space=TestAxes,
+        axes=TestAxes,
         hierarchy=["a", "b", "c", "d"],
         dim_lengths=[2, 3, 4, 5],
         entries=[
@@ -446,7 +446,7 @@ TEST_DATASET_BLUEPRINTS = {
         ],
     ),
     "one_layer": TestDatasetBlueprint(
-        space=TestAxes,
+        axes=TestAxes,
         hierarchy=["abcd"],
         dim_lengths=[1, 1, 1, 5],
         entries=[
@@ -485,7 +485,7 @@ TEST_DATASET_BLUEPRINTS = {
         ],
     ),
     "skip_single": TestDatasetBlueprint(
-        space=TestAxes,
+        axes=TestAxes,
         hierarchy=["a", "bc", "d"],
         dim_lengths=[2, 1, 2, 3],
         entries=[
@@ -506,7 +506,7 @@ TEST_DATASET_BLUEPRINTS = {
         ],
     ),
     "skip_with_inference": TestDatasetBlueprint(
-        space=TestAxes,
+        axes=TestAxes,
         hierarchy=["bc", "ad"],
         dim_lengths=[2, 3, 2, 4],
         id_patterns={
@@ -527,7 +527,7 @@ TEST_DATASET_BLUEPRINTS = {
         ],
     ),
     "redundant": TestDatasetBlueprint(
-        space=TestAxes,
+        axes=TestAxes,
         hierarchy=[
             "abc",
             "abcd",
@@ -557,7 +557,7 @@ TEST_DATASET_BLUEPRINTS = {
         ],
     ),
     "concatenate_test": TestDatasetBlueprint(
-        space=TestAxes,
+        axes=TestAxes,
         hierarchy=[
             "abcd"
         ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
@@ -572,7 +572,7 @@ TEST_DATASET_BLUEPRINTS = {
         ],
     ),
     "concatenate_zip_test": TestDatasetBlueprint(
-        space=TestAxes,
+        axes=TestAxes,
         hierarchy=[
             "abcd"
         ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
@@ -590,7 +590,7 @@ GOOD_DATASETS = ["full", "one_layer", "skip_single", "skip_with_inference", "red
 
 EXTENSION_DATASET_BLUEPRINTS = {
     "complete": TestDatasetBlueprint(  # dataset name
-        space=TestAxes,
+        axes=TestAxes,
         hierarchy=["a", "b", "c", "d"],
         dim_lengths=[2, 2, 2, 2],
         entries=[
@@ -663,7 +663,7 @@ EXTENSION_DATASET_BLUEPRINTS = {
 }
 
 SIMPLE_DATASET = TestDatasetBlueprint(  # dataset name
-    space=TestAxes,
+    axes=TestAxes,
     hierarchy=["abcd"],
     dim_lengths=[2, 2, 2, 2],
     entries=[

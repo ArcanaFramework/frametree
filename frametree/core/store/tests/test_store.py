@@ -104,17 +104,17 @@ def test_post(dataset: Grid):
     check_inserted()  # Check that objects can be recreated from store
 
 
-def test_dataset_definition_roundtrip(dataset: Grid):
+def test_grid_roundtrip(dataset: Grid):
     definition = asdict(dataset, omit=["store", "name"])
     definition["store-version"] = "1.0.0"
 
     data_store = dataset.store
 
     with data_store.connection:
-        data_store.save_dataset_definition(
+        data_store.save_grid_definition(
             dataset_id=dataset.id, definition=definition, name="test_dataset"
         )
-        reloaded_definition = data_store.load_dataset_definition(
+        reloaded_definition = data_store.load_grid_definition(
             dataset_id=dataset.id, name="test_dataset"
         )
     assert definition == reloaded_definition

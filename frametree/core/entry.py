@@ -117,12 +117,12 @@ class DataEntry:
                 )
         else:
             item = self.datatype(item)
-        self.row.dataset.store.put(self, item)
+        self.row.grid.store.put(self, item)
 
     def get_item(self, datatype=None):
         if datatype is None:
             datatype = self.datatype
-        return self.row.dataset.store.get(self, datatype)
+        return self.row.grid.store.get(self, datatype)
 
     @property
     def recorded_checksums(self):

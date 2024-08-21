@@ -124,7 +124,7 @@ def apply_pipeline(
     overwrite,
 ):
 
-    dataset = Grid.load(dataset_locator)
+    grid = Grid.load(dataset_locator)
     workflow = ClassResolver(TaskBase, alternative_types=[ty.Callable])(
         workflow_location
     )(name="workflow", **{n: parse_value(v) for n, v in parameter})
@@ -135,14 +135,14 @@ def apply_pipeline(
     sinks = parse_col_option(sink)
 
     for col_name, field, datatype in sources:
-        dataset.add_source(col_name, datatype)
+        grid.add_source(col_name, datatype)
         inputs.append((col_name, field, datatype))
 
     for col_name, field, datatype in sinks:
-        dataset.add_sink(col_name, datatype)
+        grid.add_sink(col_name, datatype)
         outputs.append((col_name, field, datatype))
 
-    dataset.apply_pipeline(
+    grid.apply_pipeline(
         pipeline_name,
         workflow,
         inputs,
@@ -151,7 +151,7 @@ def apply_pipeline(
         overwrite=overwrite,
     )
 
-    dataset.save()
+    grid.save()
 
 
 @apply.command(name="analysis", help="""Applies an analysis class to a dataset""")

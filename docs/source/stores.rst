@@ -1,5 +1,5 @@
-Tree Stores
-===========
+Stores
+======
 
 Support for different tree-like storage systems (e.g. plain file systems, XNAT_) and
 structures (e.g. BIDS_) is provided by sub-classes of :class:`.Store`. Tree store classes

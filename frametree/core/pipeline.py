@@ -115,22 +115,22 @@ class Pipeline:
     converter_args: ty.Dict[str, dict] = attrs.field(
         factory=dict, converter=attrs.converters.default_if_none(factory=dict)
     )
-    dataset: frametree.core.grid.base.Grid = attrs.field(
+    grid: frametree.core.grid.base.Grid = attrs.field(
         metadata={"asdict": False}, default=None, eq=False, hash=False
     )
 
     def __attrs_post_init__(self):
         for field in self.inputs + self.outputs:
             if field.datatype is None:
-                field.datatype = self.dataset[field.name].datatype
+                field.datatype = self.grid[field.name].datatype
 
     @inputs.validator
     def inputs_validator(self, _, inputs: ty.List[PipelineField]):
         for inpt in inputs:
             if inpt.datatype is frametree.core.row.DataRow:  # special case
                 continue
-            if self.dataset:
-                column = self.dataset[inpt.name]
+            if self.grid:
+                column = self.grid[inpt.name]
                 # Check that a converter can be found if required
                 if inpt.datatype:
                     try:
@@ -156,8 +156,8 @@ class Pipeline:
     @outputs.validator
     def outputs_validator(self, _, outputs: ty.List[PipelineField]):
         for outpt in outputs:
-            if self.dataset:
-                column = self.dataset[outpt.name]
+            if self.grid:
+                column = self.grid[outpt.name]
                 if column.row_frequency != self.row_frequency:
                     raise FrameTreeUsageError(
                         f"Pipeline row_frequency ('{str(self.row_frequency)}') doesn't match "
@@ -233,7 +233,7 @@ class Pipeline:
         # Generate list of rows to process checking existing outputs
         wf.add(
             to_process(
-                dataset=self.dataset,
+                dataset=self.grid,
                 row_frequency=self.row_frequency,
                 outputs=self.outputs,
                 requested_ids=None,  # FIXME: Needs to be set dynamically
@@ -258,11 +258,11 @@ class Pipeline:
             if inpt.datatype is frametree.core.row.DataRow:
                 dtype = frametree.core.row.DataRow
             else:
-                dtype = self.dataset[inpt.name].datatype
+                dtype = self.grid[inpt.name].datatype
                 # If the row frequency of the source column is higher than the frequency
                 # of the pipeline, then the related elements of the source column are
                 # collected into a list and passed to the pipeline
-                if not self.dataset[inpt.name].row_frequency.is_parent(
+                if not self.grid[inpt.name].row_frequency.is_parent(
                     self.row_frequency, if_match=True
                 ):
                     dtype = ty.List[dtype]
@@ -281,7 +281,7 @@ class Pipeline:
                 ],
                 out_fields=list(source_out_dct.items()),
                 name="source",
-                dataset=self.dataset,
+                dataset=self.grid,
                 row_frequency=self.row_frequency,
                 inputs=self.inputs,
                 id=wf.per_row.lzin.id,
@@ -297,7 +297,7 @@ class Pipeline:
         for inpt in self.inputs:
             if inpt.datatype == frametree.core.row.DataRow:
                 continue
-            stored_format = self.dataset[inpt.name].datatype
+            stored_format = self.grid[inpt.name].datatype
             converter = inpt.datatype.get_converter(
                 stored_format,
                 name=f"{inpt.name}_input_converter",
@@ -339,7 +339,7 @@ class Pipeline:
 
         # Do output datatype conversions if required
         for outpt in self.outputs:
-            stored_format = self.dataset[outpt.name].datatype
+            stored_format = self.grid[outpt.name].datatype
             sink_name = path2varname(outpt.name)
             converter = stored_format.get_converter(
                 outpt.datatype,
@@ -378,7 +378,7 @@ class Pipeline:
                 ),
                 out_fields=[("id", str)],
                 name="sink",
-                dataset=self.dataset,
+                dataset=self.grid,
                 row_frequency=self.row_frequency,
                 id=wf.per_row.lzin.id,
                 provenance=wf.per_row.source.lzout.provenance_,
@@ -454,7 +454,7 @@ class Pipeline:
                 raise FrameTreeDesignError(
                     f"{sink} hasn't been connected to a pipeline yet"
                 )
-            pipeline = sink.dataset.pipelines[sink.pipeline_name]
+            pipeline = sink.grid.pipelines[sink.pipeline_name]
             if sink.name not in pipeline.output_varnames:
                 raise FrameTreeOutputNotProducedException(
                     f"{pipeline.name} does not produce {sink.name}"
@@ -485,7 +485,7 @@ class Pipeline:
             stack[pipeline.name] = pipeline, to_produce
             # Recursively add all the pipeline's prerequisite pipelines to the stack
             for inpt in pipeline.inputs:
-                inpt_column = sink.dataset[inpt.name]
+                inpt_column = sink.grid[inpt.name]
                 if inpt_column.is_sink:
                     try:
                         push_pipeline_on_stack(

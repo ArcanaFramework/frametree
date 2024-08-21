@@ -68,7 +68,7 @@ be implemented, such as `connect` and `disconnect`, which handle the login/out m
 
 .. autoclass:: frametree.core.store.RemoteStore
     :noindex:
-    :members: populate_tree, populate_row, download_files, download_value, upload_files, upload_value, get_provenance, put_provenance, create_data_tree, create_fileset_entry, create_field_entry, get_checksums, put_checksums, calculate_checksums, connect, disconnect, put_provenance, get_provenance, save_dataset_definition, load_dataset_definition
+    :members: populate_tree, populate_row, download_files, download_value, upload_files, upload_value, get_provenance, put_provenance, create_data_tree, create_fileset_entry, create_field_entry, get_checksums, put_checksums, calculate_checksums, connect, disconnect, put_provenance, get_provenance, save_grid_definition, load_grid_definition
 
 
 .. _adding_formats:

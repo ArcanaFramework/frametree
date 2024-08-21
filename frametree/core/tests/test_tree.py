@@ -12,7 +12,7 @@ from frametree.testing.axes import TestAxes
 TEST_INCLUSIONS = {
     "all": (
         TestDatasetBlueprint(  # dataset name
-            space=TestAxes,
+            axes=TestAxes,
             hierarchy=["a", "b", "c", "abcd"],
             dim_lengths=[1, 2, 3, 4],
             entries=[
@@ -51,7 +51,7 @@ TEST_INCLUSIONS = {
     ),
     "include": (
         TestDatasetBlueprint(  # dataset name
-            space=TestAxes,
+            axes=TestAxes,
             hierarchy=["a", "b", "c", "abcd"],
             dim_lengths=[1, 2, 3, 4],
             entries=[
@@ -83,7 +83,7 @@ TEST_INCLUSIONS = {
     ),
     "exclude": (
         TestDatasetBlueprint(  # dataset name
-            space=TestAxes,
+            axes=TestAxes,
             hierarchy=["a", "b", "c", "abcd"],
             dim_lengths=[1, 2, 3, 4],
             entries=[
@@ -116,7 +116,7 @@ TEST_INCLUSIONS = {
     ),
     "regex": (
         TestDatasetBlueprint(  # dataset name
-            space=TestAxes,
+            axes=TestAxes,
             hierarchy=["a", "b", "c", "abcd"],
             dim_lengths=[1, 2, 3, 4],
             entries=[
@@ -154,7 +154,7 @@ def test_dataset_inclusion(
 def test_include_exclude_fail1(work_dir):
 
     blueprint = TestDatasetBlueprint(  # dataset name
-        space=TestAxes,
+        axes=TestAxes,
         hierarchy=["a", "b", "c", "abcd"],
         dim_lengths=[1, 2, 3, 4],
         entries=[
@@ -175,7 +175,7 @@ def test_include_exclude_fail1(work_dir):
 def test_include_exclude_fail2(work_dir):
 
     blueprint = TestDatasetBlueprint(  # dataset name
-        space=TestAxes,
+        axes=TestAxes,
         hierarchy=["a", "b", "c", "abcd"],
         dim_lengths=[1, 2, 3, 4],
         entries=[
@@ -197,7 +197,7 @@ def test_include_exclude_fail2(work_dir):
 def test_include_exclude_fail3(work_dir):
 
     blueprint = TestDatasetBlueprint(  # dataset name
-        space=TestAxes,
+        axes=TestAxes,
         hierarchy=["a", "b", "c", "abcd"],
         dim_lengths=[1, 2, 3, 4],
         entries=[
@@ -216,7 +216,7 @@ def test_include_exclude_fail3(work_dir):
 TEST_AUTO_IDS = {
     "d_dim": (
         TestDatasetBlueprint(  # dataset name
-            space=TestAxes,
+            axes=TestAxes,
             hierarchy=["a", "b", "c", "abcd"],
             dim_lengths=[1, 2, 3, 4],
             entries=[
@@ -231,7 +231,7 @@ TEST_AUTO_IDS = {
     ),
     "member": (
         TestDatasetBlueprint(  # dataset name
-            space=Clinical,
+            axes=Clinical,
             hierarchy=["group", "subject", "timepoint"],
             dim_lengths=[2, 2, 2],
             entries=[
@@ -246,7 +246,7 @@ TEST_AUTO_IDS = {
     ),
     "double_increment": (
         TestDatasetBlueprint(  # dataset name
-            space=TestAxes,
+            axes=TestAxes,
             hierarchy=["ab", "cd"],
             dim_lengths=[2, 2, 2, 2],
             entries=[

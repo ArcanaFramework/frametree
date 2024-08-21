@@ -141,12 +141,12 @@ class Grid:
     tree: DataTree = attrs.field(factory=DataTree, init=False, repr=False, eq=False)
 
     def __attrs_post_init__(self):
-        self.tree.dataset = self
+        self.tree.grid = self
         # Set reference to pipeline in columns and pipelines
         for column in self.columns.values():
-            column.dataset = self
+            column.grid = self
         for pipeline in self.pipelines.values():
-            pipeline.dataset = self
+            pipeline.grid = self
 
     @name.validator
     def name_validator(self, _, name: str):
@@ -270,7 +270,7 @@ class Grid:
                 )
 
     def save(self, name=""):
-        self.store.save_dataset(self, name=name)
+        self.store.save_grid(self, name=name)
 
     @classmethod
     def load(
@@ -306,7 +306,7 @@ class Grid:
             store = datastore.Store.load(store_name, **kwargs)
             if not name and parsed_name:
                 name = parsed_name
-        return store.load_dataset(id, name=name)
+        return store.load_grid(id, name=name)
 
     @property
     def root_freq(self):
@@ -392,7 +392,7 @@ class Grid:
             datatype=datatype,
             path=path,
             row_frequency=row_frequency,
-            dataset=self,
+            grid=self,
             **kwargs,
         )
         self._add_column(name, source, overwrite)
@@ -431,7 +431,7 @@ class Grid:
             name=name,
             datatype=datatype,
             row_frequency=row_frequency,
-            dataset=self,
+            grid=self,
             **kwargs,
         )
         self._add_column(name, sink, overwrite)
@@ -497,7 +497,7 @@ class Grid:
                     if isinstance(id, tuple) and len(id) == self.axes.ndim:
                         # Expand ID tuple to see if it is an expansion of the ID axes
                         # instead of a direct label for the row
-                        id_kwargs = {a: i for a, i in zip(self.axes.axes(), id)}
+                        id_kwargs = {a: i for a, i in zip(self.axes.bases(), id)}
                     else:
                         raise FrameTreeNameError(
                             id,
@@ -660,7 +660,7 @@ class Grid:
 
         pipeline = Pipeline(
             name=name,
-            dataset=self,
+            grid=self,
             row_frequency=row_frequency,
             workflow=workflow,
             inputs=inputs,
@@ -824,7 +824,7 @@ class Grid:
             name=f"{name}_license",
             datatype=PlainText,
             row_frequency=self.root_freq,
-            dataset=dataset,
+            grid=dataset,
             path=License.column_path(name),
         )
         return column.match_entry(dataset.root)

@@ -59,10 +59,6 @@ class LocalStore(Store):
 
     # populate_row
 
-    # save_dataset_definition
-
-    # load_dataset_definition
-
     # put_provenance
 
     # get_provenance
@@ -253,13 +249,13 @@ class LocalStore(Store):
             uri = self.field_uri(path, datatype, row)
         return row.add_entry(path=path, datatype=datatype, uri=uri)
 
-    def save_dataset_definition(self, dataset_id, definition, name):
+    def save_grid_definition(self, dataset_id, definition, name):
         definition_path = self.definition_save_path(dataset_id, name)
         definition_path.parent.mkdir(exist_ok=True, parents=True)
         with open(definition_path, "w") as f:
             yaml.dump(definition, f)
 
-    def load_dataset_definition(self, dataset_id, name):
+    def load_grid_definition(self, dataset_id, name):
         fspath = self.definition_save_path(dataset_id, name)
         if fspath.exists():
             with open(fspath) as f:
@@ -308,7 +304,7 @@ class LocalStore(Store):
             raise DatatypeUnsupportedByStoreError(entry.datatype, self)
 
     def root_dir(self, row) -> Path:
-        return Path(row.dataset.id)
+        return Path(row.grid.id)
 
     def site_licenses_dataset(self, **kwargs):
         """Provide a place to store hold site-wide licenses"""
@@ -316,21 +312,21 @@ class LocalStore(Store):
         if not dataset_root.exists():
             dataset_root.mkdir(parents=True)
         try:
-            dataset = self.load_dataset(dataset_root)
+            dataset = self.load_grid(dataset_root)
         except KeyError:
             from frametree.common import Samples
 
-            dataset = self.define_dataset(dataset_root, space=Samples)
+            dataset = self.define_grid(dataset_root, space=Samples)
         return dataset
 
     ###################
     # Other overrides #
     ###################
 
-    def define_dataset(self, id, *args, **kwargs):
+    def define_grid(self, id, *args, **kwargs):
         if not Path(id).exists():
             raise FrameTreeUsageError(f"Path to dataset root '{id}'' does not exist")
-        return super().define_dataset(id, *args, **kwargs)
+        return super().define_grid(id, *args, **kwargs)
 
     ##################
     # Helper methods #
@@ -379,4 +375,6 @@ class LocalStore(Store):
             )
 
     def definition_save_path(self, dataset_id, name):
+        if not name:
+            name = "_"
         return Path(dataset_id) / self.FRAMETREE_DIR / name / "definition.yaml"

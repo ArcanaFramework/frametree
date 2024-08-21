@@ -2,7 +2,7 @@ from pathlib import Path
 import tempfile
 import pytest
 from frametree.core.grid import Grid
-from frametree.core.cli.dataset import install_license
+from frametree.core.cli.grid import install_license
 from frametree.core.utils import show_cli_trace
 from frametree.testing import MockRemote
 

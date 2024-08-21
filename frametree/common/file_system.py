@@ -100,7 +100,7 @@ class FileSystem(LocalStore):
                 ):
                     yield subpath
 
-        root_dir = full_path(row.dataset.id)
+        root_dir = full_path(row.grid.id)
 
         # Iterate through all directories saved for the source and dataset derivatives
         for dataset_name in self._row_dataset_names(row):
@@ -380,8 +380,8 @@ class FileSystem(LocalStore):
             the relative path to the row directory
         """
         relpath = Path()
-        if row.frequency is max(row.dataset.space):  # leaf node
-            for freq in row.dataset.hierarchy:
+        if row.frequency is max(row.grid.axes):  # leaf node
+            for freq in row.grid.hierarchy:
                 relpath /= row.frequency_id(freq)
             if dataset_name is not None:
                 relpath /= self.FRAMETREE_DIR
@@ -420,9 +420,7 @@ class FileSystem(LocalStore):
             list of dataset names stored in the given row
         """
         dataset_names = [None]  # The source data
-        derivs_dir = (
-            Path(row.dataset.id) / self._row_relpath(row, dataset_name="").parent
-        )
+        derivs_dir = Path(row.grid.id) / self._row_relpath(row, dataset_name="").parent
         if derivs_dir.exists():
             dataset_names.extend(
                 ("" if d.name == self.EMPTY_DATASET_NAME else d.name)
@@ -432,11 +430,11 @@ class FileSystem(LocalStore):
         return dataset_names
 
     def _fileset_fspath(self, entry):
-        return Path(entry.row.dataset.id) / entry.uri
+        return Path(entry.row.grid.id) / entry.uri
 
     def _fields_fspath_and_key(self, entry):
         relpath, key = entry.uri.split("::")
-        fspath = Path(entry.row.dataset.id) / relpath
+        fspath = Path(entry.row.grid.id) / relpath
         return fspath, key
 
     def _fileset_prov_fspath(self, entry):

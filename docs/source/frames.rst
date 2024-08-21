@@ -4,8 +4,8 @@
 Frames
 ======
 
-Before data within a dataset can be manipulated, they must be
-assigned to a data frames.
+Before data within a grid is manipulated it is be assigned to data frames via the creation
+of data "columns" across different layers of the grid.
 
 Rows
 ----
@@ -13,12 +13,19 @@ Rows
 The "rows" of a data frame correspond either to individual data points in the data grid
 (e.g. imaging sessions in the :class:`Clincial` axes) or lines, planes for higher layers
 in the hierarchy of the data tree (e.g. subjects or study groups). For example within the
-:class:`Clinical` axes, the potential frame rows are
+:class:`Clinical` axes, the "row frequency" of frames are
 
 * imaging sessions
 * subjects
 * study groups (e.g. 'test' or 'control')
+* longitudinal timepoints
+* control-matched pairs
+* batches (separate groups at separate timepoints)
+* matched-point (matched members (e.g. test & control) across all groups and timepoints)
+* constant/singular
 
+Note that these "rows" do not correspond to rows of data points in the intermediate grid
+conception, rather rows in the final data frame.
 
 
 Columns
