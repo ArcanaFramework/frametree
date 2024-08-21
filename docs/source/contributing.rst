@@ -1,9 +1,24 @@
 Contributing
 ============
 
-Contributions to the project are more welcome in various forms. Please see the
+Contributions to the project and extensions are more than welcome in various forms. Please see the
 `contribution guide  <https://github.com/ArcanaFramework/frametree/blob/main/CONTRIBUTING.md>`_
-for details.
+for details. If you contribute code, documentation or bug reports to the repository please
+add your name and affiliation to the `Zenodo file <https://github.com/ArcanaFramework/frametree/blob/main/.zenodo.json>`_
+
+Development installation
+------------------------
+
+To install a development version of frametree, clone the GitHub repository
+https://github.com/ArcanaFramework/frametree and install an editable package with *pip*
+with the `dev` install option
+
+.. code-block:: console
+
+    $ pip3 install -e /path/to/local/frametree/repo[dev]
+
+Extensions
+----------
 
 The core FrameTree code base is implemented in the :mod:`frametree.core` module. Extensions
 which implement data store connectors and analyses are installed in separate packages
@@ -13,9 +28,6 @@ imported into the extension package root (e.g. ``frametree.xnat.__init__.py``) s
 be found by CLI commands. Additional CLI commands specific to a particular backend should
 be implemented as ``click`` commands under the ``frametree.core.cli.ext`` group and also
 imported into the subpackage root.
-
-If you contribute code, documentation or bug reports to the repository please
-add your name and affiliation to the `Zenodo file <https://github.com/ArcanaFramework/frametree/blob/main/.zenodo.json>`_
 
 .. _alternative_backends:
 
@@ -27,43 +39,32 @@ Alternative storage systems can be implemented by writing a new subclass of
 so if you would help to use FrameTree with a different storage system please
 create an issue for it in the `GitHub Issue Tracker <https://github.com/Australian-Imaging-Service/frametree/issues>`__.
 
-Required methods
-~~~~~~~~~~~~~~~~
-
-When subclassing :class:`.DataStore`, the following abstract methods must be
-overridden to implement the appropriate functionality of the data store. For
-a reference implementation please see :class:`frametree.common.DirTree`.
-
-.. autoclass:: frametree.core.store.DataStore
-    :noindex:
-    :members: populate_tree, populate_row, get, put, get_provenance, put_provenance, save_dataset_definition, load_dataset_definition, create_data_tree, create_entry
-
-
-Optional methods
-~~~~~~~~~~~~~~~~
-
-The following methods are not strictly necessary to override, but can offer
-significant performance boosts by avoiding unnecessary downloads in the
-case of :meth:`.DataStore.get_checksums` and unnecessary remote connections
-in the case of :meth:`.DataStore.connect` and :meth:`.DataStore.disconnect`
-(by caching the connection between multiple calls).
-
-.. autoclass:: frametree.core.store.DataStore
-    :noindex:
-    :members: connect, disconnect
-
-
-Partial Implementations
-~~~~~~~~~~~~~~~~~~~~~~~
-
 In addition to the base :class:`.DataStore` class, which lays out the interface to be
 implemented by all backend implementations, two partial implementations, :class:`.LocalStore`
 :class:`.RemoteStore` are provided as starting points for alternative backend implementations.
 These partial implementations have more specific abstract methods to implement
 
+
+Local stores
+~~~~~~~~~~~~
+
+The :class:`.LocalStore` partial implementation is for data stores that are mappings from
+specific data structures stored in directory trees on the local file-system (even if
+they are mounted from network drives), such as the basic :class:`.DirTree` or the BIDS_,
+:class:`.bids.Bids`, stores. The following abstract methdos are required to create a
+local store.
+
 .. autoclass:: frametree.core.store.LocalStore
     :noindex:
     :members: populate_tree, populate_row, get_fileset, get_field, put_fileset, put_field, fileset_uri, field_uri, get_fileset_provenance, get_field_provenance, put_fileset_provenance, put_field_provenance, create_data_tree
+
+
+Remote stores
+~~~~~~~~~~~~~
+
+The :class:`.RemoteStore` partial implementation is for managed informatics platforms such
+as XNAT_ and Flywheel_. It has a slightly different set of abstract methods that need to
+be implemented, such as `connect` and `disconnect`, which handle the login/out methods.
 
 .. autoclass:: frametree.core.store.RemoteStore
     :noindex:
@@ -160,3 +161,6 @@ axes for the date and weather station of the recordings, with the following code
 
 .. _Pydra: http://pydra.readthedocs.io
 .. _FileFormats: https://arcanaframework.github.io/fileformats
+.. _XNAT: https://xnat.org
+.. _BIDS: https://bids.neuroimaging.io
+.. _Flywheel: https://flywheel.io
