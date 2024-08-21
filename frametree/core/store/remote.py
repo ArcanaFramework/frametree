@@ -23,14 +23,14 @@ from frametree.core.exceptions import (
 from frametree.core.utils import dict_diff, full_path
 from ..entry import DataEntry
 from ..row import DataRow
-from .base import DataStore
+from .base import Store
 
 
 logger = logging.getLogger("frametree")
 
 
 @attrs.define
-class RemoteStore(DataStore):
+class RemoteStore(Store):
     """
     Access class for XNAT data repositories
 
@@ -349,7 +349,7 @@ class RemoteStore(DataStore):
                 space = store.DEFAULT_SPACE
                 hierarchy = store.DEFAULT_HIERRACHY
             except AttributeError:
-                from frametree.common.space import Samples
+                from frametree.common.axes import Samples
 
                 space = Samples
                 hierarchy = [Samples.sample]  # just create a dummy one

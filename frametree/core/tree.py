@@ -6,7 +6,7 @@ from collections import defaultdict
 import attrs
 import attrs.filters
 from frametree.core.utils import NestedContext
-from frametree.core.space import DataSpace
+from frametree.core.axes import Axes
 from frametree.core.exceptions import (
     FrameTreeNameError,
     FrameTreeConstructionError,
@@ -61,7 +61,7 @@ class DataTree(NestedContext):
             The sequence of labels for each layer in the hierarchy of the
             dataset leading to the current row.
         metadata : dict[str, ty.Dict[str, str]]
-            metadata passed to ``DataStore.infer_ids()`` used to infer IDs not directly
+            metadata passed to ``Store.infer_ids()`` used to infer IDs not directly
             represented in the hierarchy of the data tree.
 
         Returns
@@ -125,7 +125,7 @@ class DataTree(NestedContext):
             # then the ID of the axis out of the layer's axes with the least-
             # significant bit can be considered to be equivalent to the
             # ID of the layer and the IDs of the other axes of the layer set to None
-            # (the order of # the bits in the DataSpace class should be arranged to
+            # (the order of # the bits in the Axes class should be arranged to
             # account for this default behaviour).
             #
             # For example, given a hierarchy of ['subject', 'session'] in the `Clinical`
@@ -210,13 +210,13 @@ class DataTree(NestedContext):
             row_frequency=self.dataset.space.leaf(),
         )
 
-    def _add_row(self, ids: ty.Dict[DataSpace, str], row_frequency):
+    def _add_row(self, ids: ty.Dict[Axes, str], row_frequency):
         """Adds a row to the dataset, creating all parent "aggregate" rows
         (e.g. for each subject, group or timepoint) where required
 
         Parameters
         ----------
-        ids : dict[DataSpace, str]
+        ids : dict[Axes, str]
             ids of the row in all frequencies that it intersects
         row: DataRow
             The row to add into the data tree

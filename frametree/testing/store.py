@@ -11,7 +11,7 @@ from frametree.core.store import RemoteStore
 from frametree.core.row import DataRow
 from frametree.core.tree import DataTree
 from frametree.core.entry import DataEntry
-from frametree.core.space import DataSpace
+from frametree.core.axes import Axes
 from frametree.core.utils import full_path
 
 
@@ -30,7 +30,7 @@ class MockRemote(RemoteStore):
 
     Non-leaf "rows" (e.g. higher up in the data hierarchy) are stored in a separate
     base directory and are stored by the "span" of their frequency in the dataspace, e.g.
-    a row of frequency TestDataSpace.abc, would be stored at
+    a row of frequency TestAxes.abc, would be stored at
 
     /path/to/dataset/nodes/a=1.b=3.c=1/
     """
@@ -48,7 +48,7 @@ class MockRemote(RemoteStore):
     CHECKSUMS_FILE = "__CHECKSUMS__.json"
 
     #############################
-    # DataStore abstractmethods #
+    # Store abstractmethods #
     #############################
 
     def populate_tree(self, tree: DataTree):
@@ -344,9 +344,9 @@ class MockRemote(RemoteStore):
 
     @classmethod
     def get_row_dirname_from_ids(
-        cls, ids: ty.Dict[ty.Union[str, DataSpace], str], hierarchy: ty.List[str]
+        cls, ids: ty.Dict[ty.Union[str, Axes], str], hierarchy: ty.List[str]
     ):
-        # Ensure that ID keys are strings not DataSpace enums
+        # Ensure that ID keys are strings not Axes enums
         ids = {str(f): i for f, i in ids.items()}
         try:
             row_dirname = ".".join(f"{h}={ids[h]}" for h in hierarchy)

@@ -1,7 +1,7 @@
-from frametree.core.space import DataSpace
+from frametree.core.axes import Axes
 
 
-class Clinical(DataSpace):
+class Clinical(Axes):
     """
     An enum used to specify the hierarchy of data trees and the "frequencies" of items
     within dataset typical of medimage research, i.e. subjects split into groups scanned
@@ -30,7 +30,7 @@ class Clinical(DataSpace):
     # all groups and timepoints
 
 
-class Samples(DataSpace):
+class Samples(Axes):
     """
     The most basic data space within only one dimension
     """

@@ -1,6 +1,6 @@
 from operator import itemgetter
 import pytest
-from frametree.core.store import DataStore
+from frametree.core.store import Store
 from frametree.core.exceptions import FrameTreeConstructionError
 
 
@@ -63,7 +63,7 @@ ID_INFERENCE_TESTS = {
 )
 def test_id_inference(fixture):
     test_name, (explicit_ids, id_patterns, metadata, expected_ids) = fixture
-    assert expected_ids == DataStore.infer_ids(
+    assert expected_ids == Store.infer_ids(
         ids=explicit_ids, id_patterns=id_patterns, metadata=metadata
     )
 
@@ -72,28 +72,28 @@ def test_id_inference_fail1():
     with pytest.raises(
         FrameTreeConstructionError, match="Provided ID-pattern component"
     ):
-        DataStore.infer_ids(ids={"ab": "a0b0"}, id_patterns={"a": r"ab::xxx"})
+        Store.infer_ids(ids={"ab": "a0b0"}, id_patterns={"a": r"ab::xxx"})
 
 
 def test_id_inference_fail2():
     with pytest.raises(
         FrameTreeConstructionError, match="Provided ID-pattern component"
     ):
-        DataStore.infer_ids(ids={"ab": "a0b0"}, id_patterns={"a": r"ab::a\d+b\d+"})
+        Store.infer_ids(ids={"ab": "a0b0"}, id_patterns={"a": r"ab::a\d+b\d+"})
 
 
 def test_id_inference_fail3():
     with pytest.raises(
         FrameTreeConstructionError, match="Provided ID-pattern component"
     ):
-        DataStore.infer_ids(ids={"ab": "a0b0"}, id_patterns={"a": r"ab::a(\d+)b(\d+)"})
+        Store.infer_ids(ids={"ab": "a0b0"}, id_patterns={"a": r"ab::a(\d+)b(\d+)"})
 
 
 def test_id_inference_fail4():
     with pytest.raises(
         FrameTreeConstructionError, match="row doesn't have the metadata field"
     ):
-        DataStore.infer_ids(ids={"ab": "a0b0"}, id_patterns={"a": r"ab:metadata_field"})
+        Store.infer_ids(ids={"ab": "a0b0"}, id_patterns={"a": r"ab:metadata_field"})
 
 
 def test_id_inference_fail5():
@@ -101,4 +101,4 @@ def test_id_inference_fail5():
         FrameTreeConstructionError,
         match="Inferred IDs from decomposition conflict",
     ):
-        DataStore.infer_ids(ids={"ab": "a0b0"}, id_patterns={"ab": r"ab::a(\d+)b\d+"})
+        Store.infer_ids(ids={"ab": "a0b0"}, id_patterns={"ab": r"ab::a(\d+)b\d+"})

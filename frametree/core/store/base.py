@@ -26,7 +26,7 @@ from frametree.core.exceptions import (
 )
 
 
-DS = ty.TypeVar("DS", bound="DataStore")
+S = ty.TypeVar("S", bound="Store")
 
 logger = logging.getLogger("frametree")
 
@@ -55,11 +55,11 @@ class ConnectionManager(NestedContext):
 
 
 @attrs.define
-class DataStore(metaclass=ABCMeta):
+class Store(metaclass=ABCMeta):
     """
     Abstract base class for all data store adapters. A data store can be an external
     data management system, e.g. XNAT, OpenNeuro, Datalad or just a defined structure
-    of how to lay out data within a file-system, e.g. BIDS.
+    of how to lay out data within a file-system, e.g. BIS.
 
     For a data management system/data structure to be compatible with FrameTree, it must
     meet a number of criteria. In FrameTree, a store is assumed to
@@ -96,7 +96,7 @@ class DataStore(metaclass=ABCMeta):
     def save(
         self, name: ty.Optional[str] = None, config_path: ty.Optional[Path] = None
     ):
-        """Saves the configuration of a DataStore in 'stores.yaml'
+        """Saves the configuration of a Store in 'stores.yaml'
 
         Parameters
         ----------
@@ -130,11 +130,9 @@ class DataStore(metaclass=ABCMeta):
         return asdict(self, **kwargs)
 
     @classmethod
-    def load(
-        cls, name: str, config_path: ty.Optional[Path] = None, **kwargs
-    ) -> DataStore:
-        """Loads a DataStore from that has been saved in the configuration file.
-        If no entry is saved under that name, then it searches for DataStore
+    def load(cls, name: str, config_path: ty.Optional[Path] = None, **kwargs) -> Store:
+        """Loads a Store from that has been saved in the configuration file.
+        If no entry is saved under that name, then it searches for Store
         sub-classes with aliases matching `name` and checks whether they can
         be initialised without any parameters.
 
@@ -150,7 +148,7 @@ class DataStore(metaclass=ABCMeta):
 
         Returns
         -------
-        DataStore
+        Store
             The data store retrieved from the stores.yaml file
 
         Raises
@@ -199,7 +197,7 @@ class DataStore(metaclass=ABCMeta):
         id : str
             The ID (or file-system path) of the project (or directory) within
             the store
-        space: DataSpace
+        space: Axes
             The data space of the dataset
         hierarchy: ty.List[str]
             The hierarchy of the dataset
@@ -208,7 +206,7 @@ class DataStore(metaclass=ABCMeta):
             data tree, e.g. groups and timepoints in an XNAT project with subject>session
             hierarchy
         space : EnumMeta
-            The DataSpace enum that defines the frequencies (e.g.
+            The Axes enum that defines the frequencies (e.g.
             per-session, per-subject,...) present in the dataset.
         **kwargs:
             Keyword args passed on to the Dataset init method
@@ -330,7 +328,7 @@ class DataStore(metaclass=ABCMeta):
             the space of the dataset
         id_patterns : dict[str, str]
             Patterns for inferring IDs of rows not explicitly present in the hierarchy of
-            the data tree. See ``DataStore.infer_ids()`` for syntax
+            the data tree. See ``Store.infer_ids()`` for syntax
 
         Returns
         -------
@@ -385,7 +383,7 @@ class DataStore(metaclass=ABCMeta):
             dataset
         id_patterns : dict[str, str]
             Patterns for inferring IDs of rows not explicitly present in the hierarchy of
-            the data tree. See ``DataStore.infer_ids()`` for syntax
+            the data tree. See ``Store.infer_ids()`` for syntax
         use_original_paths : bool, optional
             use the original paths in the source store instead of renaming the imported
             entries to match their column names
@@ -462,7 +460,7 @@ class DataStore(metaclass=ABCMeta):
         # If not saved in the configuration file search for sub-classes
         # whose alias matches `name` and can be initialised without params
         cls._singletons = {}
-        for store_cls in list_subclasses(frametree, DataStore):
+        for store_cls in list_subclasses(frametree, Store):
             try:
                 store = store_cls()
             except Exception:
@@ -816,7 +814,7 @@ class DataStore(metaclass=ABCMeta):
         -------
         session : Any
             a session object that will be stored in the connection manager and
-            accessible at `DataStore.connection`
+            accessible at `Store.connection`
         """
 
     @abstractmethod
@@ -857,11 +855,11 @@ class DataStore(metaclass=ABCMeta):
             [("SUBJ01", "TIMEPOINT01"), ("SUBJ01", "TIMEPOINT02"), ....]
         hierarchy: ty.List[str]
             the hierarchy of the dataset to be created
-        space : type(DataSpace)
+        space : type(Axes)
             the data space of the dataset
         id_patterns : dict[str, str]
             Patterns for inferring IDs of rows not explicitly present in the hierarchy of
-            the data tree. See ``DataStore.infer_ids()`` for syntax
+            the data tree. See ``Store.infer_ids()`` for syntax
         **kwargs
             implementing methods should take wildcard ``kwargs`` to allow compatibility
             with future arguments that might be added

@@ -2,13 +2,13 @@
 # import pytest
 # from functools import partial
 # from multiprocessing import Pool, cpu_count
-# from frametree.core.store import DataStore
+# from frametree.core.store import Store
 # from frametree.testing.blueprint import TestDatasetBlueprint
 # from frametree.testing import MockRemote
 # from frametree.core.utils.misc import add_exc_note
 from pathlib import Path
 import pytest
-from frametree.common import DirTree, Clinical
+from frametree.common import FileSystem, Clinical
 from frametree.testing.blueprint import TEST_DATASET_BLUEPRINTS
 
 
@@ -16,7 +16,7 @@ from frametree.testing.blueprint import TEST_DATASET_BLUEPRINTS
 def test_blueprint_translation(blueprint_name: str, work_dir: Path):
     blueprint = TEST_DATASET_BLUEPRINTS[blueprint_name]
     translated = blueprint.translate_to(Clinical)
-    translated.make_dataset(store=DirTree(), dataset_id=work_dir / "blueprint")
+    translated.make_dataset(store=FileSystem(), dataset_id=work_dir / "blueprint")
 
 
 # @pytest.mark.skipif(
@@ -29,7 +29,7 @@ def test_blueprint_translation(blueprint_name: str, work_dir: Path):
 #     method: str,
 # ):
 #     try:
-#         data_store = DataStore.load(store_name)
+#         data_store = Store.load(store_name)
 #         if method == "make":
 #             dataset = blueprint.make_dataset(data_store, dataset_id)
 #         elif method == "access":

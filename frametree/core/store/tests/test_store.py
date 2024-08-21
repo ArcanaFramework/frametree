@@ -8,10 +8,10 @@ from fileformats.generic import File
 from fileformats.text import TextFile
 from fileformats.field import Text as TextField
 from frametree.core.set.base import Dataset
-from frametree.core.store import DataStore
+from frametree.core.store import Store
 from frametree.core.entry import DataEntry
 from frametree.core.serialize import asdict
-from frametree.common import DirTree
+from frametree.common import FileSystem
 from frametree.testing.blueprint import (
     TestDatasetBlueprint,
     FileSetEntryBlueprint as FileBP,
@@ -37,7 +37,7 @@ def test_populate_tree(dataset: Dataset):
 def test_populate_row(dataset):
     blueprint = dataset.__annotations__["blueprint"]
     for row in dataset.rows("abcd"):
-        if isinstance(dataset.store, DirTree):
+        if isinstance(dataset.store, FileSystem):
             expected_paths = sorted(
                 chain(
                     (e.path for e in blueprint.entries if isinstance(e, FieldBP)),
@@ -75,7 +75,7 @@ def test_post(dataset: Dataset):
             for row in dataset.rows(deriv_bp.row_frequency):
                 cell = row.cell(deriv_bp.path, allow_empty=False)
                 item = cell.item
-                if item.is_fileset and isinstance(dataset.store, DirTree):
+                if item.is_fileset and isinstance(dataset.store, FileSystem):
                     assert item.fspath.relative_to(dataset.id)
                 assert isinstance(item, deriv_bp.datatype)
                 if deriv_bp.datatype.is_fileset:
@@ -135,8 +135,8 @@ def test_provenance_roundtrip(datatype: type, value: str, saved_dataset: Dataset
 
 
 def test_singletons():
-    standard = set(["dirtree"])
-    assert set(DataStore.singletons()) & standard == standard
+    standard = set(["file_system"])
+    assert set(Store.singletons()) & standard == standard
 
 
 @pytest.mark.skipif(

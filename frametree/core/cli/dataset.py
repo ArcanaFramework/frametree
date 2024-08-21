@@ -4,8 +4,8 @@ import logging
 from pathlib import Path
 from .base import cli
 from frametree.core.set.base import Dataset
-from frametree.core.store import DataStore
-from frametree.core.space import DataSpace
+from frametree.core.store import Store
+from frametree.core.axes import Axes
 from fileformats.core import DataType
 from frametree.core.serialize import ClassResolver
 
@@ -106,10 +106,10 @@ def define(dataset_locator, hierarchy, include, exclude, space, id_pattern):
     if not hierarchy:
         hierarchy = None
 
-    store = DataStore.load(store_name)
+    store = Store.load(store_name)
 
     if space:
-        space = ClassResolver(DataSpace)(space)
+        space = ClassResolver(Axes)(space)
 
     dataset = store.define_dataset(
         id,
@@ -359,7 +359,7 @@ def export(
     use_original_paths,
 ):
     dataset = Dataset.load(dataset_locator)
-    store = DataStore.load(store_nickname)
+    store = Store.load(store_nickname)
     if hierarchy:
         hierarchy = hierarchy.split(",")
     if not column_names:
@@ -425,7 +425,7 @@ def install_license(install_locations, license_name, source_file, logfile, logle
         source_file = Path(source_file.decode("utf-8"))
 
     if not install_locations:
-        install_locations = ["dirtree"]
+        install_locations = ["file_system"]
 
     for install_loc in install_locations:
         if "//" in install_loc:
@@ -433,7 +433,7 @@ def install_license(install_locations, license_name, source_file, logfile, logle
             store_name, _, _ = Dataset.parse_id_str(install_loc)
             msg = f"for '{dataset.name}' dataset on {store_name} store"
         else:
-            store = DataStore.load(install_loc)
+            store = Store.load(install_loc)
             dataset = store.site_licenses_dataset()
             if dataset is None:
                 raise ValueError(

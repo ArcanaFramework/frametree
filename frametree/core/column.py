@@ -12,7 +12,7 @@ from pydra.utils.hash import hash_single
 from frametree.core.exceptions import FrameTreeDataMatchError
 from .salience import ColumnSalience
 from .quality import DataQuality
-from .space import DataSpace
+from .axes import Axes
 from .cell import DataCell
 from .entry import DataEntry
 
@@ -29,9 +29,7 @@ class DataColumn(metaclass=ABCMeta):
 
     name: str
     datatype: type = attrs.field()
-    row_frequency: DataSpace = attrs.field(
-        validator=attrs.validators.instance_of(DataSpace)
-    )
+    row_frequency: Axes = attrs.field(validator=attrs.validators.instance_of(Axes))
     path: ty.Optional[str] = None
     dataset: Dataset = attrs.field(
         default=None, metadata={"asdict": False}, eq=False, hash=False, repr=False
@@ -239,7 +237,7 @@ class DataSource(DataColumn):
         the name of the column
     datatype : type
         the data type of items in the column
-    row_frequency : DataSpace
+    row_frequency : Axes
         the frequency of the "rows" (data nodes) within the dataset tree, e.g. for the
         ``Clinical`` data spce the row frequency can be per 'session', 'subject',
         'timepoint', 'group', 'dataset', et...
@@ -380,7 +378,7 @@ class DataSink(DataColumn):
         the name of the column
     datatype : type
         the data type of items in the column
-    row_frequency : DataSpace
+    row_frequency : Axes
         the frequency of the "rows" (data nodes) within the dataset tree, e.g. for the
         ``Clinical`` data spce the row frequency can be per 'session', 'subject',
         'timepoint', 'group', 'dataset', et...

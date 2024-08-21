@@ -18,7 +18,7 @@ from frametree.core.exceptions import (
 from frametree.core.utils import get_home_dir, append_suffix
 from ..row import DataRow
 from ..entry import DataEntry
-from .base import DataStore
+from .base import Store
 
 
 logger = logging.getLogger("frametree")
@@ -31,7 +31,7 @@ special_dir_re = re.compile(r"(__.*__$|\..*|~.*)")
 
 
 @attrs.define
-class LocalStore(DataStore):
+class LocalStore(Store):
     """
     A Repository class for data stored hierarchically within sub-directories
     of a file-system directory. The depth and which layer in the data tree

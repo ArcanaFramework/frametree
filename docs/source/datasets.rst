@@ -104,7 +104,7 @@ For example, a project called "MYXNATPROJECT" stored in
 created in the :ref:`Stores` Section, would be ``xnat-central//MYXNATPROJECT``.
 
 Alternatively, dataset objects can be created directly via the Python API using
-the :meth:`.DataStore.dataset` method. For example, to define a new dataset
+the :meth:`.Store.dataset` method. For example, to define a new dataset
 corresponding to *MYXNATPROJECT*
 
 .. code-block:: python
@@ -272,7 +272,7 @@ potential categories to make them more general.
 .. TODO: another 3D grid plot
 
 All combinations of the data spaces axes are given a name within
-:class:`.DataSpace` enums. In the case of the :class:`.medimage.Clinical`
+:class:`.Axes` enums. In the case of the :class:`.medimage.Clinical`
 data space, the members are
 
 * **group** (group)
@@ -352,7 +352,7 @@ axes
 .. and how the layers add to one another
 
 For stores that support datasets with arbitrary tree structures
-(i.e. :class:`.DirTree`), the "data space" and the hierarchy of layers
+(i.e. :class:`.FileSystem`), the "data space" and the hierarchy of layers
 in the data tree needs to be provided. Data spaces are explained in more
 detail in :ref:`data_spaces`. However, for the majority of datasets in the
 medical imaging field, the :class:`frametree.medimage.data.Clinical` space is
@@ -360,10 +360,10 @@ appropriate.
 
 .. code-block:: python
 
-    from frametree.dirtree import DirTree
+    from frametree.file_system import FileSystem
     from frametree.common import Clinical
 
-    fs_dataset = DirTree().dataset(
+    fs_dataset = FileSystem().dataset(
         id='/data/imaging/my-project',
         # Define the hierarchy of the dataset in which imaging session
         # sub-directories are separated into directories via their study group

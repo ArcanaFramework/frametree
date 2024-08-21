@@ -19,7 +19,7 @@ from fileformats.core import DataType
 from fileformats.core.exceptions import FormatConversionError
 import frametree.core.set.base
 import frametree.core.row
-from .space import DataSpace
+from .axes import Axes
 from .utils import (
     func_task,
     pydra_eq,
@@ -81,7 +81,7 @@ class Pipeline:
     ----------
     name : str
         the name of the pipeline, used to differentiate it from others
-    row_frequency : DataSpace, optional
+    row_frequency : Axes, optional
         The row_frequency of the pipeline, i.e. the row_frequency of the
         derivatvies within the dataset, e.g. per-session, per-subject, etc,
         by default None
@@ -104,7 +104,7 @@ class Pipeline:
     """
 
     name: str = attrs.field()
-    row_frequency: DataSpace = attrs.field()
+    row_frequency: Axes = attrs.field()
     workflow: Workflow = attrs.field(eq=attrs.cmp_using(pydra_eq))
     inputs: ty.List[PipelineField] = attrs.field(
         converter=ObjectListConverter(PipelineField)
@@ -274,7 +274,7 @@ class Pipeline:
                 source_items,
                 in_fields=[
                     ("dataset", frametree.core.set.base.Dataset),
-                    ("row_frequency", DataSpace),
+                    ("row_frequency", Axes),
                     ("id", str),
                     ("inputs", ty.List[PipelineField]),
                     ("parameterisation", ty.Dict[str, ty.Any]),
@@ -367,7 +367,7 @@ class Pipeline:
                 in_fields=(
                     [
                         ("dataset", frametree.core.set.base.Dataset),
-                        ("row_frequency", DataSpace),
+                        ("row_frequency", Axes),
                         ("id", str),
                         ("provenance", ty.Dict[str, ty.Any]),
                     ]
@@ -522,7 +522,7 @@ def split_side_car_suffix(name):
 @pydra.mark.annotate({"return": {"ids": ty.List[str], "cant_process": ty.List[str]}})
 def to_process(
     dataset: frametree.core.set.base.Dataset,
-    row_frequency: DataSpace,
+    row_frequency: Axes,
     outputs: ty.List[PipelineField],
     requested_ids: ty.Union[ty.List[str], None],
     parameterisation: ty.Dict[str, ty.Any],
@@ -548,7 +548,7 @@ def to_process(
 
 def source_items(
     dataset: frametree.core.set.base.Dataset,
-    row_frequency: DataSpace,
+    row_frequency: Axes,
     id: str,
     inputs: ty.List[PipelineField],
     parameterisation: dict,
@@ -561,7 +561,7 @@ def source_items(
     ----------
     dataset : Dataset
         the dataset to source the data from
-    row_frequency : DataSpace
+    row_frequency : Axes
         the frequency of the row to source the data from
     id : str
         the ID of the row to source from
@@ -596,7 +596,7 @@ def sink_items(dataset, row_frequency, id, provenance, **to_sink):
     ----------
     dataset : Dataset
         the dataset to source the data from
-    row_frequency : DataSpace
+    row_frequency : Axes
         the frequency of the row to source the data from
     id : str
         the ID of the row to source from

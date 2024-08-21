@@ -2,7 +2,7 @@ Stores
 ======
 
 Support for different file storage systems (e.g. `XNAT <https://xnat.org>`__, `BIDS <https://bids.neuroimaging.io>`__)
-is provided by sub-classes of :class:`.DataStore`. Data store
+is provided by sub-classes of :class:`.Store`. Data store
 classes not only encapsulate where the data are stored, e.g. on local disk or
 remote repository, but also how the data are accessed, e.g. whether to assume that
 they are in BIDS format, or whether files in an XNAT archive mount can be
@@ -11,7 +11,7 @@ accessed directly (i.e. as exposed to the container service), or only via the AP
 There are currently four supported store classes in the main, `frametree-bids` and `frametree-xnat`
 packages
 
-* :class:`.DirTree` - access data organised within an arbitrary directory tree on the file system
+* :class:`.FileSystem` - access data organised within an arbitrary directory tree on the file system
 * :class:`.Bids` - access data on file systems organised in the `Brain Imaging Data Structure (BIDS) <https://bids.neuroimaging.io/>`__
 * :class:`.Xnat` - access data stored in XNAT_ repositories vi its REST API
 * :class:`.XnatViaCS` - access data stored in XNAT_ via its `container service <https://wiki.xnat.org/container-service/using-the-container-service-122978908.html>`_
@@ -64,7 +64,7 @@ data store classes directly.
     xnat_store.save('xnat-central')
 
     # Reload store from configuration file
-    reloaded = DataStore.load('xnat-central')
+    reloaded = Store.load('xnat-central')
 
 .. note::
 

@@ -1,6 +1,6 @@
 from frametree.core.cli.store import add, ls, remove, rename
 from frametree.core.utils import show_cli_trace
-from frametree.core.store import DataStore
+from frametree.core.store import Store
 
 STORE_URI = "http://dummy.uri"
 STORE_USER = "a_user"
@@ -115,7 +115,7 @@ def test_store_cli_encrypt_credentials(cli_runner, frametree_home, work_dir):
     )
     assert result.exit_code == 0, show_cli_trace(result)
     # Check credentials have been encrypted
-    loaded_store = DataStore.load(store_name)
+    loaded_store = Store.load(store_name)
     assert loaded_store.password != ""
     assert loaded_store.password is not STORE_PASSWORD
     assert loaded_store.user != ""

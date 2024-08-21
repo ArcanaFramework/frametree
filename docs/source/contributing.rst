@@ -35,11 +35,11 @@ Alternative Backends
 --------------------
 
 Alternative storage systems can be implemented by writing a new subclass of
-:class:`.DataStore`. The developers are interested in adding support for new systems,
+:class:`.Store`. The developers are interested in adding support for new systems,
 so if you would help to use FrameTree with a different storage system please
 create an issue for it in the `GitHub Issue Tracker <https://github.com/Australian-Imaging-Service/frametree/issues>`__.
 
-In addition to the base :class:`.DataStore` class, which lays out the interface to be
+In addition to the base :class:`.Store` class, which lays out the interface to be
 implemented by all backend implementations, two partial implementations, :class:`.LocalStore`
 :class:`.RemoteStore` are provided as starting points for alternative backend implementations.
 These partial implementations have more specific abstract methods to implement
@@ -50,7 +50,7 @@ Local stores
 
 The :class:`.LocalStore` partial implementation is for data stores that are mappings from
 specific data structures stored in directory trees on the local file-system (even if
-they are mounted from network drives), such as the basic :class:`.DirTree` or the BIDS_,
+they are mounted from network drives), such as the basic :class:`.FileSystem` or the BIDS_,
 :class:`.bids.Bids`, stores. The following abstract methdos are required to create a
 local store.
 
@@ -82,7 +82,7 @@ file formats and "data spaces". File formats are specified using the FileFormats
 Please refer to its documentation on how to add new file formats.
 
 New data spaces (see :ref:`data_spaces`) are defined by extending the
-:class:`.DataSpace` abstract base class. :class:`.DataSpace` subclasses are be
+:class:`.Axes` abstract base class. :class:`.Axes` subclasses are be
 `enums <https://docs.python.org/3/library/enum.html>`_ with binary string
 values of consistent length (i.e. all of length 2 or all of length 3, etc...).
 The length of the binary string defines the rank of the data space,
@@ -98,7 +98,7 @@ visualise the imaging sessions arranged in a 3-D grid along the `group`, `member
 time-point can still be represented in this space, and just be singleton along
 the corresponding axis.
 
-All axes should be included as members of a DataSpace subclass
+All axes should be included as members of a Axes subclass
 enum with orthogonal binary vector values, e.g.::
 
     member = 0b001
@@ -143,9 +143,9 @@ axes for the date and weather station of the recordings, with the following code
 
 .. code-block:: python
 
-    from frametree.core.space import DataSpace
+    from frametree.core.axes import Axes
 
-    class Weather(DataSpace):
+    class Weather(Axes):
 
         # Define the axes of the dataspace
         timepoint = 0b01

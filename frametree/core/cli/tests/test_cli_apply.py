@@ -5,7 +5,7 @@ from frametree.core.utils import show_cli_trace
 
 
 def test_apply_pipeline_cli(saved_dataset: Dataset, concatenate_task, cli_runner):
-    # Get CLI name for dataset (i.e. file system path prepended by 'dirtree//')
+    # Get CLI name for dataset (i.e. file system path prepended by 'file_system//')
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
     duplicates = 5

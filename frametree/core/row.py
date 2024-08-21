@@ -7,7 +7,7 @@ from frametree.core.exceptions import (
 )
 from fileformats.core import DataType
 from .quality import DataQuality
-from .space import DataSpace
+from .axes import Axes
 from .cell import DataCell
 from .entry import DataEntry
 
@@ -23,7 +23,7 @@ class DataRow:
 
     Parameters
     ----------
-    ids : Dict[DataSpace, str]
+    ids : Dict[Axes, str]
         The ids for the frequency of the row and all "parent" frequencies
         within the tree
     dataset : Dataset
@@ -38,7 +38,7 @@ class DataRow:
         appropriate, by default None
     """
 
-    ids: ty.Dict[DataSpace, str] = attrs.field()
+    ids: ty.Dict[Axes, str] = attrs.field()
     dataset: Dataset = attrs.field(repr=False)
     frequency: str = attrs.field()
     tree_path: ty.List[str] = None
@@ -46,8 +46,8 @@ class DataRow:
     metadata: ty.Optional[dict] = None
 
     # Automatically populated fields
-    children: ty.Dict[DataSpace, ty.Dict[ty.Union[str, ty.Tuple[str]], str]] = (
-        attrs.field(factory=dict, repr=False, init=False)
+    children: ty.Dict[Axes, ty.Dict[ty.Union[str, ty.Tuple[str]], str]] = attrs.field(
+        factory=dict, repr=False, init=False
     )
     _entries_dict: ty.Dict[str, DataEntry] = attrs.field(
         default=None, init=False, repr=False
@@ -154,7 +154,7 @@ class DataRow:
     def label(self):
         return self.tree_path[-1]
 
-    def frequency_id(self, frequency: ty.Union[str, DataSpace]):
+    def frequency_id(self, frequency: ty.Union[str, Axes]):
         return self.ids[self.dataset.space[str(frequency)]]
 
     def __iter__(self):

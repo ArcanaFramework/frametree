@@ -5,20 +5,20 @@ from frametree.core.serialize import ClassResolver
 from frametree.core.utils import classproperty
 
 
-class DataSpace(Enum):
+class Axes(Enum):
     """
-    Base class for all "data space" enums. DataSpace enums specify
-    the relationships between rows of a dataset.
+    Base class for all "data axes" enums. Axes specify the categorical variables along
+    which grids of data points are laid out on.
 
     For example in imaging studies, scannings sessions are typically organised
     by analysis group (e.g. test & control), membership within the group (i.e
-    matched subjects) and time-points (for longitudinal studies). We can
+    control-matched subjects) and time-points (for longitudinal studies). We can
     visualise the rows arranged in a 3-D grid along the `group`, `member`, and
     `timepoint` dimensions. Note that datasets that only contain one group or
     time-point can still be represented in the same space, and just be of
     depth=1 along those dimensions.
 
-    All dimensions should be included as members of a DataSpace subclass
+    All dimensions should be included as members of a Axes subclass
     enum with orthogonal binary vector values, e.g.
 
         member = 0b001
@@ -157,7 +157,7 @@ class DataSpace(Enum):
 
         Parameters
         ----------
-        child : DataSpace
+        child : Axes
             The data frequency to check parent/child relationship with
         if_match : bool
             Treat matching frequencies as "parents" of each other
@@ -185,6 +185,6 @@ class DataSpace(Enum):
 
     @classproperty
     def SUBPACKAGE(cls):
-        """Cannot be a regular class attribute because then DataSpace won't be able to
+        """Cannot be a regular class attribute because then Axes won't be able to
         be extended"""
         return "data"

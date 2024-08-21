@@ -25,7 +25,7 @@ special_dir_re = re.compile(r"(__.*__$|\..*|~.*)")
 
 
 @attrs.define
-class DirTree(LocalStore):
+class FileSystem(LocalStore):
     """
     A Repository class for data stored hierarchically within sub-directories
     of a file-system directory. The depth and which layer in the data tree
@@ -45,7 +45,7 @@ class DirTree(LocalStore):
 
     # Note this name will be constant, as there is only ever one store,
     # which covers whole FS
-    name: str = "dirtree"
+    name: str = "file_system"
 
     #################################
     # Abstract-method implementations
@@ -194,12 +194,12 @@ class DirTree(LocalStore):
         if new_ext:
             if len(fileset.fspaths) > 1:
                 raise FrameTreeUsageError(
-                    "Cannot store file-set with multiple files in dirtree store "
+                    "Cannot store file-set with multiple files in file_system store "
                     "when extension is specified"
                 )
             if new_ext != FileSet.decompose_fspath(fileset.fspath)[2]:
                 raise FrameTreeUsageError(
-                    "Cannot change extension of file-set when copying to dirtree store"
+                    "Cannot change extension of file-set when copying to file_system store"
                 )
         # Create target directory if it doesn't exist already
         copied_fileset = fileset.copy(
@@ -350,7 +350,7 @@ class DirTree(LocalStore):
             [("SUBJ01", "TIMEPOINT01"), ("SUBJ01", "TIMEPOINT02"), ....]
         hierarchy: ty.List[str]
             the hierarchy of the dataset to be created
-        space : type(DataSpace)
+        space : type(Axes)
             the data space of the dataset
         """
         root_dir = Path(id)
