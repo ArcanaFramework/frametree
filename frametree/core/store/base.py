@@ -259,7 +259,7 @@ class Store(metaclass=ABCMeta):
         if name is None:
             name = frameset.name
         with self.connection:
-            self.save_grid_definition(frameset.id, definition, name=save_name)
+            self.save_frameset_definition(frameset.id, definition, name=save_name)
 
     def load_frameset(self, id, name: str = "", **kwargs) -> FrameSet:
         """Load an existing dataset definition
@@ -286,7 +286,7 @@ class Store(metaclass=ABCMeta):
             name = ""
         saved_name = name if name else self.EMPTY_DATASET_NAME
         with self.connection:
-            dct = self.load_grid_definition(id, saved_name)
+            dct = self.load_frameset_definition(id, saved_name)
         if dct is None:
             raise KeyError(f"Did not find a dataset '{id}@{name}'")
         store_version = dct.pop(self.VERSION_KEY)
@@ -759,7 +759,7 @@ class Store(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def save_grid_definition(
+    def save_frameset_definition(
         self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
     ):
         """Save definition of dataset within the store
@@ -778,7 +778,9 @@ class Store(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def load_grid_definition(self, dataset_id: str, name: str) -> ty.Dict[str, ty.Any]:
+    def load_frameset_definition(
+        self, dataset_id: str, name: str
+    ) -> ty.Dict[str, ty.Any]:
         """Load definition of a dataset saved within the store
 
         Parameters

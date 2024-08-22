@@ -92,9 +92,9 @@ class RemoteStore(Store):
 
     # populate_row
 
-    # save_grid_definition
+    # save_frameset_definition
 
-    # load_grid_definition
+    # load_frameset_definition
 
     # connect
 

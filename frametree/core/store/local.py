@@ -249,13 +249,13 @@ class LocalStore(Store):
             uri = self.field_uri(path, datatype, row)
         return row.add_entry(path=path, datatype=datatype, uri=uri)
 
-    def save_grid_definition(self, dataset_id, definition, name):
+    def save_frameset_definition(self, dataset_id, definition, name):
         definition_path = self.definition_save_path(dataset_id, name)
         definition_path.parent.mkdir(exist_ok=True, parents=True)
         with open(definition_path, "w") as f:
             yaml.dump(definition, f)
 
-    def load_grid_definition(self, dataset_id, name):
+    def load_frameset_definition(self, dataset_id, name):
         fspath = self.definition_save_path(dataset_id, name)
         if fspath.exists():
             with open(fspath) as f:

@@ -101,7 +101,7 @@ class MockRemote(RemoteStore):
                     uri=full_path(path).relative_to(self.remote_dir),
                 )
 
-    def save_grid_definition(
+    def save_frameset_definition(
         self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
     ):
         """Save definition of dataset within the store
@@ -123,7 +123,9 @@ class MockRemote(RemoteStore):
         with open(definition_path, "w") as f:
             yaml.dump(definition, f)
 
-    def load_grid_definition(self, dataset_id: str, name: str) -> ty.Dict[str, ty.Any]:
+    def load_frameset_definition(
+        self, dataset_id: str, name: str
+    ) -> ty.Dict[str, ty.Any]:
         """Load definition of a dataset saved within the store
 
         Parameters

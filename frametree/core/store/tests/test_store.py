@@ -111,10 +111,10 @@ def test_grid_roundtrip(dataset: FrameSet):
     data_store = dataset.store
 
     with data_store.connection:
-        data_store.save_grid_definition(
+        data_store.save_frameset_definition(
             dataset_id=dataset.id, definition=definition, name="test_dataset"
         )
-        reloaded_definition = data_store.load_grid_definition(
+        reloaded_definition = data_store.load_frameset_definition(
             dataset_id=dataset.id, name="test_dataset"
         )
     assert definition == reloaded_definition
