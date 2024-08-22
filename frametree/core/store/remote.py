@@ -314,7 +314,7 @@ class RemoteStore(Store):
 
         Returns
         -------
-        Grid or None
+        FrameSet or None
             the dataset that holds site-wide licenses
         user: str, optional
             Username with which to connect to XNAT with, by default None
@@ -342,7 +342,7 @@ class RemoteStore(Store):
         del kwargs["connection"]
         store = type(self)(**kwargs)
         try:
-            return store.load_grid(self.SITE_LICENSES_DATASET)
+            return store.load_frameset(self.SITE_LICENSES_DATASET)
         except KeyError:
             # If no site-wide licenses dataset exists, try to create one
             try:
@@ -358,11 +358,11 @@ class RemoteStore(Store):
                     self.SITE_LICENSES_DATASET, [], hierarchy=hierarchy
                 )
             with store.connection:
-                dataset = store.define_grid(
+                dataset = store.define_frameset(
                     self.SITE_LICENSES_DATASET, axes=axes, hierarchy=hierarchy
                 )
                 dataset.save()
-            return store.load_grid(self.SITE_LICENSES_DATASET)
+            return store.load_frameset(self.SITE_LICENSES_DATASET)
 
     ###################
     # Get and putters #

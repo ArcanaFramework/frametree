@@ -1,10 +1,10 @@
 from pathlib import Path
 import pytest
-from frametree.core.grid.base import Grid
+from frametree.core.frameset.base import FrameSet
 from frametree.core.salience import ColumnSalience
 from frametree.core.quality import DataQuality
 from frametree.testing import TestAxes
-from frametree.core.cli.grid import (
+from frametree.core.cli.frameset import (
     define,
     add_source,
     add_sink,
@@ -31,7 +31,7 @@ def get_arbitrary_slice(i, dim_length):
     return lower, upper
 
 
-def test_add_column_cli(saved_dataset: Grid, cli_runner):
+def test_add_column_cli(saved_dataset: FrameSet, cli_runner):
     # Get CLI name for dataset (i.e. file system path prepended by 'file_system//')
     # Add source to loaded dataset
     saved_dataset.add_source(
@@ -88,17 +88,17 @@ def test_add_column_cli(saved_dataset: Grid, cli_runner):
     assert result.exit_code == 0, show_cli_trace(result)
     # Reload the saved dataset and check the parameters were saved/loaded
     # correctly
-    loaded_dataset = Grid.load(saved_dataset.locator)
+    loaded_dataset = FrameSet.load(saved_dataset.locator)
     assert saved_dataset.columns == loaded_dataset.columns
 
 
 @pytest.mark.skip("Not implemented")
-def test_add_missing_items_cli(saved_dataset: Grid, cli_runner):
+def test_add_missing_items_cli(saved_dataset: FrameSet, cli_runner):
     result = cli_runner(missing_items, [])
     assert result.exit_code == 0, show_cli_trace(result)
 
 
-def test_define_cli(dataset: Grid, cli_runner):
+def test_define_cli(dataset: FrameSet, cli_runner):
     blueprint = dataset.__annotations__["blueprint"]
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
     path = dataset.locator
@@ -126,7 +126,7 @@ def test_define_cli(dataset: Grid, cli_runner):
     assert result.exit_code == 0, show_cli_trace(result)
     # Reload the saved dataset and check the parameters were saved/loaded
     # correctly
-    loaded_dataset = Grid.load(path)
+    loaded_dataset = FrameSet.load(path)
     assert loaded_dataset.hierarchy == blueprint.hierarchy
     assert loaded_dataset.include == included
     assert loaded_dataset.exclude == excluded
@@ -169,7 +169,7 @@ def test_export_import_roundtrip(cli_runner, work_dir: Path, frametree_home):
         ],
     )
     assert result.exit_code == 0, show_cli_trace(result)
-    local_dataset = FileSystem().load_grid(local_dataset_id)
+    local_dataset = FileSystem().load_frameset(local_dataset_id)
     result = cli_runner(
         export,
         [
@@ -179,6 +179,6 @@ def test_export_import_roundtrip(cli_runner, work_dir: Path, frametree_home):
         ],
     )
     assert result.exit_code == 0, show_cli_trace(result)
-    reimported = mock_remote.load_grid("reimported")
+    reimported = mock_remote.load_frameset("reimported")
     reimported.id = "original"
     assert reimported == original

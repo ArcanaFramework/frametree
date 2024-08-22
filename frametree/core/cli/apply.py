@@ -1,6 +1,6 @@
 import click
 import typing as ty
-from frametree.core.grid.base import Grid
+from frametree.core.frameset.base import FrameSet
 from pydra.engine.core import TaskBase
 from frametree.core.serialize import ClassResolver, parse_value
 from fileformats.core import from_mime
@@ -124,7 +124,7 @@ def apply_pipeline(
     overwrite,
 ):
 
-    grid = Grid.load(address)
+    frameset = FrameSet.load(address)
     workflow = ClassResolver(TaskBase, alternative_types=[ty.Callable])(
         workflow_location
     )(name="workflow", **{n: parse_value(v) for n, v in parameter})
@@ -135,14 +135,14 @@ def apply_pipeline(
     sinks = parse_col_option(sink)
 
     for col_name, field, datatype in sources:
-        grid.add_source(col_name, datatype)
+        frameset.add_source(col_name, datatype)
         inputs.append((col_name, field, datatype))
 
     for col_name, field, datatype in sinks:
-        grid.add_sink(col_name, datatype)
+        frameset.add_sink(col_name, datatype)
         outputs.append((col_name, field, datatype))
 
-    grid.apply_pipeline(
+    frameset.apply_pipeline(
         pipeline_name,
         workflow,
         inputs,
@@ -151,7 +151,7 @@ def apply_pipeline(
         overwrite=overwrite,
     )
 
-    grid.save()
+    frameset.save()
 
 
 @apply.command(name="analysis", help="""Applies an analysis class to a dataset""")

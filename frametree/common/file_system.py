@@ -8,7 +8,7 @@ import json
 import attrs
 from fileformats.core import FileSet, Field
 from frametree.core.exceptions import FrameTreeUsageError
-from frametree.core.grid.base import DataTree
+from frametree.core.frameset.base import DataTree
 from frametree.core.row import DataRow
 from frametree.core.entry import DataEntry
 from frametree.core.store import LocalStore
@@ -57,7 +57,7 @@ class FileSystem(LocalStore):
 
         Parameters
         ----------
-        dataset : Grid
+        dataset : FrameSet
             The dataset to construct the tree dimensions for
         """
         if not os.path.exists(tree.dataset_id):
@@ -100,7 +100,7 @@ class FileSystem(LocalStore):
                 ):
                     yield subpath
 
-        root_dir = full_path(row.grid.id)
+        root_dir = full_path(row.frameset.id)
 
         # Iterate through all directories saved for the source and dataset derivatives
         for dataset_name in self._row_dataset_names(row):
@@ -346,7 +346,7 @@ class FileSystem(LocalStore):
         leaves : list[tuple[str, ...]]
                         list of IDs for each leaf node to be added to the dataset. The IDs for each
             leaf should be a tuple with an ID for each level in the tree's hierarchy, e.g.
-            for a hierarchy of [subject, timepoint] ->
+            for a hierarchy of [subject, visit] ->
             [("SUBJ01", "TIMEPOINT01"), ("SUBJ01", "TIMEPOINT02"), ....]
         hierarchy: ty.List[str]
             the hierarchy of the dataset to be created
@@ -380,8 +380,8 @@ class FileSystem(LocalStore):
             the relative path to the row directory
         """
         relpath = Path()
-        if row.frequency is max(row.grid.axes):  # leaf node
-            for freq in row.grid.hierarchy:
+        if row.frequency is max(row.frameset.axes):  # leaf node
+            for freq in row.frameset.hierarchy:
                 relpath /= row.frequency_id(freq)
             if dataset_name is not None:
                 relpath /= self.FRAMETREE_DIR
@@ -420,7 +420,9 @@ class FileSystem(LocalStore):
             list of dataset names stored in the given row
         """
         dataset_names = [None]  # The source data
-        derivs_dir = Path(row.grid.id) / self._row_relpath(row, dataset_name="").parent
+        derivs_dir = (
+            Path(row.frameset.id) / self._row_relpath(row, dataset_name="").parent
+        )
         if derivs_dir.exists():
             dataset_names.extend(
                 ("" if d.name == self.EMPTY_DATASET_NAME else d.name)
@@ -430,11 +432,11 @@ class FileSystem(LocalStore):
         return dataset_names
 
     def _fileset_fspath(self, entry):
-        return Path(entry.row.grid.id) / entry.uri
+        return Path(entry.row.frameset.id) / entry.uri
 
     def _fields_fspath_and_key(self, entry):
         relpath, key = entry.uri.split("::")
-        fspath = Path(entry.row.grid.id) / relpath
+        fspath = Path(entry.row.frameset.id) / relpath
         return fspath, key
 
     def _fileset_prov_fspath(self, entry):

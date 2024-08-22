@@ -232,7 +232,7 @@ TEST_AUTO_IDS = {
     "member": (
         TestDatasetBlueprint(  # dataset name
             axes=Clinical,
-            hierarchy=["group", "subject", "timepoint"],
+            hierarchy=["group", "subject", "visit"],
             dim_lengths=[2, 2, 2],
             entries=[
                 FileSetEntryBlueprint(

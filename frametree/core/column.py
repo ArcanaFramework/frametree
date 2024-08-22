@@ -18,7 +18,7 @@ from .entry import DataEntry
 
 if ty.TYPE_CHECKING:  # pragma: no cover
     from .row import DataRow
-    from .set.base import Grid
+    from .frameset.base import FrameSet
 
 
 logger = logging.getLogger("frametree")
@@ -31,7 +31,7 @@ class DataColumn(metaclass=ABCMeta):
     datatype: type = attrs.field()
     row_frequency: Axes = attrs.field(validator=attrs.validators.instance_of(Axes))
     path: ty.Optional[str] = None
-    grid: Grid = attrs.field(
+    frameset: FrameSet = attrs.field(
         default=None, metadata={"asdict": False}, eq=False, hash=False, repr=False
     )
     _mismatch_log: list = attrs.field(
@@ -54,12 +54,12 @@ class DataColumn(metaclass=ABCMeta):
         return self.cell(id, allow_empty=False).item
 
     def __len__(self) -> int:
-        return len(list(self.grid.rows(self.row_frequency)))
+        return len(list(self.frameset.rows(self.row_frequency)))
 
     def cell(self, id, allow_empty: bool = True) -> DataCell:
         return DataCell.intersection(
             self,
-            self.grid.row(id=id, frequency=self.row_frequency),
+            self.frameset.row(id=id, frequency=self.row_frequency),
             allow_empty=allow_empty,
         )
 
@@ -80,12 +80,12 @@ class DataColumn(metaclass=ABCMeta):
         """
         return (
             DataCell.intersection(self, row, allow_empty=allow_empty)
-            for row in self.grid.rows(self.row_frequency)
+            for row in self.frameset.rows(self.row_frequency)
         )
 
     @property
     def ids(self) -> ty.List[str]:
-        return [n.id for n in self.grid.rows(self.row_frequency)]
+        return [n.id for n in self.frameset.rows(self.row_frequency)]
 
     def match_entry(self, row: DataRow, allow_none: bool = False) -> DataEntry:
         """Matches a single entry from a data row against the selection criteria
@@ -194,7 +194,7 @@ class DataColumn(metaclass=ABCMeta):
         row_str = f"'{row.id}' {row.frequency}" if row.id is not None else "root"
         return (
             f", when attempting to match an entry to the '{self.name}' column "
-            f"in the {row_str} row of {self.grid}\n\n  Found:"
+            f"in the {row_str} row of {self.frameset}\n\n  Found:"
             + self._format_matches(matches)
             + self.format_criteria()
         )
@@ -240,8 +240,8 @@ class DataSource(DataColumn):
     row_frequency : Axes
         the frequency of the "rows" (data nodes) within the dataset tree, e.g. for the
         ``Clinical`` data spce the row frequency can be per 'session', 'subject',
-        'timepoint', 'group', 'dataset', et...
-    dataset: Grid
+        'visit', 'group', 'dataset', et...
+    dataset: FrameSet
         the dataset the column belongs to
     path : str
         A regex name_path to match the fileset names with. Must match
@@ -381,8 +381,8 @@ class DataSink(DataColumn):
     row_frequency : Axes
         the frequency of the "rows" (data nodes) within the dataset tree, e.g. for the
         ``Clinical`` data spce the row frequency can be per 'session', 'subject',
-        'timepoint', 'group', 'dataset', et...
-    dataset: Grid
+        'visit', 'group', 'dataset', et...
+    dataset: FrameSet
         the dataset the column belongs to
     path : str
         A regex name_path to match the fileset names with. Must match
@@ -410,10 +410,10 @@ class DataSink(DataColumn):
 
     @path.default
     def path_default(self):
-        return f"{self.name}@{self.grid.name}"
+        return f"{self.name}@{self.frameset.name}"
 
     def derive(self, ids: ty.List[str] = None):
-        self.grid.derive(self.name, ids=ids)
+        self.frameset.derive(self.name, ids=ids)
 
     def criteria(self):
         return [self.matches_path, self.matches_datatype]

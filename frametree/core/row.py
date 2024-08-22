@@ -13,7 +13,7 @@ from .entry import DataEntry
 
 
 if ty.TYPE_CHECKING:  # pragma: no cover
-    from .set.base import Grid
+    from .frameset.base import FrameSet
 
 
 @attrs.define(kw_only=True)
@@ -26,20 +26,20 @@ class DataRow:
     ids : Dict[Axes, str]
         The ids for the frequency of the row and all "parent" frequencies
         within the tree
-    dataset : Grid
+    dataset : FrameSet
         A reference to the root of the data tree
     frequency : str
         The frequency of the row
     tree_path : list[str], optional
         the path to the row within the data tree. None if the row doesn't sit within
-        the original tree (e.g. timepoints within a subject>session hierarchy)
+        the original tree (e.g. visits within a subject>session hierarchy)
     uri : str, optional
         a URI for the row, can be set and used by the data store implementation if
         appropriate, by default None
     """
 
     ids: ty.Dict[Axes, str] = attrs.field()
-    grid: Grid = attrs.field(repr=False)
+    frameset: FrameSet = attrs.field(repr=False)
     frequency: str = attrs.field()
     tree_path: ty.List[str] = None
     uri: ty.Optional[str] = None
@@ -54,24 +54,24 @@ class DataRow:
     )
     _cells: ty.Dict[str, DataCell] = attrs.field(factory=dict, init=False, repr=False)
 
-    @grid.validator
+    @frameset.validator
     def dataset_validator(self, _, dataset):
-        from .grid import Grid
+        from .frameset import FrameSet
 
-        if not isinstance(dataset, Grid):
-            raise ValueError(f"provided dataset {dataset} is not of type {Grid}")
+        if not isinstance(dataset, FrameSet):
+            raise ValueError(f"provided dataset {dataset} is not of type {FrameSet}")
 
     @frequency.validator
     def frequency_validator(self, _, frequency):
-        if frequency not in self.grid.axes:
+        if frequency not in self.frameset.axes:
             raise ValueError(
                 f"'{frequency}' frequency is not in the data space of the dataset, "
-                f"{self.grid.axes}"
+                f"{self.frameset.axes}"
             )
 
     def __attrs_post_init__(self):
         if isinstance(self.frequency, str):
-            self.frequency = self.grid.axes[self.frequency]
+            self.frequency = self.frameset.axes[self.frequency]
 
     def __getitem__(self, column_name: str) -> DataType:
         """Gets the item for the current row
@@ -101,12 +101,14 @@ class DataRow:
             if not cell.is_empty:
                 return cell
         try:
-            column = self.grid[column_name]
+            column = self.frameset[column_name]
         except KeyError as e:
             raise FrameTreeNameError(
                 column_name,
                 f"{column_name} is not the name of a column in "
-                f"{self.grid.id} dataset ('" + "', '".join(self.grid.columns) + "')",
+                f"{self.frameset.id} dataset ('"
+                + "', '".join(self.frameset.columns)
+                + "')",
             ) from e
         if column.row_frequency != self.frequency:
             return FrameTreeWrongFrequencyError(
@@ -120,7 +122,7 @@ class DataRow:
         return cell
 
     def cells(self, allow_empty: ty.Optional[bool] = None) -> ty.Iterable[DataCell]:
-        for column_name in self.grid.columns:
+        for column_name in self.frameset.columns:
             yield self.cell(column_name, allow_empty=allow_empty)
 
     @property
@@ -134,7 +136,7 @@ class DataRow:
     def entries_dict(self):
         if self._entries_dict is None:
             self._entries_dict = {}
-            self.grid.store.populate_row(self)
+            self.frameset.store.populate_row(self)
         return self._entries_dict
 
     def __repr__(self):
@@ -146,14 +148,14 @@ class DataRow:
 
     @property
     def ids_tuple(self):
-        return tuple(self.ids[a] for a in self.grid.axes.axes())
+        return tuple(self.ids[a] for a in self.frameset.axes.axes())
 
     @property
     def label(self):
         return self.tree_path[-1]
 
     def frequency_id(self, frequency: ty.Union[str, Axes]):
-        return self.ids[self.grid.axes[str(frequency)]]
+        return self.ids[self.frameset.axes[str(frequency)]]
 
     def __iter__(self):
         return iter(self.keys())
@@ -167,7 +169,7 @@ class DataRow:
     def items(self):
         return (
             (c.name, self[c.name])
-            for c in self.grid.columns.values()
+            for c in self.frameset.columns.values()
             if c.row_frequency == self.frequency
         )
 
@@ -194,11 +196,11 @@ class DataRow:
             # If frequency is not a ancestor row then return the
             # items in the children of the row (if they are child
             # rows) or the whole dataset
-            spec = self.grid.columns[column_name]
+            spec = self.frameset.columns[column_name]
             try:
                 return self.children[spec.row_frequency].values()
             except KeyError:
-                return self.grid.column(spec.row_frequency)
+                return self.frameset.column(spec.row_frequency)
 
     def add_entry(
         self,

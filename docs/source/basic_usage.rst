@@ -7,7 +7,7 @@ API or via the command-line interface (CLI).
 
 The basic usage pattern is
 
-#. Define a frame-tree to work with (see :ref:`FrameTrees`)
+#. Define a frame-tree to work with (see :ref:`FrameSets`)
 #. Specify columns in the dataset to access data from and store data to (see :ref:`columns`)
 #. Connect a `Pydra task or workflow <https://pydra.readthedocs.io/en/latest/components.html#dataflows-components-task-and-workflow>`_
 #. Request derivative of the workflow
@@ -19,8 +19,9 @@ over all sessions using the command line interface
 
 .. code-block:: console
 
-    $ # Define a frame tree
-    $ frametree define /data/my-dataset subject session
+    $ # Define a frameset stored within a file-system directory '/data/my-dataset'
+    $ # with a 2-layer directory structure: top level subject IDs, bottom level visit IDs
+    $ frametree define /data/my-dataset subject visit
 
     $ # Add source column to select a single T1-weighted image in each session subdirectory
     $ frametree add-source /data/my-dataset T1w medimage/dicom-series --regex '.*mprage.*'
@@ -42,32 +43,34 @@ DICOM into the required gzipped NIfTI format, and then execute BET on the conver
 files before they are saved back into the directory structure at
 ``<subject-id>/<session-id>/derivs/brain_mask.nii.gz``.
 
-Alternatively, the same steps can be performed using the Python API:
+Alternatively via Python API:
 
-.. code-block:: python
+.. toggle:: Show/Hide Python Code Example
 
-    # Import frametree module
-    from pydra.tasks.fsl.preprocess.bet import BET
-    from frametree.core import FrameTree
-    from frametree.common import Clinical
-    from fileformats.medimage import DicomSeries, NiftiGz
+    .. code-block:: python
 
-    # Define dataset
-    frames = FrameTree.load('/data/my-dataset', space=Clinical,
-                            hierarchy=['subject', 'session'])
+        # Import frametree module
+        from pydra.tasks.fsl.preprocess.bet import BET
+        from frametree.core import FrameSet
+        from frametree.common import Clinical
+        from fileformats.medimage import DicomSeries, NiftiGz
 
-    # Add source column to select a single T1-weighted image in each session subdirectory
-    frames.add_source('T1w', '.*mprage.*', datatype=DicomSeries, is_regex=True)
+        # Define a frameset stored within a file-system directory '/data/my-dataset'
+        # with a 2-layer directory structure: top level subject IDs, bottom level visit IDs
+        frames = FrameSet('/data/my-dataset', axes=Clinical, hierarchy=['subject', 'visit'])
 
-    # Add sink column to store brain mask
-    frames.add_sink('brain_mask', 'derivs/brain_mask', datatype=NiftiGz)
+        # Add source column to select a single T1-weighted image in each session subdirectory
+        frames.add_source('T1w', '.*mprage.*', datatype=DicomSeries, is_regex=True)
 
-    # Apply BET Pydra task, connecting it between the source and sink
-    frames.apply(
-        'brain_extraction',
-        BET,
-        inputs=[('T1w', 'in_file', NiftiGz)],  # Specify required input format
-        outputs=[('brain_mask', 'out_file')])  # Output datatype matches stored so can be omitted
+        # Add sink column to store brain mask
+        frames.add_sink('brain_mask', 'derivs/brain_mask', datatype=NiftiGz)
 
-    # Derive brain masks for all imaging sessions in dataset
-    frames['brain_mask'].derive()
+        # Apply BET Pydra task, connecting it between the source and sink
+        frames.apply(
+            'brain_extraction',
+            BET,
+            inputs=[('T1w', 'in_file', NiftiGz)],  # Specify required input format
+            outputs=[('brain_mask', 'out_file')])  # Output datatype matches stored so can be omitted
+
+        # Derive brain masks for all imaging sessions in dataset
+        frames['brain_mask'].derive()

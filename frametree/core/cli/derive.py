@@ -2,7 +2,7 @@ from pathlib import Path
 import logging
 import cloudpickle as cp
 import click
-from frametree.core.grid.base import Grid
+from frametree.core.frameset.base import FrameSet
 from frametree.core.utils import set_loggers
 from .base import cli
 
@@ -58,7 +58,7 @@ def derive_column(address, columns, work, plugin, loglevel):
         store_cache = None
         pipeline_cache = None
 
-    dataset = Grid.load(address, cache_dir=store_cache)
+    dataset = FrameSet.load(address, cache_dir=store_cache)
 
     set_loggers(loglevel)
 

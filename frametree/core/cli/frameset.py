@@ -3,7 +3,7 @@ import click
 import logging
 from pathlib import Path
 from .base import cli
-from frametree.core.grid.base import Grid
+from frametree.core.frameset.base import FrameSet
 from frametree.core.store import Store
 from frametree.core.axes import Axes
 from fileformats.core import DataType
@@ -14,11 +14,11 @@ logger = logging.getLogger(__name__)
 
 
 @cli.group()
-def grid():
+def frameset():
     pass
 
 
-@grid.command(
+@frameset.command(
     name="define",
     help=(
         """Define the tree structure and IDs to include in a
@@ -101,7 +101,7 @@ the inferred IDs
 )
 def define(address, hierarchy, include, exclude, axes, id_pattern):
 
-    store_name, id, name = Grid.parse_id_str(address)
+    store_name, id, name = FrameSet.parse_id_str(address)
 
     if not hierarchy:
         hierarchy = None
@@ -111,7 +111,7 @@ def define(address, hierarchy, include, exclude, axes, id_pattern):
     if axes:
         axes = ClassResolver(Axes)(axes)
 
-    dataset = store.define_grid(
+    dataset = store.define_frameset(
         id,
         hierarchy=hierarchy,
         axes=axes,
@@ -123,7 +123,7 @@ def define(address, hierarchy, include, exclude, axes, id_pattern):
     dataset.save(name)
 
 
-@grid.command(
+@frameset.command(
     name="add-source",
     help="""Adds a source column to a dataset. A source column
 selects comparable items along a dimension of the dataset to serve as
@@ -148,7 +148,7 @@ field array (ty.List[int|float|str|bool]) or
     metavar="<dimension>",
     help=(
         "The row-frequency that items appear in the dataset (e.g. per "
-        "'session', 'subject', 'timepoint', 'group', 'dataset' for "
+        "'session', 'subject', 'visit', 'group', 'dataset' for "
         "common:Clinical data dimensions"
     ),
     show_default="highest",
@@ -209,7 +209,7 @@ def add_source(
     is_regex,
     header,
 ):
-    dataset = Grid.load(address)
+    dataset = FrameSet.load(address)
     dataset.add_source(
         name=name,
         path=path,
@@ -223,7 +223,7 @@ def add_source(
     dataset.save()
 
 
-@grid.command(
+@frameset.command(
     name="add-sink",
     help="""Adds a sink column to a dataset. A sink column
 specifies how data should be written into the dataset.
@@ -250,7 +250,7 @@ datatype
     metavar="<dimension>",
     help=(
         "The row-frequency that items appear in the dataset (e.g. per "
-        "'session', 'subject', 'timepoint', 'group', 'dataset' for "
+        "'session', 'subject', 'visit', 'group', 'dataset' for "
         "Clinical data dimensions"
     ),
     show_default="highest",
@@ -272,7 +272,7 @@ datatype
     ),
 )
 def add_sink(address, name, datatype, row_frequency, path, salience):
-    dataset = Grid.load(address)
+    dataset = FrameSet.load(address)
     dataset.add_sink(
         name=name,
         path=path,
@@ -283,7 +283,7 @@ def add_sink(address, name, datatype, row_frequency, path, salience):
     dataset.save()
 
 
-@grid.command(
+@frameset.command(
     name="missing-items",
     help="""Finds the IDs of rows that are missing a valid entry for an item in
 the column.
@@ -297,7 +297,7 @@ COLUMN_NAMES, [COLUMN_NAMES, ...] for the columns to check, defaults to all sour
 @click.argument("address")
 @click.argument("column_names", nargs=-1)
 def missing_items(address, column_names):
-    dataset = Grid.load(address)
+    dataset = FrameSet.load(address)
     if not column_names:
         column_names = [n for n, c in dataset.columns.items() if not c.is_sink]
     for column_name in column_names:
@@ -307,7 +307,7 @@ def missing_items(address, column_names):
             click.echo(f"'{column.name}': " + ", ".join(c.row.id for c in empty_cells))
 
 
-@grid.command(
+@frameset.command(
     help="""
 Exports a dataset from one data store into another
 
@@ -358,7 +358,7 @@ def export(
     hierarchy,
     use_original_paths,
 ):
-    dataset = Grid.load(address)
+    dataset = FrameSet.load(address)
     store = Store.load(store_nickname)
     if hierarchy:
         hierarchy = hierarchy.split(",")
@@ -374,7 +374,7 @@ def export(
     )
 
 
-@grid.command(
+@frameset.command(
     help="""
 Creates a copy of a dataset definition under a new name (so it can be modified, e.g.
 for different analysis)
@@ -387,11 +387,11 @@ NEW_NAME for the dataset
 @click.argument("address")
 @click.argument("new_name")
 def copy(address, new_name):
-    dataset = Grid.load(address)
+    dataset = FrameSet.load(address)
     dataset.save(new_name)
 
 
-@grid.command(
+@frameset.command(
     name="install-license",
     help="""Installs a license within a store (i.e. site-wide) or dataset (project-specific)
 for use in a deployment pipeline
@@ -429,8 +429,8 @@ def install_license(install_locations, license_name, source_file, logfile, logle
 
     for install_loc in install_locations:
         if "//" in install_loc:
-            dataset = Grid.load(install_loc)
-            store_name, _, _ = Grid.parse_id_str(install_loc)
+            dataset = FrameSet.load(install_loc)
+            store_name, _, _ = FrameSet.parse_id_str(install_loc)
             msg = f"for '{dataset.name}' dataset on {store_name} store"
         else:
             store = Store.load(install_loc)

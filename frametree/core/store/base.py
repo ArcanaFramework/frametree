@@ -32,7 +32,7 @@ logger = logging.getLogger("frametree")
 
 
 if ty.TYPE_CHECKING:  # pragma: no cover
-    from ..grid import Grid
+    from ..set import FrameSet
     from ..tree import DataTree
     from ..entry import DataEntry
     from ..row import DataRow
@@ -185,9 +185,9 @@ class Store(metaclass=ABCMeta):
         del entries[name]
         cls.save_configs(entries)
 
-    def define_grid(
+    def define_frameset(
         self, id, axes=None, hierarchy=None, id_patterns=None, **kwargs
-    ) -> Grid:
+    ) -> FrameSet:
         """
         Creates a FrameTree dataset definition for an existing data in the
         data store.
@@ -203,14 +203,14 @@ class Store(metaclass=ABCMeta):
             The hierarchy of the frametree
         id_patterns : dict[str, str], optional
             Patterns used to infer row IDs not explicitly within the hierarchy of the
-            data tree, e.g. groups and timepoints in an XNAT project with subject>session
+            data tree, e.g. groups and visits in an XNAT project with subject>session
             hierarchy
         **kwargs:
-            Keyword args passed on to the Grid init method
+            Keyword args passed on to the FrameSet init method
 
         Returns
         -------
-        Grid
+        FrameSet
             the newly defined dataset
         """
         if axes is None:
@@ -226,11 +226,11 @@ class Store(metaclass=ABCMeta):
                 hierarchy = list(self.DEFAULT_HIERARCHY)
             except AttributeError:
                 hierarchy = [str(max(axes))]  # one-layer with only leaf nodes
-        from frametree.core.grid import (
-            Grid,
+        from frametree.core.frameset import (
+            FrameSet,
         )  # avoid circular imports it is imported here rather than at the top of the file
 
-        dataset = Grid(
+        dataset = FrameSet(
             id=id,
             store=self,
             axes=axes,
@@ -240,12 +240,12 @@ class Store(metaclass=ABCMeta):
         )
         return dataset
 
-    def save_grid(self, grid: Grid, name: str = ""):
+    def save_frameset(self, frameset: FrameSet, name: str = ""):
         """Save metadata in project definition file for future reference
 
         Parameters
         ----------
-        grid : Grid
+        frameset : FrameSet
             the dataset to save
         name : str, optional
             the name for the definition to distinguish from other definitions on
@@ -254,14 +254,14 @@ class Store(metaclass=ABCMeta):
         if name is None:
             name = ""
         save_name = name if name else self.EMPTY_DATASET_NAME
-        definition = asdict(grid, omit=["store", "name"])
+        definition = asdict(frameset, omit=["store", "name"])
         definition[self.VERSION_KEY] = self.VERSION
         if name is None:
-            name = grid.name
+            name = frameset.name
         with self.connection:
-            self.save_grid_definition(grid.id, definition, name=save_name)
+            self.save_grid_definition(frameset.id, definition, name=save_name)
 
-    def load_grid(self, id, name: str = "", **kwargs) -> Grid:
+    def load_frameset(self, id, name: str = "", **kwargs) -> FrameSet:
         """Load an existing dataset definition
 
         Parameters
@@ -274,7 +274,7 @@ class Store(metaclass=ABCMeta):
 
         Returns
         -------
-        Grid
+        FrameSet
             the loaded dataset
 
         Raises
@@ -302,7 +302,7 @@ class Store(metaclass=ABCMeta):
         name: ty.Optional[str] = None,
         id_patterns: ty.Optional[ty.Dict[str, str]] = None,
         **kwargs,
-    ) -> Grid:
+    ) -> FrameSet:
         """Creates a new dataset with new rows to store data in
 
         Parameters
@@ -324,7 +324,7 @@ class Store(metaclass=ABCMeta):
 
         Returns
         -------
-        Grid
+        FrameSet
             the newly created dataset
         """
         self.create_data_tree(
@@ -333,7 +333,7 @@ class Store(metaclass=ABCMeta):
             hierarchy=hierarchy,
             axes=axes,
         )
-        dataset = self.define_grid(
+        dataset = self.define_frameset(
             id=id,
             hierarchy=hierarchy,
             axes=axes,
@@ -347,7 +347,7 @@ class Store(metaclass=ABCMeta):
     def import_dataset(
         self,
         id: str,
-        dataset: Grid,
+        dataset: FrameSet,
         column_names: ty.Optional[ty.List[ty.Union[str, ty.Tuple[str, type]]]] = None,
         hierarchy: ty.Optional[ty.List[str]] = None,
         id_patterns: ty.Optional[ty.Dict[str, str]] = None,
@@ -361,7 +361,7 @@ class Store(metaclass=ABCMeta):
         ----------
         id : str
             the ID of the dataset within this store
-        dataset : Grid
+        dataset : FrameSet
             the dataset to import
         column_names : list[str or tuple[str, type]], optional
             list of columns to the to be included in the imported dataset. Items of the
@@ -544,12 +544,12 @@ class Store(metaclass=ABCMeta):
         be enclosed by ``#`` symbols::
 
             id_patterns = {
-                "timepoint": r"T#session:order#"
+                "visit": r"T#session:order#"
             }
 
         where "order" is a special metadata field added by the data store designating
         the order in which the session was acquired within the subject. This pattern will
-        produce timepoint IDs "T1", "T2", "T3", ...
+        produce visit IDs "T1", "T2", "T3", ...
 
         Parameters
         ----------
@@ -769,7 +769,7 @@ class Store(metaclass=ABCMeta):
         dataset_id: str
             The ID/path of the dataset within the store
         definition: ty.Dict[str, Any]
-            A dictionary containing the dct Grid to be saved. The
+            A dictionary containing the dct FrameSet to be saved. The
             dictionary is in a format ready to be dumped to file as JSON or
             YAML.
         name: str
@@ -792,7 +792,7 @@ class Store(metaclass=ABCMeta):
         Returns
         -------
         definition: ty.Dict[str, Any]
-            A dct Grid object that was saved in the data store
+            A dct FrameSet object that was saved in the data store
         """
 
     @abstractmethod
@@ -841,7 +841,7 @@ class Store(metaclass=ABCMeta):
         leaves : list[tuple[str, ...]]
             list of IDs for each leaf node to be added to the dataset. The IDs for each
             leaf should be a tuple with an ID for each level in the tree's hierarchy, e.g.
-            for a hierarchy of [subject, timepoint] ->
+            for a hierarchy of [subject, visit] ->
             [("SUBJ01", "TIMEPOINT01"), ("SUBJ01", "TIMEPOINT02"), ....]
         hierarchy: ty.List[str]
             the hierarchy of the dataset to be created

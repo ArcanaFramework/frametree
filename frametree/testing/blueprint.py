@@ -60,13 +60,13 @@ class EntryBlueprint(metaclass=ABCMeta):
             return
         item = self.make_item(**kwargs)
         logger.debug("Creating entry at %s in %s", self.path, row)
-        entry = row.grid.store.create_entry(
+        entry = row.frameset.store.create_entry(
             path=self.path,
             datatype=self.datatype,
             row=row,
         )
         logger.debug("Putting %s at %s", item, entry)
-        row.grid.store.put(item, entry)
+        row.frameset.store.put(item, entry)
 
 
 @attrs.define(kw_only=True)
@@ -314,13 +314,13 @@ class TestDatasetBlueprint:
 
     #     Returns
     #     -------
-    #     Grid
+    #     FrameSet
     #         the accessed dataset
     #     """
     #     num_attempts = 0
     #     while num_attempts < max_num_attempts:
     #         try:
-    #             dataset = store.load_grid(dataset_id, name=name)
+    #             dataset = store.load_frameset(dataset_id, name=name)
     #         except KeyError:
     #             pass
     #         else:
@@ -531,7 +531,7 @@ TEST_DATASET_BLUEPRINTS = {
         hierarchy=[
             "abc",
             "abcd",
-        ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
+        ],  # e.g. XNAT where session ID is unique in project but final layer is organised by visit
         dim_lengths=[3, 4, 5, 6],
         id_patterns={
             "a": r"abc::a(\d+)b\d+c\d+",
@@ -560,7 +560,7 @@ TEST_DATASET_BLUEPRINTS = {
         axes=TestAxes,
         hierarchy=[
             "abcd"
-        ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
+        ],  # e.g. XNAT where session ID is unique in project but final layer is organised by visit
         dim_lengths=[1, 1, 1, 2],
         entries=[
             FileSetEntryBlueprint(
@@ -575,7 +575,7 @@ TEST_DATASET_BLUEPRINTS = {
         axes=TestAxes,
         hierarchy=[
             "abcd"
-        ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
+        ],  # e.g. XNAT where session ID is unique in project but final layer is organised by visit
         dim_lengths=[1, 1, 1, 1],
         entries=[
             FileSetEntryBlueprint(path="file1", datatype=Zip, filenames=["file1.zip"]),

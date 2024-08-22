@@ -45,27 +45,29 @@ been created
 * :ref:`frametree store refresh` - refreshes authentication tokens saved for the store
 
 Alternatively, data stores can be configured via the Python API by initialising the
-data store classes directly.
+data store classes directly:
 
-.. code-block:: python
+.. toggle:: Show/Hide Python Code Example
 
-    import os
-    from frametree.xnat import Xnat
+    .. code-block:: python
 
-    # Initialise the data store object
-    xnat_store = Xnat(
-        server='https://central.xnat.org',
-        user='user123',
-        password=os.environ['XNAT_PASS'],
-        cache_dir='/work/xnat-cache'
-    )
+        import os
+        from frametree.xnat import Xnat
 
-    # Save it to the configuration file stored at '~/.frametree/stores.yaml' with
-    # the nickname 'xnat-central'
-    xnat_store.save('xnat-central')
+        # Initialise the data store object
+        xnat_store = Xnat(
+            server='https://central.xnat.org',
+            user='user123',
+            password=os.environ['XNAT_PASS'],
+            cache_dir='/work/xnat-cache'
+        )
 
-    # Reload store from configuration file
-    reloaded = Store.load('xnat-central')
+        # Save it to the configuration file stored at '~/.frametree/stores.yaml' with
+        # the nickname 'xnat-central'
+        xnat_store.save('xnat-central')
+
+        # Reload store from configuration file
+        reloaded = Store.load('xnat-central')
 
 .. note::
 

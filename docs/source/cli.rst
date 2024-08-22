@@ -1,14 +1,13 @@
 Command-line interface
 ======================
 
-FrameTree's command line interface is grouped into five categories, `store`,
-`dataset`, `apply`, `derive`. Below these categories are the
-commands that interact with FrameTree's data model, processing and deployment
-streams.
+FrameTree's command line interface allows you to create stores and frame sets, add
+source and sink columns, apply pipelines and create derivatives. It can be grouped
+into three sections, *Store management*, *frame specification*, and *processing*.
 
 
-Store
------
+Store management
+----------------
 
 Commands used to access remove data stores and save them for further use
 
@@ -28,28 +27,28 @@ Commands used to access remove data stores and save them for further use
    :prog: frametree store ls
 
 
-Grid
-----
+Frame specification
+-------------------
 
 Commands used to define and work with datasets
 
-.. click:: frametree.core.cli.grid:define
+.. click:: frametree.core.cli.frameset:define
    :prog: frametree define
 
-.. click:: frametree.core.cli.grid:add_source
+.. click:: frametree.core.cli.frameset:add_source
    :prog: frametree add-source
 
-.. click:: frametree.core.cli.grid:add_sink
+.. click:: frametree.core.cli.frameset:add_sink
    :prog: frametree add-sink
 
-.. click:: frametree.core.cli.grid:missing_items
+.. click:: frametree.core.cli.frameset:missing_items
    :prog: frametree missing-items
 
 
 Processing
 ----------
 
-Commands for applying workflows and analyses to framesets and deriving derivative data
+Commands for applying workflows and analyses to framesets and generate derivative data
 
 .. click:: frametree.core.cli.apply:apply
    :prog: frametree apply

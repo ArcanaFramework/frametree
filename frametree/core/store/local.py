@@ -304,7 +304,7 @@ class LocalStore(Store):
             raise DatatypeUnsupportedByStoreError(entry.datatype, self)
 
     def root_dir(self, row) -> Path:
-        return Path(row.grid.id)
+        return Path(row.frameset.id)
 
     def site_licenses_dataset(self, **kwargs):
         """Provide a place to store hold site-wide licenses"""
@@ -312,21 +312,21 @@ class LocalStore(Store):
         if not dataset_root.exists():
             dataset_root.mkdir(parents=True)
         try:
-            dataset = self.load_grid(dataset_root)
+            dataset = self.load_frameset(dataset_root)
         except KeyError:
             from frametree.common import Samples
 
-            dataset = self.define_grid(dataset_root, axes=Samples)
+            dataset = self.define_frameset(dataset_root, axes=Samples)
         return dataset
 
     ###################
     # Other overrides #
     ###################
 
-    def define_grid(self, id, *args, **kwargs):
+    def define_frameset(self, id, *args, **kwargs):
         if not Path(id).exists():
             raise FrameTreeUsageError(f"Path to dataset root '{id}'' does not exist")
-        return super().define_grid(id, *args, **kwargs)
+        return super().define_frameset(id, *args, **kwargs)
 
     ##################
     # Helper methods #

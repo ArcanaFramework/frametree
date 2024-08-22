@@ -35,8 +35,8 @@ def hierarchy_converter(hierarchy: ty.List[ty.Union[str, Axes]]) -> ty.List[str]
     return [str(f) for f in hierarchy]
 
 
-@attrs.define(kw_only=True)
-class Grid:
+@attrs.define
+class FrameSet:
     """
     A representation of a "dataset", the complete collection of data
     (file-sets and fields) to be used in an analysis.
@@ -62,7 +62,7 @@ class Grid:
         sub-directories labelled by unique subject ID, and the second directory
         layer labelled by study time-point then the hierarchy would be
 
-            ['subject', 'timepoint']
+            ['subject', 'visit']
 
         Alternatively, in some stores (e.g. XNAT) the second layer in the
         hierarchy may be named with session ID that is unique across the project,
@@ -70,7 +70,7 @@ class Grid:
 
             ['subject', 'session']
 
-        In such cases, if there are multiple timepoints, the timepoint ID of the
+        In such cases, if there are multiple visits, the visit ID of the
         session will need to be extracted using the `id_patterns` argument.
 
         Alternatively, the hierarchy could be organised such that the tree
@@ -78,7 +78,7 @@ class Grid:
         labelled by member ID, with the final layer containing sessions of
         matched members labelled by their groups (e.g. test & control):
 
-            ['timepoint', 'member', 'group']
+            ['visit', 'member', 'group']
 
         Note that the combination of layers in the hierarchy must span the
         space defined in the Axes enum, i.e. the "bitwise or" of the
@@ -135,18 +135,39 @@ class Grid:
     pipelines: ty.Dict[str, Pipeline] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
-    # analyses: ty.Dict[str, Analysis] = attrs.field(
-    #     factory=dict, converter=default_if_none(factory=dict), repr=False
-    # )
     tree: DataTree = attrs.field(factory=DataTree, init=False, repr=False, eq=False)
 
     def __attrs_post_init__(self):
-        self.tree.grid = self
+        self.tree.frameset = self
         # Set reference to pipeline in columns and pipelines
         for column in self.columns.values():
-            column.grid = self
+            column.frameset = self
         for pipeline in self.pipelines.values():
-            pipeline.grid = self
+            pipeline.frameset = self
+
+    @store.default
+    def store_default(self):
+        from frametree.common import FileSystem
+
+        return FileSystem()
+
+    @axes.default
+    def axes_default(self):
+        try:
+            return self.store.DEFAULT_AXES
+        except AttributeError:
+            return TypeError(
+                f"FrameSets in {type(self.store)} need to explicitly set their axes"
+            )
+
+    @hierarchy.default
+    def hierarchy_default(self):
+        try:
+            return self.store.DEFAULT_HIERARCHY
+        except AttributeError:
+            return TypeError(
+                f"FrameSets in {type(self.store)} need to explicitly set their hierarchy"
+            )
 
     @name.validator
     def name_validator(self, _, name: str):
@@ -270,7 +291,7 @@ class Grid:
                 )
 
     def save(self, name=""):
-        self.store.save_grid(self, name=name)
+        self.store.save_frameset(self, name=name)
 
     @classmethod
     def load(
@@ -299,14 +320,14 @@ class Grid:
 
         Returns
         -------
-        Grid
+        FrameSet
             the loaded dataset"""
         if store is None:
             store_name, id, parsed_name = cls.parse_id_str(id)
             store = datastore.Store.load(store_name, **kwargs)
             if not name and parsed_name:
                 name = parsed_name
-        return store.load_grid(id, name=name)
+        return store.load_frameset(id, name=name)
 
     @property
     def root_freq(self):
@@ -392,7 +413,7 @@ class Grid:
             datatype=datatype,
             path=path,
             row_frequency=row_frequency,
-            grid=self,
+            frameset=self,
             **kwargs,
         )
         self._add_column(name, source, overwrite)
@@ -431,7 +452,7 @@ class Grid:
             name=name,
             datatype=datatype,
             row_frequency=row_frequency,
-            grid=self,
+            frameset=self,
             **kwargs,
         )
         self._add_column(name, sink, overwrite)
@@ -660,7 +681,7 @@ class Grid:
 
         pipeline = Pipeline(
             name=name,
-            grid=self,
+            frameset=self,
             row_frequency=row_frequency,
             workflow=workflow,
             inputs=inputs,
@@ -824,7 +845,7 @@ class Grid:
             name=f"{name}_license",
             datatype=PlainText,
             row_frequency=self.root_freq,
-            grid=dataset,
+            frameset=dataset,
             path=License.column_path(name),
         )
         return column.match_entry(dataset.root)
@@ -859,5 +880,5 @@ class SplitDataset:
     ----------
     """
 
-    source_dataset: Grid = attrs.field()
-    sink_dataset: Grid = attrs.field()
+    source_dataset: FrameSet = attrs.field()
+    sink_dataset: FrameSet = attrs.field()

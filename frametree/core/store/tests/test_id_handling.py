@@ -36,21 +36,21 @@ ID_INFERENCE_TESTS = {
     "metadata": (
         {"subject": "FTD01111", "session": "FTDS9999"},
         {
-            "timepoint": r"session:order",
+            "visit": r"session:order",
         },
         {"session": {"order": 2}},
         {
-            "timepoint": "2",
+            "visit": "2",
         },
     ),
     "templating": (
         {"subject": "FTD01111", "session": "MR999"},
         {
-            "timepoint": r"#session::([A-Z]+).*##session:visit_id#",
+            "visit": r"#session::([A-Z]+).*##session:visit_id#",
         },
         {"session": {"visit_id": 3}},
         {
-            "timepoint": "MR3",
+            "visit": "MR3",
         },
     ),
 }

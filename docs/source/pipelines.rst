@@ -51,32 +51,35 @@ workflow inputs/outputs and the columns they are connected to, a datatype conver
 task will be inserted into the pipeline if converter method between the two
 formats exists (see FileFormats_).
 
-To add a workflow to a dataset via the API use the :meth:`Grid.apply` method
+Alternatively via the Python API:
 
-.. code-block:: python
+.. toggle:: Show/Hide Python Code Example
 
-    from pydra.tasks.freesurfer import Freesurfer
-    from fileformats import common, medimage
+  .. code-block:: python
 
-    dataset = Dataset.load('myuni-xnat//myproject:training')
+      from pydra.tasks.freesurfer import Freesurfer
+      from frametree.core import FrameSet
+      from fileformats import generic, medimage
 
-    dataset.add_source('T1w', datatype=medimage.Dicom, path='.*mprage.*',
-                       is_regex=True)
-    dataset.add_source('T2w', datatype=medimage.Dicom, path='.*t2spc.*',
-                       is_regex=True)
+      frameset = FrameSet.load('myuni-xnat//myproject:training')
 
-    dataset.add_sink('freesurfer/recon-all', common.Directory)
+      frameset.add_source('T1w', datatype=medimage.Dicom, path='.*mprage.*',
+                        is_regex=True)
+      frameset.add_source('T2w', datatype=medimage.Dicom, path='.*t2spc.*',
+                        is_regex=True)
 
-    dataset.apply(
-        workflow=Freesurfer(
-            name='freesurfer,
-            param1=10.0,
-            param2=20.0),
-        inputs=[('T1w', 'in_file', medimage.NiftiGz),
-                ('T2w', 'peel', medimage.NiftiGz)],
-        outputs=[('freesurfer/recon-all', 'out_file', common.Directory)])
+      frameset.add_sink('freesurfer/recon-all', common.Directory)
 
-    dataset.save()
+      frameset.apply(
+          workflow=Freesurfer(
+              name='freesurfer,
+              param1=10.0,
+              param2=20.0),
+          inputs=[('T1w', 'in_file', medimage.NiftiGz),
+                  ('T2w', 'peel', medimage.NiftiGz)],
+          outputs=[('freesurfer/recon-all', 'out_file', generic.Directory)])
+
+      frameset.save()
 
 If the source can be referenced by its path alone and the formats of the source
 and sink columns match those expected and produced by the workflow, then you
@@ -94,7 +97,7 @@ can all add the sources and sinks in one step
 By default, pipelines will iterate all "leaf rows" of the data tree (e.g. ``session``
 for datasets in the :class:`.Clinical` space). However, pipelines can be run
 at any row row_frequency of the dataset (see :ref:`axes`), e.g. per subject,
-per timepoint, or on the dataset as a whole (to create single templates/statistics).
+per visit, or on the dataset as a whole (to create single templates/statistics).
 
 Pipeline outputs must be connected to sinks of the same row row_frequency. However,
 inputs can be drawn from columns of any row row_frequency. In this case,
@@ -105,32 +108,50 @@ For example, when the pipeline in the following code-block runs, it will receive
 a list of T1w filenames, run one workflow row, and then sink a single template
 back to the dataset.
 
+.. code-block:: console
 
-.. code-block:: python
+  $ # Add sink column with "constant" row frequency
+  $ frametree add-sink bids///data/openneuro/ds00014 vbm_template medimage/nifti-gz \
+    --row-frequency constant
 
-    from myworkflows import vbm_template
-    from fileformats import common, medimage
-    from frametree.common import Clinical
+  $ # NB: we don't need to add the T1w source as it is auto-detected when using BIDS
 
-    grid = Grid.load('bids///data/openneuro/ds00014')
+  $ # Connect pipeline to a "constant" row-frequency sink column. Needs to be
+  $ # of `constant` row_frequency itself or Arcana will raise an error
+  $ frametree apply bids///data/openneuro/ds00014 vbm_template \
+    --input T1w in_file \
+    --output vbm_template out_file \
+    --row-frequency constant
 
-    # Add sink column with "dataset" row row_frequency
-    grid.add_sink(
-        name='vbm_template',
-        datatype=medimage.NiftiGz
-        row_frequency='dataset')
+Alternatively via the Python API:
 
-    # NB: we don't need to add the T1w source as it is automatically detected
-    #     when using BIDS
+.. toggle:: Show/Hide Python Code Example
 
-    # Connect pipeline to a "dataset" row-row_frequency sink column. Needs to be
-    # of `dataset` row_frequency itself or Arcana will raise an error
-    grid.apply(
-        name='vbm_template',
-        workflow=vbm_template(),
-        inputs=[('in_file', 'T1w')],
-        outputs=[('out_file', 'vbm_template')],
-        row_frequency='dataset')
+  .. code-block:: python
+
+      from myworkflows import vbm_template
+      from fileformats import common, medimage
+      from frametree.common import Clinical
+
+      frameset = FrameSet.load('bids///data/openneuro/ds00014')
+
+      # Add sink column with "constant" row frequency
+      frameset.add_sink(
+          name='vbm_template',
+          datatype=medimage.NiftiGz
+          row_frequency='constant')
+
+      # NB: we don't need to add the T1w source as it is automatically detected
+      #     when using BIDS
+
+      # Connect pipeline to a "dataset" row-row_frequency sink column. Needs to be
+      # of `dataset` row_frequency itself or Arcana will raise an error
+      frameset.apply(
+          name='vbm_template',
+          workflow=vbm_template,
+          inputs=[('in_file', 'T1w')],
+          outputs=[('out_file', 'vbm_template')],
+          row_frequency='constant')
 
 
 .. _derivatives:
@@ -139,7 +160,7 @@ Generating derivatives
 ----------------------
 
 After workflows and/or analysis classes have been connected to a dataset, derivatives can be
-generated using :meth:`.Grid.derive` or alternatively :meth:`.Grid.derive`
+generated using :meth:`.FrameSet.derive` or alternatively :meth:`.FrameSet.derive`
 for single columns. These methods check the data store to see whether the
 source data is present and executes the pipelines over all rows of the dataset
 with available source data. If pipeline inputs are sink columns to be derived
@@ -152,16 +173,18 @@ To generate derivatives via the CLI
 
   $ frametree derive 'myuni-xnat//myproject@training' freesurfer/recon-all
 
-To generate derivatives via the API
+Alternatively via the API
 
-.. code-block:: python
+.. toggle:: Show/Hide Python Code Example
 
-  grid = Grid.load('/data/openneuro/ds00014@test')
+  .. code-block:: python
 
-  grid.derive('fast/gm', cache_dir='/work/temp-dir')
+    frameset = FrameSet.load('/data/openneuro/ds00014@test')
 
-  # Print URI of generated dataset
-  print(grid['fast/gm']['sub11'].uri)
+    frameset.derive('fast/gm', cache_dir='/work/temp-dir')
+
+    # Print URI of generated dataset
+    print(frameset['fast/gm']['sub11'].uri)
 
 By default Pydra_ uses the "concurrent-futures" (`'cf'`) plugin, which
 splits workflows over multiple processes. You can specify which plugin, and
@@ -184,16 +207,16 @@ have been applied you can use the ``menu`` command
 
   Derivatives
   -----------
-  recorded_datafile (zip)
-  recorded_metadata (json)
-  preprocessed (zip)
-  derived_image (png)
-  summary_metric (float)
+  recorded_datafile (application/zip)
+  recorded_metadata (application/json)
+  preprocessed (application/zip)
+  derived_image (image/png)
+  summary_metric (field/float)
 
   Parameters
   ----------
-  contrast (float) default=0.5
-  kernel_fwhms (list[float]) default=[0.5, 0.3, 0.1]
+  contrast (field/float): 0.6 (default=0.5)
+  kernel_fwhms (field/float+array): [0.2, 0.2. 0.6] (default=[0.5, 0.3, 0.1])
 
 
 Provenance
@@ -342,16 +365,18 @@ or
 To ignore differences between pipeline configurations you can use the :meth:`.Dataset.ignore`
 method
 
-.. code-block:: python
-
-  dataset.ignore_diff('freesurfer_pipeline', ('freesurfer_task', 'num_iterations', 3))
-
-or via the CLI
 
 .. code-block:: console
 
   $ frametree ignore-diff 'myuni-xnat//myproject@training' freesurfer --param freesurfer_task num_iterations 3
 
+via the API:
+
+.. toggle:: Show/Hide Python Code Example
+
+  .. code-block:: python
+
+    dataset.ignore_diff('freesurfer_pipeline', ('freesurfer_task', 'num_iterations', 3))
 
 
 .. _Pydra: https://pydra.readthedocs.io
