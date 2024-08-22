@@ -26,13 +26,13 @@ from frametree.core.exceptions import (
 )
 
 
-DS = ty.TypeVar("DS", bound="DataStore")
+S = ty.TypeVar("S", bound="Store")
 
 logger = logging.getLogger("frametree")
 
 
 if ty.TYPE_CHECKING:  # pragma: no cover
-    from ..set import Dataset
+    from ..set import FrameSet
     from ..tree import DataTree
     from ..entry import DataEntry
     from ..row import DataRow
@@ -55,11 +55,11 @@ class ConnectionManager(NestedContext):
 
 
 @attrs.define
-class DataStore(metaclass=ABCMeta):
+class Store(metaclass=ABCMeta):
     """
     Abstract base class for all data store adapters. A data store can be an external
     data management system, e.g. XNAT, OpenNeuro, Datalad or just a defined structure
-    of how to lay out data within a file-system, e.g. BIDS.
+    of how to lay out data within a file-system, e.g. BIS.
 
     For a data management system/data structure to be compatible with FrameTree, it must
     meet a number of criteria. In FrameTree, a store is assumed to
@@ -96,7 +96,7 @@ class DataStore(metaclass=ABCMeta):
     def save(
         self, name: ty.Optional[str] = None, config_path: ty.Optional[Path] = None
     ):
-        """Saves the configuration of a DataStore in 'stores.yaml'
+        """Saves the configuration of a Store in 'stores.yaml'
 
         Parameters
         ----------
@@ -130,11 +130,9 @@ class DataStore(metaclass=ABCMeta):
         return asdict(self, **kwargs)
 
     @classmethod
-    def load(
-        cls, name: str, config_path: ty.Optional[Path] = None, **kwargs
-    ) -> DataStore:
-        """Loads a DataStore from that has been saved in the configuration file.
-        If no entry is saved under that name, then it searches for DataStore
+    def load(cls, name: str, config_path: ty.Optional[Path] = None, **kwargs) -> Store:
+        """Loads a Store from that has been saved in the configuration file.
+        If no entry is saved under that name, then it searches for Store
         sub-classes with aliases matching `name` and checks whether they can
         be initialised without any parameters.
 
@@ -150,7 +148,7 @@ class DataStore(metaclass=ABCMeta):
 
         Returns
         -------
-        DataStore
+        Store
             The data store retrieved from the stores.yaml file
 
         Raises
@@ -187,9 +185,9 @@ class DataStore(metaclass=ABCMeta):
         del entries[name]
         cls.save_configs(entries)
 
-    def define_dataset(
-        self, id, space=None, hierarchy=None, id_patterns=None, **kwargs
-    ) -> Dataset:
+    def define_frameset(
+        self, id, axes=None, hierarchy=None, id_patterns=None, **kwargs
+    ) -> FrameSet:
         """
         Creates a FrameTree dataset definition for an existing data in the
         data store.
@@ -199,63 +197,55 @@ class DataStore(metaclass=ABCMeta):
         id : str
             The ID (or file-system path) of the project (or directory) within
             the store
-        space: DataSpace
-            The data space of the dataset
+        axes: Axes
+            The data axes of the frametree
         hierarchy: ty.List[str]
-            The hierarchy of the dataset
+            The hierarchy of the frametree
         id_patterns : dict[str, str], optional
             Patterns used to infer row IDs not explicitly within the hierarchy of the
-            data tree, e.g. groups and timepoints in an XNAT project with subject>session
+            data tree, e.g. groups and visits in an XNAT project with subject>session
             hierarchy
-        space : EnumMeta
-            The DataSpace enum that defines the frequencies (e.g.
-            per-session, per-subject,...) present in the dataset.
         **kwargs:
-            Keyword args passed on to the Dataset init method
+            Keyword args passed on to the FrameSet init method
 
         Returns
         -------
-        Dataset
+        FrameSet
             the newly defined dataset
         """
-        if space is None:
+        if axes is None:
             try:
-                space = self.DEFAULT_SPACE
+                axes = self.DEFAULT_AXES
             except AttributeError as e:
                 raise FrameTreeUsageError(
-                    "'space' kwarg must be specified for datasets in "
+                    "'axes' kwarg must be specified for datasets in "
                     f"{type(self)} stores"
                 ) from e
         if hierarchy is None:
             try:
                 hierarchy = list(self.DEFAULT_HIERARCHY)
             except AttributeError:
-                hierarchy = [str(max(space))]  # one-layer with only leaf nodes
-        # if id_patterns is None:
-        #     try:
-        #         id_patterns = dict(self.DEFAULT_ID_PATTERNS)
-        #     except AttributeError:
-        #         pass
-        from frametree.core.set import (
-            Dataset,
+                hierarchy = [str(max(axes))]  # one-layer with only leaf nodes
+        from frametree.core.frameset import (
+            FrameSet,
         )  # avoid circular imports it is imported here rather than at the top of the file
 
-        dataset = Dataset(
+        dataset = FrameSet(
             id=id,
             store=self,
-            space=space,
+            axes=axes,
             hierarchy=hierarchy,
             id_patterns=id_patterns,
             **kwargs,
         )
         return dataset
 
-    def save_dataset(self, dataset: Dataset, name: str = ""):
+    def save_frameset(self, frameset: FrameSet, name: str = ""):
         """Save metadata in project definition file for future reference
 
         Parameters
         ----------
-        dataset : Dataset
+        frameset : FrameSet
             the dataset to save
         name : str, optional
             the name for the definition to distinguish from other definitions on
@@ -264,14 +254,14 @@ class DataStore(metaclass=ABCMeta):
         if name is None:
             name = ""
         save_name = name if name else self.EMPTY_DATASET_NAME
-        definition = asdict(dataset, omit=["store", "name"])
+        definition = asdict(frameset, omit=["store", "name"])
         definition[self.VERSION_KEY] = self.VERSION
         if name is None:
-            name = dataset.name
+            name = frameset.name
         with self.connection:
-            self.save_dataset_definition(dataset.id, definition, name=save_name)
+            self.save_grid_definition(frameset.id, definition, name=save_name)
 
-    def load_dataset(self, id, name: str = "", **kwargs) -> Dataset:
+    def load_frameset(self, id, name: str = "", **kwargs) -> FrameSet:
         """Load an existing dataset definition
 
         Parameters
@@ -284,7 +274,7 @@ class DataStore(metaclass=ABCMeta):
 
         Returns
         -------
-        Dataset
+        FrameSet
             the loaded dataset
 
         Raises
@@ -296,7 +286,7 @@ class DataStore(metaclass=ABCMeta):
             name = ""
         saved_name = name if name else self.EMPTY_DATASET_NAME
         with self.connection:
-            dct = self.load_dataset_definition(id, saved_name)
+            dct = self.load_grid_definition(id, saved_name)
         if dct is None:
             raise KeyError(f"Did not find a dataset '{id}@{name}'")
         store_version = dct.pop(self.VERSION_KEY)
@@ -308,11 +298,11 @@ class DataStore(metaclass=ABCMeta):
         id: str,
         leaves: ty.Iterable[ty.Tuple[str, ...]],
         hierarchy: ty.List[str],
-        space: type,
+        axes: type,
         name: ty.Optional[str] = None,
         id_patterns: ty.Optional[ty.Dict[str, str]] = None,
         **kwargs,
-    ) -> Dataset:
+    ) -> FrameSet:
         """Creates a new dataset with new rows to store data in
 
         Parameters
@@ -326,27 +316,27 @@ class DataStore(metaclass=ABCMeta):
             save the dataset with the default name pass an empty string.
         hierarchy : list[str], optional
             hierarchy of the dataset tree
-        space : type, optional
-            the space of the dataset
+        axes : type, optional
+            the axes of the dataset
         id_patterns : dict[str, str]
             Patterns for inferring IDs of rows not explicitly present in the hierarchy of
-            the data tree. See ``DataStore.infer_ids()`` for syntax
+            the data tree. See ``Store.infer_ids()`` for syntax
 
         Returns
         -------
-        Dataset
+        FrameSet
             the newly created dataset
         """
         self.create_data_tree(
             id=id,
             leaves=list(leaves),
             hierarchy=hierarchy,
-            space=space,
+            axes=axes,
         )
-        dataset = self.define_dataset(
+        dataset = self.define_frameset(
             id=id,
             hierarchy=hierarchy,
-            space=space,
+            axes=axes,
             id_patterns=id_patterns,
             **kwargs,
         )
@@ -357,7 +347,7 @@ class DataStore(metaclass=ABCMeta):
     def import_dataset(
         self,
         id: str,
-        dataset: Dataset,
+        dataset: FrameSet,
         column_names: ty.Optional[ty.List[ty.Union[str, ty.Tuple[str, type]]]] = None,
         hierarchy: ty.Optional[ty.List[str]] = None,
         id_patterns: ty.Optional[ty.Dict[str, str]] = None,
@@ -371,7 +361,7 @@ class DataStore(metaclass=ABCMeta):
         ----------
         id : str
             the ID of the dataset within this store
-        dataset : Dataset
+        dataset : FrameSet
             the dataset to import
         column_names : list[str or tuple[str, type]], optional
             list of columns to the to be included in the imported dataset. Items of the
@@ -385,7 +375,7 @@ class DataStore(metaclass=ABCMeta):
             dataset
         id_patterns : dict[str, str]
             Patterns for inferring IDs of rows not explicitly present in the hierarchy of
-            the data tree. See ``DataStore.infer_ids()`` for syntax
+            the data tree. See ``Store.infer_ids()`` for syntax
         use_original_paths : bool, optional
             use the original paths in the source store instead of renaming the imported
             entries to match their column names
@@ -410,7 +400,7 @@ class DataStore(metaclass=ABCMeta):
             # Create a new dataset in the store to import the data into
             imported = self.create_dataset(
                 id,
-                space=dataset.space,
+                axes=dataset.axes,
                 hierarchy=hierarchy,
                 leaves=[
                     tuple(r.frequency_id(h) for h in hierarchy) for r in dataset.rows()
@@ -447,7 +437,7 @@ class DataStore(metaclass=ABCMeta):
                     if not isinstance(item, imported_col.datatype):
                         item = imported_col.datatype.convert(item)
                     imported_col[
-                        tuple(cell.row.frequency_id(a) for a in dataset.space.axes())
+                        tuple(cell.row.frequency_id(a) for a in dataset.axes.bases())
                     ] = item
             imported.save(name="")
 
@@ -462,7 +452,7 @@ class DataStore(metaclass=ABCMeta):
         # If not saved in the configuration file search for sub-classes
         # whose alias matches `name` and can be initialised without params
         cls._singletons = {}
-        for store_cls in list_subclasses(frametree, DataStore):
+        for store_cls in list_subclasses(frametree, Store):
             try:
                 store = store_cls()
             except Exception:
@@ -554,12 +544,12 @@ class DataStore(metaclass=ABCMeta):
         be enclosed by ``#`` symbols::
 
             id_patterns = {
-                "timepoint": r"T#session:order#"
+                "visit": r"T#session:order#"
             }
 
         where "order" is a special metadata field added by the data store designating
         the order in which the session was acquired within the subject. This pattern will
-        produce timepoint IDs "T1", "T2", "T3", ...
+        produce visit IDs "T1", "T2", "T3", ...
 
         Parameters
         ----------
@@ -769,7 +759,7 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def save_dataset_definition(
+    def save_grid_definition(
         self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
     ):
         """Save definition of dataset within the store
@@ -779,7 +769,7 @@ class DataStore(metaclass=ABCMeta):
         dataset_id: str
             The ID/path of the dataset within the store
         definition: ty.Dict[str, Any]
-            A dictionary containing the dct Dataset to be saved. The
+            A dictionary containing the dct FrameSet to be saved. The
             dictionary is in a format ready to be dumped to file as JSON or
             YAML.
         name: str
@@ -788,9 +778,7 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def load_dataset_definition(
-        self, dataset_id: str, name: str
-    ) -> ty.Dict[str, ty.Any]:
+    def load_grid_definition(self, dataset_id: str, name: str) -> ty.Dict[str, ty.Any]:
         """Load definition of a dataset saved within the store
 
         Parameters
@@ -804,7 +792,7 @@ class DataStore(metaclass=ABCMeta):
         Returns
         -------
         definition: ty.Dict[str, Any]
-            A dct Dataset object that was saved in the data store
+            A dct FrameSet object that was saved in the data store
         """
 
     @abstractmethod
@@ -816,7 +804,7 @@ class DataStore(metaclass=ABCMeta):
         -------
         session : Any
             a session object that will be stored in the connection manager and
-            accessible at `DataStore.connection`
+            accessible at `Store.connection`
         """
 
     @abstractmethod
@@ -840,7 +828,7 @@ class DataStore(metaclass=ABCMeta):
         id: str,
         leaves: ty.List[ty.Tuple[str, ...]],
         hierarchy: ty.List[str],
-        space: type,
+        axes: type,
         **kwargs,
     ):
         """Creates a new empty dataset within in the store. Used in test routines and
@@ -853,15 +841,15 @@ class DataStore(metaclass=ABCMeta):
         leaves : list[tuple[str, ...]]
             list of IDs for each leaf node to be added to the dataset. The IDs for each
             leaf should be a tuple with an ID for each level in the tree's hierarchy, e.g.
-            for a hierarchy of [subject, timepoint] ->
+            for a hierarchy of [subject, visit] ->
             [("SUBJ01", "TIMEPOINT01"), ("SUBJ01", "TIMEPOINT02"), ....]
         hierarchy: ty.List[str]
             the hierarchy of the dataset to be created
-        space : type(DataSpace)
-            the data space of the dataset
+        axes : type(Axes)
+            the data axes of the dataset
         id_patterns : dict[str, str]
             Patterns for inferring IDs of rows not explicitly present in the hierarchy of
-            the data tree. See ``DataStore.infer_ids()`` for syntax
+            the data tree. See ``Store.infer_ids()`` for syntax
         **kwargs
             implementing methods should take wildcard ``kwargs`` to allow compatibility
             with future arguments that might be added

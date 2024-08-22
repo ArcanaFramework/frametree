@@ -1,7 +1,7 @@
-from frametree.core.space import DataSpace
+from frametree.core.axes import Axes
 
 
-class TestDataSpace(DataSpace):
+class TestAxes(Axes):
     """Dummy data dimensions for ease of testing"""
 
     # Per dataset

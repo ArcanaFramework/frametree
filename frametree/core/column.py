@@ -12,13 +12,13 @@ from pydra.utils.hash import hash_single
 from frametree.core.exceptions import FrameTreeDataMatchError
 from .salience import ColumnSalience
 from .quality import DataQuality
-from .space import DataSpace
+from .axes import Axes
 from .cell import DataCell
 from .entry import DataEntry
 
 if ty.TYPE_CHECKING:  # pragma: no cover
     from .row import DataRow
-    from .set.base import Dataset
+    from .frameset.base import FrameSet
 
 
 logger = logging.getLogger("frametree")
@@ -29,11 +29,9 @@ class DataColumn(metaclass=ABCMeta):
 
     name: str
     datatype: type = attrs.field()
-    row_frequency: DataSpace = attrs.field(
-        validator=attrs.validators.instance_of(DataSpace)
-    )
+    row_frequency: Axes = attrs.field(validator=attrs.validators.instance_of(Axes))
     path: ty.Optional[str] = None
-    dataset: Dataset = attrs.field(
+    frameset: FrameSet = attrs.field(
         default=None, metadata={"asdict": False}, eq=False, hash=False, repr=False
     )
     _mismatch_log: list = attrs.field(
@@ -56,12 +54,12 @@ class DataColumn(metaclass=ABCMeta):
         return self.cell(id, allow_empty=False).item
 
     def __len__(self) -> int:
-        return len(list(self.dataset.rows(self.row_frequency)))
+        return len(list(self.frameset.rows(self.row_frequency)))
 
     def cell(self, id, allow_empty: bool = True) -> DataCell:
         return DataCell.intersection(
             self,
-            self.dataset.row(id=id, frequency=self.row_frequency),
+            self.frameset.row(id=id, frequency=self.row_frequency),
             allow_empty=allow_empty,
         )
 
@@ -82,12 +80,12 @@ class DataColumn(metaclass=ABCMeta):
         """
         return (
             DataCell.intersection(self, row, allow_empty=allow_empty)
-            for row in self.dataset.rows(self.row_frequency)
+            for row in self.frameset.rows(self.row_frequency)
         )
 
     @property
     def ids(self) -> ty.List[str]:
-        return [n.id for n in self.dataset.rows(self.row_frequency)]
+        return [n.id for n in self.frameset.rows(self.row_frequency)]
 
     def match_entry(self, row: DataRow, allow_none: bool = False) -> DataEntry:
         """Matches a single entry from a data row against the selection criteria
@@ -196,7 +194,7 @@ class DataColumn(metaclass=ABCMeta):
         row_str = f"'{row.id}' {row.frequency}" if row.id is not None else "root"
         return (
             f", when attempting to match an entry to the '{self.name}' column "
-            f"in the {row_str} row of {self.dataset}\n\n  Found:"
+            f"in the {row_str} row of {self.frameset}\n\n  Found:"
             + self._format_matches(matches)
             + self.format_criteria()
         )
@@ -239,11 +237,11 @@ class DataSource(DataColumn):
         the name of the column
     datatype : type
         the data type of items in the column
-    row_frequency : DataSpace
+    row_frequency : Axes
         the frequency of the "rows" (data nodes) within the dataset tree, e.g. for the
         ``Clinical`` data spce the row frequency can be per 'session', 'subject',
-        'timepoint', 'group', 'dataset', et...
-    dataset: Dataset
+        'visit', 'group', 'dataset', et...
+    dataset: FrameSet
         the dataset the column belongs to
     path : str
         A regex name_path to match the fileset names with. Must match
@@ -380,11 +378,11 @@ class DataSink(DataColumn):
         the name of the column
     datatype : type
         the data type of items in the column
-    row_frequency : DataSpace
+    row_frequency : Axes
         the frequency of the "rows" (data nodes) within the dataset tree, e.g. for the
         ``Clinical`` data spce the row frequency can be per 'session', 'subject',
-        'timepoint', 'group', 'dataset', et...
-    dataset: Dataset
+        'visit', 'group', 'dataset', et...
+    dataset: FrameSet
         the dataset the column belongs to
     path : str
         A regex name_path to match the fileset names with. Must match
@@ -412,10 +410,10 @@ class DataSink(DataColumn):
 
     @path.default
     def path_default(self):
-        return f"{self.name}@{self.dataset.name}"
+        return f"{self.name}@{self.frameset.name}"
 
     def derive(self, ids: ty.List[str] = None):
-        self.dataset.derive(self.name, ids=ids)
+        self.frameset.derive(self.name, ids=ids)
 
     def criteria(self):
         return [self.matches_path, self.matches_datatype]

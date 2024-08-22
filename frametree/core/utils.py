@@ -62,7 +62,7 @@ class NestedContext:
         # but still only use one connection. This is useful for calling
         # methods that need connections, and therefore control their
         # own connection, in batches using the same connection by
-        # placing the batch calls within an outer context.
+        # placing the groupedvisit calls within an outer context.
         self.depth += 1
         if self.depth == 1:
             self.enter()

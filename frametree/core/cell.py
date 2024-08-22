@@ -56,7 +56,7 @@ class DataCell:
             )
         item = self.datatype(item)
         if self.is_empty:
-            entry = self.row.dataset.store.post(
+            entry = self.row.frameset.store.post(
                 item=item, path=self.column.path, datatype=self.datatype, row=self.row
             )
             self.entry = entry

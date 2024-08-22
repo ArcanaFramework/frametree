@@ -4,15 +4,15 @@ import pytest
 import typing as ty
 from fileformats.text import TextFile
 from frametree.core.exceptions import FrameTreeUsageError
-from frametree.common import DirTree, Clinical
+from frametree.common import FileSystem, Clinical
 from frametree.testing.blueprint import TestDatasetBlueprint, FileSetEntryBlueprint
-from frametree.testing.space import TestDataSpace
+from frametree.testing.axes import TestAxes
 
 
 TEST_INCLUSIONS = {
     "all": (
         TestDatasetBlueprint(  # dataset name
-            space=TestDataSpace,
+            axes=TestAxes,
             hierarchy=["a", "b", "c", "abcd"],
             dim_lengths=[1, 2, 3, 4],
             entries=[
@@ -51,7 +51,7 @@ TEST_INCLUSIONS = {
     ),
     "include": (
         TestDatasetBlueprint(  # dataset name
-            space=TestDataSpace,
+            axes=TestAxes,
             hierarchy=["a", "b", "c", "abcd"],
             dim_lengths=[1, 2, 3, 4],
             entries=[
@@ -83,7 +83,7 @@ TEST_INCLUSIONS = {
     ),
     "exclude": (
         TestDatasetBlueprint(  # dataset name
-            space=TestDataSpace,
+            axes=TestAxes,
             hierarchy=["a", "b", "c", "abcd"],
             dim_lengths=[1, 2, 3, 4],
             entries=[
@@ -116,7 +116,7 @@ TEST_INCLUSIONS = {
     ),
     "regex": (
         TestDatasetBlueprint(  # dataset name
-            space=TestDataSpace,
+            axes=TestAxes,
             hierarchy=["a", "b", "c", "abcd"],
             dim_lengths=[1, 2, 3, 4],
             entries=[
@@ -147,14 +147,14 @@ def test_dataset_inclusion(
 ):
     test_name, (blueprint, expected) = fixture
     dataset_path = work_dir / test_name
-    dataset = blueprint.make_dataset(store=DirTree(), dataset_id=dataset_path)
+    dataset = blueprint.make_dataset(store=FileSystem(), dataset_id=dataset_path)
     assert sorted(dataset.row_ids()) == expected
 
 
 def test_include_exclude_fail1(work_dir):
 
     blueprint = TestDatasetBlueprint(  # dataset name
-        space=TestDataSpace,
+        axes=TestAxes,
         hierarchy=["a", "b", "c", "abcd"],
         dim_lengths=[1, 2, 3, 4],
         entries=[
@@ -168,14 +168,14 @@ def test_include_exclude_fail1(work_dir):
         FrameTreeUsageError, match="Unrecognised frequencies in 'include'"
     ):
         blueprint.make_dataset(
-            store=DirTree(), dataset_id=work_dir / "include-exclude-fail1"
+            store=FileSystem(), dataset_id=work_dir / "include-exclude-fail1"
         )
 
 
 def test_include_exclude_fail2(work_dir):
 
     blueprint = TestDatasetBlueprint(  # dataset name
-        space=TestDataSpace,
+        axes=TestAxes,
         hierarchy=["a", "b", "c", "abcd"],
         dim_lengths=[1, 2, 3, 4],
         entries=[
@@ -190,14 +190,14 @@ def test_include_exclude_fail2(work_dir):
         match="only frequencies present in the dataset hierarchy are allowed",
     ):
         blueprint.make_dataset(
-            store=DirTree(), dataset_id=work_dir / "include-exclude-fail2"
+            store=FileSystem(), dataset_id=work_dir / "include-exclude-fail2"
         )
 
 
 def test_include_exclude_fail3(work_dir):
 
     blueprint = TestDatasetBlueprint(  # dataset name
-        space=TestDataSpace,
+        axes=TestAxes,
         hierarchy=["a", "b", "c", "abcd"],
         dim_lengths=[1, 2, 3, 4],
         entries=[
@@ -209,14 +209,14 @@ def test_include_exclude_fail3(work_dir):
     )
     with pytest.raises(FrameTreeUsageError, match="valid regular expression"):
         blueprint.make_dataset(
-            store=DirTree(), dataset_id=work_dir / "include-exclude-fail3"
+            store=FileSystem(), dataset_id=work_dir / "include-exclude-fail3"
         )
 
 
 TEST_AUTO_IDS = {
     "d_dim": (
         TestDatasetBlueprint(  # dataset name
-            space=TestDataSpace,
+            axes=TestAxes,
             hierarchy=["a", "b", "c", "abcd"],
             dim_lengths=[1, 2, 3, 4],
             entries=[
@@ -231,8 +231,8 @@ TEST_AUTO_IDS = {
     ),
     "member": (
         TestDatasetBlueprint(  # dataset name
-            space=Clinical,
-            hierarchy=["group", "subject", "timepoint"],
+            axes=Clinical,
+            hierarchy=["group", "subject", "visit"],
             dim_lengths=[2, 2, 2],
             entries=[
                 FileSetEntryBlueprint(
@@ -246,7 +246,7 @@ TEST_AUTO_IDS = {
     ),
     "double_increment": (
         TestDatasetBlueprint(  # dataset name
-            space=TestDataSpace,
+            axes=TestAxes,
             hierarchy=["ab", "cd"],
             dim_lengths=[2, 2, 2, 2],
             entries=[
@@ -275,7 +275,7 @@ def test_auto_ids(work_dir, fixture):
     _, (blueprint, expected) = fixture
 
     dataset = blueprint.make_dataset(
-        store=DirTree(), dataset_id=work_dir / "incrementing-ids"
+        store=FileSystem(), dataset_id=work_dir / "incrementing-ids"
     )
 
     for key, ids in expected.items():

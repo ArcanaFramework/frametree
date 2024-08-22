@@ -14,14 +14,14 @@ from frametree.core.exceptions import (
     FrameTreeLicenseNotFoundError,
     FrameTreeNameError,
     FrameTreeUsageError,
-    FrameTreeWrongDataSpaceError,
+    FrameTreeWrongAxesError,
 )
 from frametree.core.licence import License
 from ..column import DataColumn, DataSink, DataSource
 from .. import store as datastore
 from ..tree import DataTree
-from ..space import DataSpace
-from .metadata import DatasetMetadata, metadata_converter
+from ..axes import Axes
+from .metadata import Metadata, metadata_converter
 
 
 if ty.TYPE_CHECKING:  # pragma: no cover
@@ -31,12 +31,12 @@ if ty.TYPE_CHECKING:  # pragma: no cover
 logger = logging.getLogger("frametree")
 
 
-def hierarchy_converter(hierarchy: ty.List[ty.Union[str, DataSpace]]) -> ty.List[str]:
+def hierarchy_converter(hierarchy: ty.List[ty.Union[str, Axes]]) -> ty.List[str]:
     return [str(f) for f in hierarchy]
 
 
-@attrs.define(kw_only=True)
-class Dataset:
+@attrs.define
+class FrameSet:
     """
     A representation of a "dataset", the complete collection of data
     (file-sets and fields) to be used in an analysis.
@@ -49,20 +49,20 @@ class Dataset:
     store : Repository
         The store the dataset is stored into. Can be the local file
         system by providing a MockRemote repo.
-    space: DataSpace
+    axes: Axes
         The space of the dataset. See https://frametree.readthedocs.io/en/latest/data_model.html#spaces)
         for a description
     id_patterns : dict[str, str]
         Patterns for inferring IDs of rows not explicitly present in the hierarchy of
-        the data tree. See ``DataStore.infer_ids()`` for syntax
+        the data tree. See ``Store.infer_ids()`` for syntax
     hierarchy : list[str]
-        The data frequencies that are explicitly present in the data tree.
+        The categorical variables that are explicitly present in the data tree.
         For example, if a MockRemote dataset (i.e. directory) has
         two layer hierarchy of sub-directories, the first layer of
         sub-directories labelled by unique subject ID, and the second directory
         layer labelled by study time-point then the hierarchy would be
 
-            ['subject', 'timepoint']
+            ['subject', 'visit']
 
         Alternatively, in some stores (e.g. XNAT) the second layer in the
         hierarchy may be named with session ID that is unique across the project,
@@ -70,7 +70,7 @@ class Dataset:
 
             ['subject', 'session']
 
-        In such cases, if there are multiple timepoints, the timepoint ID of the
+        In such cases, if there are multiple visits, the visit ID of the
         session will need to be extracted using the `id_patterns` argument.
 
         Alternatively, the hierarchy could be organised such that the tree
@@ -78,20 +78,20 @@ class Dataset:
         labelled by member ID, with the final layer containing sessions of
         matched members labelled by their groups (e.g. test & control):
 
-            ['timepoint', 'member', 'group']
+            ['visit', 'member', 'group']
 
         Note that the combination of layers in the hierarchy must span the
-        space defined in the DataSpace enum, i.e. the "bitwise or" of the
+        space defined in the Axes enum, i.e. the "bitwise or" of the
         layer values of the hierarchy must be 1 across all bits
         (e.g. 'session': 0b111).
-    metadata : dict or DatasetMetadata
+    metadata : dict or Metadata
         Generic metadata associated with the dataset, e.g. authors, funding sources, etc...
-    include : list[tuple[DataSpace, str or ty.List[str]]]
+    include : list[tuple[Axes, str or ty.List[str]]]
         The IDs to be included in the dataset per row_frequency. E.g. can be
         used to limit the subject IDs in a project to the sub-set that passed
         QC. If a row_frequency is omitted or its value is None, then all available
         will be used
-    exclude : list[tuple[DataSpace, str or ty.List[str]]]
+    exclude : list[tuple[Axes, str or ty.List[str]]]
         The IDs to be excluded in the dataset per row_frequency. E.g. can be
         used to exclude specific subjects that failed QC. If a row_frequency is
         omitted or its value is None, then all available will be used
@@ -111,14 +111,14 @@ class Dataset:
     )
 
     id: str = attrs.field(converter=str, metadata={"asdict": False})
-    store: datastore.DataStore = attrs.field()
-    space: ty.Type[DataSpace] = attrs.field()
+    store: datastore.Store = attrs.field()
+    axes: ty.Type[Axes] = attrs.field()
     id_patterns: ty.Dict[str, str] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict)
     )
     hierarchy: ty.List[str] = attrs.field(converter=hierarchy_converter)
-    metadata: DatasetMetadata = attrs.field(
-        factory=DatasetMetadata,
+    metadata: Metadata = attrs.field(
+        factory=Metadata,
         converter=metadata_converter,
         repr=False,
     )
@@ -135,18 +135,39 @@ class Dataset:
     pipelines: ty.Dict[str, Pipeline] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
-    # analyses: ty.Dict[str, Analysis] = attrs.field(
-    #     factory=dict, converter=default_if_none(factory=dict), repr=False
-    # )
     tree: DataTree = attrs.field(factory=DataTree, init=False, repr=False, eq=False)
 
     def __attrs_post_init__(self):
-        self.tree.dataset = self
+        self.tree.frameset = self
         # Set reference to pipeline in columns and pipelines
         for column in self.columns.values():
-            column.dataset = self
+            column.frameset = self
         for pipeline in self.pipelines.values():
-            pipeline.dataset = self
+            pipeline.frameset = self
+
+    @store.default
+    def store_default(self):
+        from frametree.common import FileSystem
+
+        return FileSystem()
+
+    @axes.default
+    def axes_default(self):
+        try:
+            return self.store.DEFAULT_AXES
+        except AttributeError:
+            return TypeError(
+                f"FrameSets in {type(self.store)} need to explicitly set their axes"
+            )
+
+    @hierarchy.default
+    def hierarchy_default(self):
+        try:
+            return self.store.DEFAULT_HIERARCHY
+        except AttributeError:
+            return TypeError(
+                f"FrameSets in {type(self.store)} need to explicitly set their hierarchy"
+            )
 
     @name.validator
     def name_validator(self, _, name: str):
@@ -165,17 +186,17 @@ class Dataset:
     @columns.validator
     def columns_validator(self, _, columns):
         wrong_freq = [
-            m for m in columns.values() if not isinstance(m.row_frequency, self.space)
+            m for m in columns.values() if not isinstance(m.row_frequency, self.axes)
         ]
         if wrong_freq:
             raise FrameTreeUsageError(
                 f"Data hierarchy of {wrong_freq} column specs do(es) not match "
-                f"that of dataset {self.space}"
+                f"that of dataset {self.axes}"
             )
 
     @include.validator
     def include_validator(self, _, include: ty.Dict[str, ty.Union[str, ty.List[str]]]):
-        valid = set(str(f) for f in self.space)
+        valid = set(str(f) for f in self.axes)
         freqs = set(include)
         unrecognised = freqs - valid
         if unrecognised:
@@ -214,16 +235,16 @@ class Dataset:
 
     @hierarchy.validator
     def hierarchy_validator(self, _, hierarchy):
-        not_valid = [f for f in hierarchy if str(f) not in self.space.__members__]
+        not_valid = [f for f in hierarchy if str(f) not in self.axes.__members__]
         if not_valid:
-            raise FrameTreeWrongDataSpaceError(
-                f"hierarchy items {not_valid} are not part of the {self.space} data space"
+            raise FrameTreeWrongAxesError(
+                f"hierarchy items {not_valid} are not part of the {self.axes} data space"
             )
         # Check that all data frequencies are "covered" by the hierarchy and
         # each subsequent
-        covered = self.space(0)
+        covered = self.axes(0)
         for i, layer_str in enumerate(hierarchy):
-            layer = self.space[str(layer_str)]
+            layer = self.axes[str(layer_str)]
             diff = (layer ^ covered) & layer
             if not diff:
                 raise FrameTreeUsageError(
@@ -231,13 +252,13 @@ class Dataset:
                     f"previous layers {hierarchy[i:]}"
                 )
             covered |= layer
-        if covered != max(self.space):
+        if covered != max(self.axes):
             raise FrameTreeUsageError(
                 "The data hierarchy ['"
                 + "', '".join(hierarchy)
                 + "'] does not cover the following basis frequencies ['"
-                + "', '".join(str(m) for m in (covered ^ max(self.space)).span())
-                + f"'] the '{self.space.__module__}.{self.space.__name__}' data space"
+                + "', '".join(str(m) for m in (covered ^ max(self.axes)).span())
+                + f"'] the '{self.axes.__module__}.{self.axes.__name__}' data space"
             )
         # if missing_axes:
         #     raise FrameTreeConstructionError(
@@ -254,30 +275,31 @@ class Dataset:
 
     @id_patterns.validator
     def id_patterns_validator(self, _, id_patterns):
-        non_valid_keys = [f for f in id_patterns if f not in self.space.__members__]
+        non_valid_keys = [f for f in id_patterns if f not in self.axes.__members__]
         if non_valid_keys:
-            raise FrameTreeWrongDataSpaceError(
+            raise FrameTreeWrongAxesError(
                 f"Keys for the id_patterns dictionary {non_valid_keys} are not part "
-                f"of the {self.space} data space"
+                f"of the {self.axes} data space"
             )
         for key, expr in id_patterns.items():
             groups = list(re.compile(expr).groupindex)
-            non_valid_groups = [f for f in groups if f not in self.space.__members__]
+            non_valid_groups = [f for f in groups if f not in self.axes.__members__]
             if non_valid_groups:
-                raise FrameTreeWrongDataSpaceError(
+                raise FrameTreeWrongAxesError(
                     f"Groups in the {key} id_patterns expression {non_valid_groups} "
-                    f"are not part of the {self.space} data space"
+                    f"are not part of the {self.axes} data space"
                 )
 
     def save(self, name=""):
-        self.store.save_dataset(self, name=name)
+        self.store.save_frameset(self, name=name)
 
     @classmethod
     def load(
         cls,
         id: str,
-        store: datastore.DataStore = None,
+        store: datastore.Store = None,
         name: ty.Optional[str] = "",
+        default_if_missing: bool = False,
         **kwargs,
     ):
         """Loads a dataset from an store/ID/name string, as used in the CLI
@@ -287,30 +309,38 @@ class Dataset:
         id: str
             either the ID of a dataset if `store` keyword arg is provided or a
             "dataset ID string" in the format <store-nickname>//<dataset-id>[@<dataset-name>]
-        store: DataStore, optional
+        store: Store, optional
             the store to load the dataset. If not provided the provided ID
             is interpreted as an ID string
         name: str, optional
             the name of the dataset within the project/directory
             (e.g. 'test', 'training'). Used to specify a subset of data rows
             to work with, within a greater project
+        default_if_missing: bool, optional
+            If True, then a new dataset is created if the dataset is not found
+            in the store
         **kwargs
             keyword arguments parsed to the data store load
 
         Returns
         -------
-        Dataset
+        FrameSet
             the loaded dataset"""
         if store is None:
             store_name, id, parsed_name = cls.parse_id_str(id)
-            store = datastore.DataStore.load(store_name, **kwargs)
+            store = datastore.Store.load(store_name, **kwargs)
             if not name and parsed_name:
                 name = parsed_name
-        return store.load_dataset(id, name=name)
+        try:
+            return store.load_frameset(id, name=name)
+        except KeyError:
+            if default_if_missing:
+                return cls(id, store, **kwargs)
+            raise
 
     @property
     def root_freq(self):
-        return self.space(0)
+        return self.axes(0)
 
     @property
     def root_dir(self):
@@ -318,7 +348,7 @@ class Dataset:
 
     @property
     def leaf_freq(self):
-        return max(self.space)
+        return max(self.axes)
 
     @property
     def prov(self):
@@ -377,7 +407,7 @@ class Dataset:
             that the source will be stored in within the dataset
         path : str, default `name`
             The location of the source within the dataset
-        row_frequency : DataSpace, default self.leaf_freq
+        row_frequency : Axes, default self.leaf_freq
             The row_frequency of the source within the dataset
         overwrite : bool
             Whether to overwrite existing columns
@@ -392,7 +422,7 @@ class Dataset:
             datatype=datatype,
             path=path,
             row_frequency=row_frequency,
-            dataset=self,
+            frameset=self,
             **kwargs,
         )
         self._add_column(name, source, overwrite)
@@ -431,7 +461,7 @@ class Dataset:
             name=name,
             datatype=datatype,
             row_frequency=row_frequency,
-            dataset=self,
+            frameset=self,
             **kwargs,
         )
         self._add_column(name, sink, overwrite)
@@ -457,7 +487,7 @@ class Dataset:
 
         Parameters
         ----------
-        frequency : DataSpace or str
+        frequency : Axes or str
             The frequency of the row
         id : str or Tuple[str], optional
             The ID of the row to
@@ -494,10 +524,10 @@ class Dataset:
                 try:
                     return self.root.children[frequency][id]
                 except KeyError as e:
-                    if isinstance(id, tuple) and len(id) == self.space.ndim:
+                    if isinstance(id, tuple) and len(id) == self.axes.ndim:
                         # Expand ID tuple to see if it is an expansion of the ID axes
                         # instead of a direct label for the row
-                        id_kwargs = {a: i for a, i in zip(self.space.axes(), id)}
+                        id_kwargs = {a: i for a, i in zip(self.axes.bases(), id)}
                     else:
                         raise FrameTreeNameError(
                             id,
@@ -511,7 +541,7 @@ class Dataset:
             # Iterate through the tree to find the row (i.e. tree node) matching the
             # provided IDs
             row = self.root
-            cum_freq = self.space(0)
+            cum_freq = self.axes(0)
             for freq, id in id_kwargs.items():
                 cum_freq |= freq
                 try:
@@ -532,7 +562,7 @@ class Dataset:
 
         Parameters
         ----------
-        frequency : DataSpace, optional
+        frequency : Axes, optional
             The "frequency" of the rows, e.g. per-session, per-subject, defaults to
             leaf rows
         ids : Sequence[str or Tuple[str]]
@@ -544,7 +574,7 @@ class Dataset:
             The sequence of the data row within the dataset
         """
         if frequency is None:
-            frequency = max(self.space)  # "leaf" nodes of the data tree
+            frequency = max(self.axes)  # "leaf" nodes of the data tree
         else:
             frequency = self.parse_frequency(frequency)
         with self.tree:
@@ -574,7 +604,7 @@ class Dataset:
             The IDs of the rows
         """
         if frequency is None:
-            frequency = max(self.space)  # "leaf" nodes of the data tree
+            frequency = max(self.axes)  # "leaf" nodes of the data tree
         else:
             frequency = self.parse_frequency(frequency)
         if frequency == self.root_freq:
@@ -600,7 +630,7 @@ class Dataset:
         """
         return self.columns[name]
 
-    def apply_pipeline(
+    def apply(
         self,
         name,
         workflow,
@@ -660,7 +690,7 @@ class Dataset:
 
         pipeline = Pipeline(
             name=name,
-            dataset=self,
+            frameset=self,
             row_frequency=row_frequency,
             workflow=workflow,
             inputs=inputs,
@@ -685,9 +715,6 @@ class Dataset:
         self.pipelines[name] = pipeline
 
         return pipeline
-
-    def apply(self, analysis):
-        self.analyses[analysis.name] = analysis
 
     def derive(self, *sink_names, ids=None, cache_dir=None, **kwargs):
         """Generate derivatives from the workflows
@@ -720,15 +747,15 @@ class Dataset:
         """Parses the data row_frequency, converting from string if necessary and
         checks it matches the dimensions of the dataset"""
         if freq is None:
-            return max(self.space)
+            return max(self.axes)
         try:
             if isinstance(freq, str):
-                freq = self.space[freq]
-            elif not isinstance(freq, self.space):
+                freq = self.axes[freq]
+            elif not isinstance(freq, self.axes):
                 raise KeyError
         except KeyError as e:
-            raise FrameTreeWrongDataSpaceError(
-                f"{freq} is not a valid dimension for {self} " f"({self.space})"
+            raise FrameTreeWrongAxesError(
+                f"{freq} is not a valid dimension for {self} " f"({self.axes})"
             ) from e
         return freq
 
@@ -739,8 +766,8 @@ class Dataset:
     @classmethod
     def parse_id_str(cls, id):
         parts = id.split("//")
-        if len(parts) == 1:  # No store definition, default to the `DirTree` store
-            store_name = "dirtree"
+        if len(parts) == 1:  # No store definition, default to the `FileSystem` store
+            store_name = "file_system"
         else:
             store_name, id = parts
         parts = id.split("@")
@@ -824,7 +851,7 @@ class Dataset:
             name=f"{name}_license",
             datatype=PlainText,
             row_frequency=self.root_freq,
-            dataset=dataset,
+            frameset=dataset,
             path=License.column_path(name),
         )
         return column.match_entry(dataset.root)
@@ -844,7 +871,7 @@ class Dataset:
         yield f"{type(self).__module__}.{type(self).__name__}(".encode()
         yield self.id.encode()
         yield bytes(hash_single(self.store, cache))
-        yield bytes(hash_single(self.space, cache))
+        yield bytes(hash_single(self.axes, cache))
         yield bytes(hash_single(self.include, cache))
         yield bytes(hash_single(self.exclude, cache))
         yield self.name.encode()
@@ -859,5 +886,5 @@ class SplitDataset:
     ----------
     """
 
-    source_dataset: Dataset = attrs.field()
-    sink_dataset: Dataset = attrs.field()
+    source_dataset: FrameSet = attrs.field()
+    sink_dataset: FrameSet = attrs.field()

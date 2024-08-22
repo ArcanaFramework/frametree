@@ -18,7 +18,7 @@ from frametree.core.exceptions import (
 from frametree.core.utils import get_home_dir, append_suffix
 from ..row import DataRow
 from ..entry import DataEntry
-from .base import DataStore
+from .base import Store
 
 
 logger = logging.getLogger("frametree")
@@ -31,7 +31,7 @@ special_dir_re = re.compile(r"(__.*__$|\..*|~.*)")
 
 
 @attrs.define
-class LocalStore(DataStore):
+class LocalStore(Store):
     """
     A Repository class for data stored hierarchically within sub-directories
     of a file-system directory. The depth and which layer in the data tree
@@ -58,10 +58,6 @@ class LocalStore(DataStore):
     # populate_tree
 
     # populate_row
-
-    # save_dataset_definition
-
-    # load_dataset_definition
 
     # put_provenance
 
@@ -253,13 +249,13 @@ class LocalStore(DataStore):
             uri = self.field_uri(path, datatype, row)
         return row.add_entry(path=path, datatype=datatype, uri=uri)
 
-    def save_dataset_definition(self, dataset_id, definition, name):
+    def save_grid_definition(self, dataset_id, definition, name):
         definition_path = self.definition_save_path(dataset_id, name)
         definition_path.parent.mkdir(exist_ok=True, parents=True)
         with open(definition_path, "w") as f:
             yaml.dump(definition, f)
 
-    def load_dataset_definition(self, dataset_id, name):
+    def load_grid_definition(self, dataset_id, name):
         fspath = self.definition_save_path(dataset_id, name)
         if fspath.exists():
             with open(fspath) as f:
@@ -308,7 +304,7 @@ class LocalStore(DataStore):
             raise DatatypeUnsupportedByStoreError(entry.datatype, self)
 
     def root_dir(self, row) -> Path:
-        return Path(row.dataset.id)
+        return Path(row.frameset.id)
 
     def site_licenses_dataset(self, **kwargs):
         """Provide a place to store hold site-wide licenses"""
@@ -316,21 +312,21 @@ class LocalStore(DataStore):
         if not dataset_root.exists():
             dataset_root.mkdir(parents=True)
         try:
-            dataset = self.load_dataset(dataset_root)
+            dataset = self.load_frameset(dataset_root)
         except KeyError:
             from frametree.common import Samples
 
-            dataset = self.define_dataset(dataset_root, space=Samples)
+            dataset = self.define_frameset(dataset_root, axes=Samples)
         return dataset
 
     ###################
     # Other overrides #
     ###################
 
-    def define_dataset(self, id, *args, **kwargs):
+    def define_frameset(self, id, *args, **kwargs):
         if not Path(id).exists():
             raise FrameTreeUsageError(f"Path to dataset root '{id}'' does not exist")
-        return super().define_dataset(id, *args, **kwargs)
+        return super().define_frameset(id, *args, **kwargs)
 
     ##################
     # Helper methods #
@@ -379,4 +375,6 @@ class LocalStore(DataStore):
             )
 
     def definition_save_path(self, dataset_id, name):
+        if not name:
+            name = "_"
         return Path(dataset_id) / self.FRAMETREE_DIR / name / "definition.yaml"

@@ -23,14 +23,14 @@ from frametree.core.exceptions import (
 from frametree.core.utils import dict_diff, full_path
 from ..entry import DataEntry
 from ..row import DataRow
-from .base import DataStore
+from .base import Store
 
 
 logger = logging.getLogger("frametree")
 
 
 @attrs.define
-class RemoteStore(DataStore):
+class RemoteStore(Store):
     """
     Access class for XNAT data repositories
 
@@ -92,9 +92,9 @@ class RemoteStore(DataStore):
 
     # populate_row
 
-    # save_dataset_definition
+    # save_grid_definition
 
-    # load_dataset_definition
+    # load_grid_definition
 
     # connect
 
@@ -314,7 +314,7 @@ class RemoteStore(DataStore):
 
         Returns
         -------
-        Dataset or None
+        FrameSet or None
             the dataset that holds site-wide licenses
         user: str, optional
             Username with which to connect to XNAT with, by default None
@@ -342,27 +342,27 @@ class RemoteStore(DataStore):
         del kwargs["connection"]
         store = type(self)(**kwargs)
         try:
-            return store.load_dataset(self.SITE_LICENSES_DATASET)
+            return store.load_frameset(self.SITE_LICENSES_DATASET)
         except KeyError:
             # If no site-wide licenses dataset exists, try to create one
             try:
-                space = store.DEFAULT_SPACE
+                axes = store.DEFAULT_AXES
                 hierarchy = store.DEFAULT_HIERRACHY
             except AttributeError:
-                from frametree.common.space import Samples
+                from frametree.common.axes import Samples
 
-                space = Samples
+                axes = Samples
                 hierarchy = [Samples.sample]  # just create a dummy one
             with store.connection:
                 store.create_data_tree(
                     self.SITE_LICENSES_DATASET, [], hierarchy=hierarchy
                 )
             with store.connection:
-                dataset = store.define_dataset(
-                    self.SITE_LICENSES_DATASET, space=space, hierarchy=hierarchy
+                dataset = store.define_frameset(
+                    self.SITE_LICENSES_DATASET, axes=axes, hierarchy=hierarchy
                 )
                 dataset.save()
-            return store.load_dataset(self.SITE_LICENSES_DATASET)
+            return store.load_frameset(self.SITE_LICENSES_DATASET)
 
     ###################
     # Get and putters #

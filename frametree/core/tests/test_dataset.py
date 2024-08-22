@@ -2,7 +2,7 @@ from pathlib import Path
 import cloudpickle as cp
 from pydra import mark, Workflow
 from pydra.utils.hash import hash_object
-from frametree.core.set.base import Dataset
+from frametree.core.frameset.base import FrameSet
 from frametree.core.serialize import asdict, fromdict
 
 
@@ -16,7 +16,7 @@ def test_dataset_asdict_roundtrip(dataset):
     assert dataset == undct
 
 
-def test_dataset_pickle(dataset: Dataset, tmp_dir: Path):
+def test_dataset_pickle(dataset: FrameSet, tmp_dir: Path):
     fpath = tmp_dir / "dataset.pkl"
     with fpath.open("wb") as fp:
         cp.dump(dataset, fp)
@@ -25,7 +25,7 @@ def test_dataset_pickle(dataset: Dataset, tmp_dir: Path):
     assert dataset == reloaded
 
 
-def test_dataset_in_workflow_pickle(dataset: Dataset, tmp_dir: Path):
+def test_dataset_in_workflow_pickle(dataset: FrameSet, tmp_dir: Path):
 
     # Create the outer workflow to link the analysis workflow with the
     # data row iteration and store connection rows
@@ -39,7 +39,7 @@ def test_dataset_in_workflow_pickle(dataset: Dataset, tmp_dir: Path):
 
 
 @mark.task
-@mark.annotate({"a": int, "b": int, "dataset": Dataset, "return": {"c": int}})
+@mark.annotate({"a": int, "b": int, "dataset": FrameSet, "return": {"c": int}})
 def func(a, b, dataset):
     return a + b
 

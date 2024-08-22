@@ -1,14 +1,13 @@
 Command-line interface
 ======================
 
-FrameTree's command line interface is grouped into five categories, `store`,
-`dataset`, `apply`, `derive`, and `deploy`. Below these categories are the
-commands that interact with FrameTree's data model, processing and deployment
-streams.
+FrameTree's command line interface allows you to create stores and frame sets, add
+source and sink columns, apply pipelines and create derivatives. It can be grouped
+into three sections, *Store management*, *frame specification*, and *processing*.
 
 
-Store
------
+Store management
+----------------
 
 Commands used to access remove data stores and save them for further use
 
@@ -28,69 +27,37 @@ Commands used to access remove data stores and save them for further use
    :prog: frametree store ls
 
 
-Dataset
--------
+Frame specification
+-------------------
 
 Commands used to define and work with datasets
 
-.. click:: frametree.core.cli.dataset:define
-   :prog: frametree dataset define
+.. click:: frametree.core.cli.frameset:define
+   :prog: frametree define
 
-.. click:: frametree.core.cli.dataset:add_source
-   :prog: frametree dataset add-source
+.. click:: frametree.core.cli.frameset:add_source
+   :prog: frametree add-source
 
-.. click:: frametree.core.cli.dataset:add_sink
-   :prog: frametree dataset add-sink
+.. click:: frametree.core.cli.frameset:add_sink
+   :prog: frametree add-sink
 
-.. click:: frametree.core.cli.dataset:missing_items
-   :prog: frametree dataset missing-items
-
-
-Apply
------
-
-Commands for applying workflows and analyses to datasets
-
-.. click:: frametree.core.cli.apply:apply_pipeline
-   :prog: frametree apply pipeline
+.. click:: frametree.core.cli.frameset:missing_items
+   :prog: frametree missing-items
 
 
-.. click:: frametree.core.cli.apply:apply_analysis
-   :prog: frametree apply analysis
+Processing
+----------
 
+Commands for applying workflows and analyses to framesets and generate derivative data
 
-Derive
--------
+.. click:: frametree.core.cli.processing:apply
+   :prog: frametree apply
 
-Commands for calling workflows/analyses to derive derivative data
+.. click:: frametree.core.cli.processing:derive
+   :prog: frametree derive
 
-.. click:: frametree.core.cli.derive:derive_column
-   :prog: frametree derive column
+.. click:: frametree.core.cli.processing:menu
+   :prog: frametree menu
 
-.. click:: frametree.core.cli.derive:derive_output
-   :prog: frametree derive output
-
-.. click:: frametree.core.cli.derive:menu
-   :prog: frametree derive menu
-
-.. click:: frametree.core.cli.derive:ignore_diff
-   :prog: frametree derive ignore-diff
-
-
-Deploy
-------
-
-Commands for deploying frametree pipelines
-
-
-.. click:: frametree.core.cli.deploy:build
-   :prog: frametree deploy build
-
-.. click:: frametree.core.cli.deploy:test
-   :prog: frametree deploy test
-
-.. click:: frametree.core.cli.deploy:make_docs
-   :prog: frametree deploy docs
-
-.. click:: frametree.core.cli.deploy:inspect_docker_exec
-   :prog: frametree deploy inspect-docker
+.. click:: frametree.core.cli.processing:ignore_diff
+   :prog: frametree ignore-diff

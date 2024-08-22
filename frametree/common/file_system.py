@@ -8,7 +8,7 @@ import json
 import attrs
 from fileformats.core import FileSet, Field
 from frametree.core.exceptions import FrameTreeUsageError
-from frametree.core.set.base import DataTree
+from frametree.core.frameset.base import DataTree
 from frametree.core.row import DataRow
 from frametree.core.entry import DataEntry
 from frametree.core.store import LocalStore
@@ -25,7 +25,7 @@ special_dir_re = re.compile(r"(__.*__$|\..*|~.*)")
 
 
 @attrs.define
-class DirTree(LocalStore):
+class FileSystem(LocalStore):
     """
     A Repository class for data stored hierarchically within sub-directories
     of a file-system directory. The depth and which layer in the data tree
@@ -45,7 +45,7 @@ class DirTree(LocalStore):
 
     # Note this name will be constant, as there is only ever one store,
     # which covers whole FS
-    name: str = "dirtree"
+    name: str = "file_system"
 
     #################################
     # Abstract-method implementations
@@ -57,7 +57,7 @@ class DirTree(LocalStore):
 
         Parameters
         ----------
-        dataset : Dataset
+        dataset : FrameSet
             The dataset to construct the tree dimensions for
         """
         if not os.path.exists(tree.dataset_id):
@@ -100,7 +100,7 @@ class DirTree(LocalStore):
                 ):
                     yield subpath
 
-        root_dir = full_path(row.dataset.id)
+        root_dir = full_path(row.frameset.id)
 
         # Iterate through all directories saved for the source and dataset derivatives
         for dataset_name in self._row_dataset_names(row):
@@ -194,12 +194,12 @@ class DirTree(LocalStore):
         if new_ext:
             if len(fileset.fspaths) > 1:
                 raise FrameTreeUsageError(
-                    "Cannot store file-set with multiple files in dirtree store "
+                    "Cannot store file-set with multiple files in file_system store "
                     "when extension is specified"
                 )
             if new_ext != FileSet.decompose_fspath(fileset.fspath)[2]:
                 raise FrameTreeUsageError(
-                    "Cannot change extension of file-set when copying to dirtree store"
+                    "Cannot change extension of file-set when copying to file_system store"
                 )
         # Create target directory if it doesn't exist already
         copied_fileset = fileset.copy(
@@ -346,11 +346,11 @@ class DirTree(LocalStore):
         leaves : list[tuple[str, ...]]
                         list of IDs for each leaf node to be added to the dataset. The IDs for each
             leaf should be a tuple with an ID for each level in the tree's hierarchy, e.g.
-            for a hierarchy of [subject, timepoint] ->
+            for a hierarchy of [subject, visit] ->
             [("SUBJ01", "TIMEPOINT01"), ("SUBJ01", "TIMEPOINT02"), ....]
         hierarchy: ty.List[str]
             the hierarchy of the dataset to be created
-        space : type(DataSpace)
+        space : type(Axes)
             the data space of the dataset
         """
         root_dir = Path(id)
@@ -380,8 +380,8 @@ class DirTree(LocalStore):
             the relative path to the row directory
         """
         relpath = Path()
-        if row.frequency is max(row.dataset.space):  # leaf node
-            for freq in row.dataset.hierarchy:
+        if row.frequency is max(row.frameset.axes):  # leaf node
+            for freq in row.frameset.hierarchy:
                 relpath /= row.frequency_id(freq)
             if dataset_name is not None:
                 relpath /= self.FRAMETREE_DIR
@@ -421,7 +421,7 @@ class DirTree(LocalStore):
         """
         dataset_names = [None]  # The source data
         derivs_dir = (
-            Path(row.dataset.id) / self._row_relpath(row, dataset_name="").parent
+            Path(row.frameset.id) / self._row_relpath(row, dataset_name="").parent
         )
         if derivs_dir.exists():
             dataset_names.extend(
@@ -432,11 +432,11 @@ class DirTree(LocalStore):
         return dataset_names
 
     def _fileset_fspath(self, entry):
-        return Path(entry.row.dataset.id) / entry.uri
+        return Path(entry.row.frameset.id) / entry.uri
 
     def _fields_fspath_and_key(self, entry):
         relpath, key = entry.uri.split("::")
-        fspath = Path(entry.row.dataset.id) / relpath
+        fspath = Path(entry.row.frameset.id) / relpath
         return fspath, key
 
     def _fileset_prov_fspath(self, entry):

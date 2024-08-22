@@ -17,9 +17,9 @@ from frametree.core.exceptions import (
 )
 from fileformats.core import DataType
 from fileformats.core.exceptions import FormatConversionError
-import frametree.core.set.base
+import frametree.core.frameset.base
 import frametree.core.row
-from .space import DataSpace
+from .axes import Axes
 from .utils import (
     func_task,
     pydra_eq,
@@ -81,7 +81,7 @@ class Pipeline:
     ----------
     name : str
         the name of the pipeline, used to differentiate it from others
-    row_frequency : DataSpace, optional
+    row_frequency : Axes, optional
         The row_frequency of the pipeline, i.e. the row_frequency of the
         derivatvies within the dataset, e.g. per-session, per-subject, etc,
         by default None
@@ -99,12 +99,12 @@ class Pipeline:
     converter_args : dict[str, dict]
         keyword arguments passed on to the converter to control how the
         conversion is performed.
-    dataset : Dataset
+    dataset : FrameSet
         the dataset the pipeline has been applied to
     """
 
     name: str = attrs.field()
-    row_frequency: DataSpace = attrs.field()
+    row_frequency: Axes = attrs.field()
     workflow: Workflow = attrs.field(eq=attrs.cmp_using(pydra_eq))
     inputs: ty.List[PipelineField] = attrs.field(
         converter=ObjectListConverter(PipelineField)
@@ -115,22 +115,22 @@ class Pipeline:
     converter_args: ty.Dict[str, dict] = attrs.field(
         factory=dict, converter=attrs.converters.default_if_none(factory=dict)
     )
-    dataset: frametree.core.set.base.Dataset = attrs.field(
+    frameset: frametree.core.frameset.base.FrameSet = attrs.field(
         metadata={"asdict": False}, default=None, eq=False, hash=False
     )
 
     def __attrs_post_init__(self):
         for field in self.inputs + self.outputs:
             if field.datatype is None:
-                field.datatype = self.dataset[field.name].datatype
+                field.datatype = self.frameset[field.name].datatype
 
     @inputs.validator
     def inputs_validator(self, _, inputs: ty.List[PipelineField]):
         for inpt in inputs:
             if inpt.datatype is frametree.core.row.DataRow:  # special case
                 continue
-            if self.dataset:
-                column = self.dataset[inpt.name]
+            if self.frameset:
+                column = self.frameset[inpt.name]
                 # Check that a converter can be found if required
                 if inpt.datatype:
                     try:
@@ -156,8 +156,8 @@ class Pipeline:
     @outputs.validator
     def outputs_validator(self, _, outputs: ty.List[PipelineField]):
         for outpt in outputs:
-            if self.dataset:
-                column = self.dataset[outpt.name]
+            if self.frameset:
+                column = self.frameset[outpt.name]
                 if column.row_frequency != self.row_frequency:
                     raise FrameTreeUsageError(
                         f"Pipeline row_frequency ('{str(self.row_frequency)}') doesn't match "
@@ -233,7 +233,7 @@ class Pipeline:
         # Generate list of rows to process checking existing outputs
         wf.add(
             to_process(
-                dataset=self.dataset,
+                dataset=self.frameset,
                 row_frequency=self.row_frequency,
                 outputs=self.outputs,
                 requested_ids=None,  # FIXME: Needs to be set dynamically
@@ -258,11 +258,11 @@ class Pipeline:
             if inpt.datatype is frametree.core.row.DataRow:
                 dtype = frametree.core.row.DataRow
             else:
-                dtype = self.dataset[inpt.name].datatype
+                dtype = self.frameset[inpt.name].datatype
                 # If the row frequency of the source column is higher than the frequency
                 # of the pipeline, then the related elements of the source column are
                 # collected into a list and passed to the pipeline
-                if not self.dataset[inpt.name].row_frequency.is_parent(
+                if not self.frameset[inpt.name].row_frequency.is_parent(
                     self.row_frequency, if_match=True
                 ):
                     dtype = ty.List[dtype]
@@ -273,15 +273,15 @@ class Pipeline:
             func_task(
                 source_items,
                 in_fields=[
-                    ("dataset", frametree.core.set.base.Dataset),
-                    ("row_frequency", DataSpace),
+                    ("dataset", frametree.core.frameset.base.FrameSet),
+                    ("row_frequency", Axes),
                     ("id", str),
                     ("inputs", ty.List[PipelineField]),
                     ("parameterisation", ty.Dict[str, ty.Any]),
                 ],
                 out_fields=list(source_out_dct.items()),
                 name="source",
-                dataset=self.dataset,
+                dataset=self.frameset,
                 row_frequency=self.row_frequency,
                 inputs=self.inputs,
                 id=wf.per_row.lzin.id,
@@ -297,7 +297,7 @@ class Pipeline:
         for inpt in self.inputs:
             if inpt.datatype == frametree.core.row.DataRow:
                 continue
-            stored_format = self.dataset[inpt.name].datatype
+            stored_format = self.frameset[inpt.name].datatype
             converter = inpt.datatype.get_converter(
                 stored_format,
                 name=f"{inpt.name}_input_converter",
@@ -339,7 +339,7 @@ class Pipeline:
 
         # Do output datatype conversions if required
         for outpt in self.outputs:
-            stored_format = self.dataset[outpt.name].datatype
+            stored_format = self.frameset[outpt.name].datatype
             sink_name = path2varname(outpt.name)
             converter = stored_format.get_converter(
                 outpt.datatype,
@@ -366,8 +366,8 @@ class Pipeline:
                 sink_items,
                 in_fields=(
                     [
-                        ("dataset", frametree.core.set.base.Dataset),
-                        ("row_frequency", DataSpace),
+                        ("dataset", frametree.core.frameset.base.FrameSet),
+                        ("row_frequency", Axes),
                         ("id", str),
                         ("provenance", ty.Dict[str, ty.Any]),
                     ]
@@ -378,7 +378,7 @@ class Pipeline:
                 ),
                 out_fields=[("id", str)],
                 name="sink",
-                dataset=self.dataset,
+                dataset=self.frameset,
                 row_frequency=self.row_frequency,
                 id=wf.per_row.lzin.id,
                 provenance=wf.per_row.source.lzout.provenance_,
@@ -454,7 +454,7 @@ class Pipeline:
                 raise FrameTreeDesignError(
                     f"{sink} hasn't been connected to a pipeline yet"
                 )
-            pipeline = sink.dataset.pipelines[sink.pipeline_name]
+            pipeline = sink.frameset.pipelines[sink.pipeline_name]
             if sink.name not in pipeline.output_varnames:
                 raise FrameTreeOutputNotProducedException(
                     f"{pipeline.name} does not produce {sink.name}"
@@ -485,7 +485,7 @@ class Pipeline:
             stack[pipeline.name] = pipeline, to_produce
             # Recursively add all the pipeline's prerequisite pipelines to the stack
             for inpt in pipeline.inputs:
-                inpt_column = sink.dataset[inpt.name]
+                inpt_column = sink.frameset[inpt.name]
                 if inpt_column.is_sink:
                     try:
                         push_pipeline_on_stack(
@@ -521,8 +521,8 @@ def split_side_car_suffix(name):
 @pydra.mark.task
 @pydra.mark.annotate({"return": {"ids": ty.List[str], "cant_process": ty.List[str]}})
 def to_process(
-    dataset: frametree.core.set.base.Dataset,
-    row_frequency: DataSpace,
+    dataset: frametree.core.frameset.base.FrameSet,
+    row_frequency: Axes,
     outputs: ty.List[PipelineField],
     requested_ids: ty.Union[ty.List[str], None],
     parameterisation: ty.Dict[str, ty.Any],
@@ -547,8 +547,8 @@ def to_process(
 
 
 def source_items(
-    dataset: frametree.core.set.base.Dataset,
-    row_frequency: DataSpace,
+    dataset: frametree.core.frameset.base.FrameSet,
+    row_frequency: Axes,
     id: str,
     inputs: ty.List[PipelineField],
     parameterisation: dict,
@@ -559,9 +559,9 @@ def source_items(
 
     Parameters
     ----------
-    dataset : Dataset
+    dataset : FrameSet
         the dataset to source the data from
-    row_frequency : DataSpace
+    row_frequency : Axes
         the frequency of the row to source the data from
     id : str
         the ID of the row to source from
@@ -594,9 +594,9 @@ def sink_items(dataset, row_frequency, id, provenance, **to_sink):
 
     Parameters
     ----------
-    dataset : Dataset
+    dataset : FrameSet
         the dataset to source the data from
-    row_frequency : DataSpace
+    row_frequency : Axes
         the frequency of the row to source the data from
     id : str
         the ID of the row to source from

@@ -4,12 +4,12 @@ Application Programming Interface
 Core
 ~~~~
 
-.. autoclass:: frametree.core.store.DataStore
+.. autoclass:: frametree.core.store.Store
 
-.. autoclass:: frametree.core.set.Dataset
+.. autoclass:: frametree.core.frameset.FrameSet
     :members: add_source, add_sink
 
-.. autoclass:: frametree.core.space.DataSpace
+.. autoclass:: frametree.core.axes.Axes
 
 .. autoclass:: frametree.core.row.DataRow
 
@@ -21,7 +21,7 @@ Core
 Available Backends
 ~~~~~~~~~~~~~~~~~~
 
-.. autoclass:: frametree.common.DirTree
+.. autoclass:: frametree.common.FileSystem
 
 .. autoclass:: frametree.bids.Bids
 

@@ -1,6 +1,6 @@
 from operator import itemgetter
 import click
-from frametree.core.store import DataStore
+from frametree.core.store import Store
 from frametree.core.serialize import ClassResolver
 from frametree.core.utils import get_home_dir
 from frametree.core.exceptions import FrameTreeUsageError
@@ -75,7 +75,7 @@ def add(name, type, option, cache, **kwargs):
                 "use them instead"
             )
         kwargs.update(options)
-    store_cls = ClassResolver(DataStore)(type)
+    store_cls = ClassResolver(Store)(type)
     if hasattr(store_cls, "cache_dir"):
         if cache is None:
             cache = get_home_dir() / "cache" / name
@@ -97,8 +97,8 @@ NEW_NAME The new name for the store.
 @click.argument("old_name")
 @click.argument("new_name")
 def rename(old_name, new_name):
-    DataStore.load(old_name).save(new_name)
-    DataStore.remove(old_name)
+    Store.load(old_name).save(new_name)
+    Store.remove(old_name)
 
 
 @store.command(
@@ -109,7 +109,7 @@ NAME The name the store was given when its details were saved
 )
 @click.argument("name")
 def remove(name):
-    DataStore.remove(name)
+    Store.remove(name)
 
 
 @store.command(
@@ -130,22 +130,22 @@ NAME The name the store was given when its details were saved
     help="The password to use to connect to the store",
 )
 def refresh(name, user, password):
-    store = DataStore.load(name)
+    store = Store.load(name)
     if user is not None:
         store.user = user
     store.password = password
     store.save()
-    DataStore.remove(name)
+    Store.remove(name)
     store.save(name)
 
 
 @store.command(help="""List available stores that have been saved""")
 def ls():
     click.echo("Default stores\n---------------")
-    for name, store in sorted(DataStore.singletons().items(), key=itemgetter(0)):
+    for name, store in sorted(Store.singletons().items(), key=itemgetter(0)):
         click.echo(f"{name} - {ClassResolver.tostr(store, strip_prefix=False)}")
     click.echo("\nSaved stores\n-------------")
-    for name, entry in DataStore.load_saved_configs().items():
+    for name, entry in Store.load_saved_configs().items():
         store_class = entry.pop("class")
         click.echo(f"{name} - {store_class[1:-1]}")
         for key, val in sorted(entry.items(), key=itemgetter(0)):

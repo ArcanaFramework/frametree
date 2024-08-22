@@ -192,7 +192,7 @@ class FrameTreeBadlyFormattedIDError(FrameTreeConstructionError):
     "Error attempting to extract an ID from a tree path using a user provided regex"
 
 
-class FrameTreeWrongDataSpaceError(FrameTreeError):
+class FrameTreeWrongAxesError(FrameTreeError):
     "Provided row_frequency is not a valid member of the dataset's dimensions"
 
 

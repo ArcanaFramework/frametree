@@ -26,11 +26,11 @@ from fileformats.testing import (
     Xyz,
 )
 from frametree.core.row import DataRow
-from frametree.core.space import DataSpace
+from frametree.core.axes import Axes
 from frametree.core.utils import path2varname, set_cwd
 from frametree.core.exceptions import FrameTreeError
-from frametree.core.store import DataStore
-from .space import TestDataSpace
+from frametree.core.store import Store
+from .axes import TestAxes
 
 logger = logging.getLogger("frametree")
 
@@ -41,9 +41,9 @@ class EntryBlueprint(metaclass=ABCMeta):
     path: str
     datatype: type = attrs.field()
     row_frequency: ty.Optional[str] = None
-    ids: ty.Optional[ty.List[str]] = (
-        None  # the list of row IDs to create the blueprint in
-    )
+    ids: ty.Optional[
+        ty.List[str]
+    ] = None  # the list of row IDs to create the blueprint in
     alternative_datatypes: ty.List[type] = attrs.field(factory=list)
 
     @datatype.validator
@@ -60,13 +60,13 @@ class EntryBlueprint(metaclass=ABCMeta):
             return
         item = self.make_item(**kwargs)
         logger.debug("Creating entry at %s in %s", self.path, row)
-        entry = row.dataset.store.create_entry(
+        entry = row.frameset.store.create_entry(
             path=self.path,
             datatype=self.datatype,
             row=row,
         )
         logger.debug("Putting %s at %s", item, entry)
-        row.dataset.store.put(item, entry)
+        row.frameset.store.put(item, entry)
 
 
 @attrs.define(kw_only=True)
@@ -174,7 +174,7 @@ class FieldEntryBlueprint(EntryBlueprint):
 @attrs.define(slots=False, kw_only=True)
 class TestDatasetBlueprint:
 
-    space: ty.Type[DataSpace]
+    axes: ty.Type[Axes]
     hierarchy: ty.List[str]
     dim_lengths: ty.List[int]  # size of layers a-d respectively
     entries: ty.List[EntryBlueprint] = attrs.field(factory=list)
@@ -188,7 +188,7 @@ class TestDatasetBlueprint:
 
     def make_dataset(
         self,
-        store: DataStore,
+        store: Store,
         dataset_id: str,
         name: ty.Optional[str] = None,
         source_data: ty.Optional[Path] = None,
@@ -200,7 +200,7 @@ class TestDatasetBlueprint:
 
         Parameters
         ----------
-        store: DataStore
+        store: Store
             the store to make the dataset within
         dataset_id : str
             the ID of the project/directory within the store to create the dataset
@@ -228,7 +228,7 @@ class TestDatasetBlueprint:
                 leaves=self.all_ids,
                 name=name,
                 hierarchy=self.hierarchy,
-                space=self.space,
+                axes=self.axes,
                 metadata=metadata,
                 include=self.include,
                 exclude=self.exclude,
@@ -237,9 +237,9 @@ class TestDatasetBlueprint:
         with store.connection:
             logger.debug(
                 "Adding entries to test dataset for: %s",
-                dataset.rows(frequency=max(self.space)),
+                dataset.rows(frequency=max(self.axes)),
             )
-            for row in dataset.rows(frequency=max(self.space)):
+            for row in dataset.rows(frequency=max(self.axes)):
                 self.make_entries(row, source_data=source_data)
             dataset.metadata.type = orig_type
             dataset.save()
@@ -247,13 +247,13 @@ class TestDatasetBlueprint:
         logger.debug("Successfully created test dataset at %s in %s", dataset_id, store)
         return dataset
 
-    def translate_to(self, data_store: DataStore) -> "TestDatasetBlueprint":
+    def translate_to(self, data_store: Store) -> "TestDatasetBlueprint":
         """Translates the blueprint so that it matches the default space and hierarchy
         of the data store (if applicable)
 
         Parameters
         ----------
-        data_store : DataStore
+        data_store : Store
             the data store to get the defaults for
 
         Returns
@@ -263,16 +263,16 @@ class TestDatasetBlueprint:
         # Create copy of the blueprint
         blueprint = deepcopy(self)
         try:
-            blueprint.space = data_store.DEFAULT_SPACE
+            blueprint.axes = data_store.DEFAULT_AXES
         except AttributeError:
-            space = TestDataSpace
+            space = TestAxes
         else:
             try:
                 blueprint.hierarchy = data_store.DEFAULT_HIERARCHY
             except AttributeError:
-                if space.ndim > self.space.ndim:
+                if space.ndim > self.axes.ndim:
                     raise RuntimeError(
-                        f"cannot translate hierarchy as from {self.space} to {space} "
+                        f"cannot translate hierarchy as from {self.axes} to {space} "
                         "as it has more dimensions"
                     )
                 # Translate frequencies into new space
@@ -290,7 +290,7 @@ class TestDatasetBlueprint:
 
     # def access_dataset(
     #     self,
-    #     store: DataStore,
+    #     store: Store,
     #     dataset_id: str,
     #     name: ty.Optional[str] = None,
     #     max_num_attempts: int = DEFAULT_NUM_ACCESS_ATTEMPTS,
@@ -301,7 +301,7 @@ class TestDatasetBlueprint:
 
     #     Parameters
     #     ----------
-    #     store : DataStore
+    #     store : Store
     #         the data store to access the dataset from
     #     dataset_id : str
     #         the ID of the dataset to access
@@ -314,13 +314,13 @@ class TestDatasetBlueprint:
 
     #     Returns
     #     -------
-    #     Dataset
+    #     FrameSet
     #         the accessed dataset
     #     """
     #     num_attempts = 0
     #     while num_attempts < max_num_attempts:
     #         try:
-    #             dataset = store.load_dataset(dataset_id, name=name)
+    #             dataset = store.load_frameset(dataset_id, name=name)
     #         except KeyError:
     #             pass
     #         else:
@@ -369,18 +369,18 @@ class TestDatasetBlueprint:
         """Iterate all leaves of the data tree specified by the test blueprint and yield
         ID tuples corresponding to the IDs of each leaf node"""
         for id_tple in itertools.product(*(list(range(d)) for d in self.dim_lengths)):
-            base_ids = dict(zip(self.space.axes(), id_tple))
+            base_ids = dict(zip(self.axes.bases(), id_tple))
             ids = {}
             for layer in self.hierarchy:
                 ids[layer] = "".join(
-                    f"{b}{base_ids[b]}" for b in self.space[layer].span()
+                    f"{b}{base_ids[b]}" for b in self.axes[layer].span()
                 )
             yield tuple(ids[h] for h in self.hierarchy)
 
 
 TEST_DATASET_BLUEPRINTS = {
     "full": TestDatasetBlueprint(  # dataset name
-        space=TestDataSpace,
+        axes=TestAxes,
         hierarchy=["a", "b", "c", "d"],
         dim_lengths=[2, 3, 4, 5],
         entries=[
@@ -446,7 +446,7 @@ TEST_DATASET_BLUEPRINTS = {
         ],
     ),
     "one_layer": TestDatasetBlueprint(
-        space=TestDataSpace,
+        axes=TestAxes,
         hierarchy=["abcd"],
         dim_lengths=[1, 1, 1, 5],
         entries=[
@@ -485,7 +485,7 @@ TEST_DATASET_BLUEPRINTS = {
         ],
     ),
     "skip_single": TestDatasetBlueprint(
-        space=TestDataSpace,
+        axes=TestAxes,
         hierarchy=["a", "bc", "d"],
         dim_lengths=[2, 1, 2, 3],
         entries=[
@@ -506,7 +506,7 @@ TEST_DATASET_BLUEPRINTS = {
         ],
     ),
     "skip_with_inference": TestDatasetBlueprint(
-        space=TestDataSpace,
+        axes=TestAxes,
         hierarchy=["bc", "ad"],
         dim_lengths=[2, 3, 2, 4],
         id_patterns={
@@ -527,11 +527,11 @@ TEST_DATASET_BLUEPRINTS = {
         ],
     ),
     "redundant": TestDatasetBlueprint(
-        space=TestDataSpace,
+        axes=TestAxes,
         hierarchy=[
             "abc",
             "abcd",
-        ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
+        ],  # e.g. XNAT where session ID is unique in project but final layer is organised by visit
         dim_lengths=[3, 4, 5, 6],
         id_patterns={
             "a": r"abc::a(\d+)b\d+c\d+",
@@ -557,10 +557,10 @@ TEST_DATASET_BLUEPRINTS = {
         ],
     ),
     "concatenate_test": TestDatasetBlueprint(
-        space=TestDataSpace,
+        axes=TestAxes,
         hierarchy=[
             "abcd"
-        ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
+        ],  # e.g. XNAT where session ID is unique in project but final layer is organised by visit
         dim_lengths=[1, 1, 1, 2],
         entries=[
             FileSetEntryBlueprint(
@@ -572,10 +572,10 @@ TEST_DATASET_BLUEPRINTS = {
         ],
     ),
     "concatenate_zip_test": TestDatasetBlueprint(
-        space=TestDataSpace,
+        axes=TestAxes,
         hierarchy=[
             "abcd"
-        ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
+        ],  # e.g. XNAT where session ID is unique in project but final layer is organised by visit
         dim_lengths=[1, 1, 1, 1],
         entries=[
             FileSetEntryBlueprint(path="file1", datatype=Zip, filenames=["file1.zip"]),
@@ -590,7 +590,7 @@ GOOD_DATASETS = ["full", "one_layer", "skip_single", "skip_with_inference", "red
 
 EXTENSION_DATASET_BLUEPRINTS = {
     "complete": TestDatasetBlueprint(  # dataset name
-        space=TestDataSpace,
+        axes=TestAxes,
         hierarchy=["a", "b", "c", "d"],
         dim_lengths=[2, 2, 2, 2],
         entries=[
@@ -663,7 +663,7 @@ EXTENSION_DATASET_BLUEPRINTS = {
 }
 
 SIMPLE_DATASET = TestDatasetBlueprint(  # dataset name
-    space=TestDataSpace,
+    axes=TestAxes,
     hierarchy=["abcd"],
     dim_lengths=[2, 2, 2, 2],
     entries=[

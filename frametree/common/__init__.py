@@ -1,2 +1,2 @@
-from .dirtree import DirTree
-from .space import Clinical, Samples
+from .file_system import FileSystem
+from .axes import Clinical, Samples

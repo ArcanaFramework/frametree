@@ -11,7 +11,7 @@ from frametree.core.store import RemoteStore
 from frametree.core.row import DataRow
 from frametree.core.tree import DataTree
 from frametree.core.entry import DataEntry
-from frametree.core.space import DataSpace
+from frametree.core.axes import Axes
 from frametree.core.utils import full_path
 
 
@@ -30,7 +30,7 @@ class MockRemote(RemoteStore):
 
     Non-leaf "rows" (e.g. higher up in the data hierarchy) are stored in a separate
     base directory and are stored by the "span" of their frequency in the dataspace, e.g.
-    a row of frequency TestDataSpace.abc, would be stored at
+    a row of frequency TestAxes.abc, would be stored at
 
     /path/to/dataset/nodes/a=1.b=3.c=1/
     """
@@ -48,17 +48,17 @@ class MockRemote(RemoteStore):
     CHECKSUMS_FILE = "__CHECKSUMS__.json"
 
     #############################
-    # DataStore abstractmethods #
+    # Store abstractmethods #
     #############################
 
     def populate_tree(self, tree: DataTree):
         """
         Find all data rows for a dataset in the store and populate the
-        Dataset object using its `add_leaf` method.
+        FrameSet object using its `add_leaf` method.
 
         Parameters
         ----------
-        dataset : Dataset
+        dataset : FrameSet
             The dataset to populate with rows
         """
         with self.connection:
@@ -101,7 +101,7 @@ class MockRemote(RemoteStore):
                     uri=full_path(path).relative_to(self.remote_dir),
                 )
 
-    def save_dataset_definition(
+    def save_grid_definition(
         self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
     ):
         """Save definition of dataset within the store
@@ -111,7 +111,7 @@ class MockRemote(RemoteStore):
         dataset_id: str
             The ID/path of the dataset within the store
         definition: ty.Dict[str, Any]
-            A dictionary containing the dct Dataset to be saved. The
+            A dictionary containing the dct FrameSet to be saved. The
             dictionary is in a format ready to be dumped to file as JSON or
             YAML.
         name: str
@@ -123,9 +123,7 @@ class MockRemote(RemoteStore):
         with open(definition_path, "w") as f:
             yaml.dump(definition, f)
 
-    def load_dataset_definition(
-        self, dataset_id: str, name: str
-    ) -> ty.Dict[str, ty.Any]:
+    def load_grid_definition(self, dataset_id: str, name: str) -> ty.Dict[str, ty.Any]:
         """Load definition of a dataset saved within the store
 
         Parameters
@@ -139,7 +137,7 @@ class MockRemote(RemoteStore):
         Returns
         -------
         definition: ty.Dict[str, Any]
-            A dct Dataset object that was saved in the data store
+            A dct FrameSet object that was saved in the data store
         """
         self._check_connected()
         fpath = self.definition_save_path(dataset_id, name)
@@ -194,7 +192,7 @@ class MockRemote(RemoteStore):
         leaves : list[tuple[str, ...]]
             list of IDs for each leaf node to be added to the dataset. The IDs for each
             leaf should be a tuple with an ID for each level in the tree's hierarchy, e.g.
-            for a hierarchy of [subject, timepoint] ->
+            for a hierarchy of [subject, visit] ->
             [("SUBJ01", "TIMEPOINT01"), ("SUBJ01", "TIMEPOINT02"), ....]
         hierarchy : list[str]
             the hierarchy of the dataset to be created
@@ -325,12 +323,12 @@ class MockRemote(RemoteStore):
         return self.dataset_fspath(dataset_id) / self.METADATA_DIR / (name + ".yml")
 
     def get_row_path(self, row: DataRow):
-        dataset_fspath = self.dataset_fspath(row.dataset)
+        dataset_fspath = self.dataset_fspath(row.frameset)
         try:
             row_path = (
                 dataset_fspath
                 / self.LEAVES_DIR
-                / self.get_row_dirname_from_ids(row.ids, row.dataset.hierarchy)
+                / self.get_row_dirname_from_ids(row.ids, row.frameset.hierarchy)
             )
         except NotInHierarchyException:
             if not row.frequency:  # root frequency
@@ -344,9 +342,9 @@ class MockRemote(RemoteStore):
 
     @classmethod
     def get_row_dirname_from_ids(
-        cls, ids: ty.Dict[ty.Union[str, DataSpace], str], hierarchy: ty.List[str]
+        cls, ids: ty.Dict[ty.Union[str, Axes], str], hierarchy: ty.List[str]
     ):
-        # Ensure that ID keys are strings not DataSpace enums
+        # Ensure that ID keys are strings not Axes enums
         ids = {str(f): i for f, i in ids.items()}
         try:
             row_dirname = ".".join(f"{h}={ids[h]}" for h in hierarchy)

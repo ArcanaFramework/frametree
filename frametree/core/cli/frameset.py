@@ -1,33 +1,27 @@
 from __future__ import annotations
 import click
 import logging
-from pathlib import Path
-from .base import cli
-from frametree.core.set.base import Dataset
-from frametree.core.store import DataStore
-from frametree.core.space import DataSpace
+from frametree.core.frameset.base import FrameSet
+from frametree.core.store import Store
+from frametree.core.axes import Axes
 from fileformats.core import DataType
 from frametree.core.serialize import ClassResolver
+from .base import cli
 
 
 logger = logging.getLogger(__name__)
 
 
-@cli.group()
-def dataset():
-    pass
-
-
-@dataset.command(
+@cli.command(
     name="define",
     help=(
-        """Define the tree structure and IDs to include in a
-dataset. Where possible, the definition file is saved inside the dataset for
+        """Define the tree structure and IDs to include in a frame set. Where
+possible, the definition file is saved inside the dataset for
 use by multiple users, if not possible it is stored in the ~/.frametree directory.
 
-DATASET_LOCATOR string containing the nick-name of the store, the ID of the dataset
-(e.g. XNAT project ID or file-system directory) and the dataset's name in the
-format <store-nickname>//<dataset-id>[@<dataset-name>]
+ADDRESS string containing the nick-name of the store, the ID of the dataset
+(e.g. XNAT project ID or file-system directory) and the frame tree's name in the
+format <store-nickname>//<dataset-id>[@<frametree-name>]
 
 HIERARCHY the data frequencies that are present in the data tree. For some
 store types this is fixed (e.g. XNAT-> subject > session) but for more flexible
@@ -35,14 +29,14 @@ store types this is fixed (e.g. XNAT-> subject > session) but for more flexible
 can be arbitrarily specified. dimensions"""
     ),
 )
-@click.argument("dataset_locator")
+@click.argument("address")
 @click.argument("hierarchy", nargs=-1)
 @click.option(
-    "--space",
+    "--axes",
     default="common:Clinical",
     type=str,
     help=(
-        "The enum that specifies the data dimensions of the dataset. "
+        "The enum that specifies the axes of the FrameTree. "
         "Defaults to `Clinical`, which "
         "consists of the typical dataset>group>subject>session "
         "data tree used in medimage trials/studies"
@@ -99,22 +93,22 @@ the inferred IDs
 
 """,
 )
-def define(dataset_locator, hierarchy, include, exclude, space, id_pattern):
+def define(address, hierarchy, include, exclude, axes, id_pattern):
 
-    store_name, id, name = Dataset.parse_id_str(dataset_locator)
+    store_name, id, name = FrameSet.parse_id_str(address)
 
     if not hierarchy:
         hierarchy = None
 
-    store = DataStore.load(store_name)
+    store = Store.load(store_name)
 
-    if space:
-        space = ClassResolver(DataSpace)(space)
+    if axes:
+        axes = ClassResolver(Axes)(axes)
 
-    dataset = store.define_dataset(
+    dataset = store.define_frameset(
         id,
         hierarchy=hierarchy,
-        space=space,
+        axes=axes,
         id_patterns=dict(id_pattern),
         include=dict(include),
         exclude=dict(exclude),
@@ -123,13 +117,13 @@ def define(dataset_locator, hierarchy, include, exclude, space, id_pattern):
     dataset.save(name)
 
 
-@dataset.command(
+@cli.command(
     name="add-source",
     help="""Adds a source column to a dataset. A source column
 selects comparable items along a dimension of the dataset to serve as
 an input to pipelines and analyses.
 
-DATASET_LOCATOR The path to the dataset including store and dataset name
+ADDRESS The path to the dataset including store and dataset name
 (where applicable), e.g. central-xnat//MYXNATPROJECT:pass_t1w_qc
 
 NAME: The name the source will be referenced by
@@ -139,7 +133,7 @@ field array (ty.List[int|float|str|bool]) or
 "file-set" (file, file+header/side-cars or directory)
 """,
 )
-@click.argument("dataset_locator")
+@click.argument("address")
 @click.argument("name")
 @click.argument("datatype")
 @click.option(
@@ -148,7 +142,7 @@ field array (ty.List[int|float|str|bool]) or
     metavar="<dimension>",
     help=(
         "The row-frequency that items appear in the dataset (e.g. per "
-        "'session', 'subject', 'timepoint', 'group', 'dataset' for "
+        "'session', 'subject', 'visit', 'group', 'dataset' for "
         "common:Clinical data dimensions"
     ),
     show_default="highest",
@@ -199,7 +193,7 @@ field array (ty.List[int|float|str|bool]) or
     ),
 )
 def add_source(
-    dataset_locator,
+    address,
     name,
     datatype,
     row_frequency,
@@ -209,7 +203,7 @@ def add_source(
     is_regex,
     header,
 ):
-    dataset = Dataset.load(dataset_locator)
+    dataset = FrameSet.load(address)
     dataset.add_source(
         name=name,
         path=path,
@@ -223,7 +217,7 @@ def add_source(
     dataset.save()
 
 
-@dataset.command(
+@cli.command(
     name="add-sink",
     help="""Adds a sink column to a dataset. A sink column
 specifies how data should be written into the dataset.
@@ -241,7 +235,7 @@ datatype
     (file, file+header/side-cars or directory)
 """,
 )
-@click.argument("dataset_locator")
+@click.argument("address")
 @click.argument("name")
 @click.argument("datatype")
 @click.option(
@@ -250,7 +244,7 @@ datatype
     metavar="<dimension>",
     help=(
         "The row-frequency that items appear in the dataset (e.g. per "
-        "'session', 'subject', 'timepoint', 'group', 'dataset' for "
+        "'session', 'subject', 'visit', 'group', 'dataset' for "
         "Clinical data dimensions"
     ),
     show_default="highest",
@@ -271,8 +265,8 @@ datatype
         "'frametree derive menu'"
     ),
 )
-def add_sink(dataset_locator, name, datatype, row_frequency, path, salience):
-    dataset = Dataset.load(dataset_locator)
+def add_sink(address, name, datatype, row_frequency, path, salience):
+    dataset = FrameSet.load(address)
     dataset.add_sink(
         name=name,
         path=path,
@@ -283,21 +277,21 @@ def add_sink(dataset_locator, name, datatype, row_frequency, path, salience):
     dataset.save()
 
 
-@dataset.command(
+@cli.command(
     name="missing-items",
     help="""Finds the IDs of rows that are missing a valid entry for an item in
 the column.
 
-DATASET_LOCATOR of the dataset including store and dataset name (where
+ADDRESS of the dataset including store and dataset name (where
     applicable), e.g. central-xnat//MYXNATPROJECT:pass_t1w_qc
 
 COLUMN_NAMES, [COLUMN_NAMES, ...] for the columns to check, defaults to all source columns
 """,
 )
-@click.argument("dataset_locator")
+@click.argument("address")
 @click.argument("column_names", nargs=-1)
-def missing_items(dataset_locator, column_names):
-    dataset = Dataset.load(dataset_locator)
+def missing_items(address, column_names):
+    dataset = FrameSet.load(address)
     if not column_names:
         column_names = [n for n, c in dataset.columns.items() if not c.is_sink]
     for column_name in column_names:
@@ -307,11 +301,11 @@ def missing_items(dataset_locator, column_names):
             click.echo(f"'{column.name}': " + ", ".join(c.row.id for c in empty_cells))
 
 
-@dataset.command(
+@cli.command(
     help="""
 Exports a dataset from one data store into another
 
-DATASET_LOCATOR of the dataset to copy
+ADDRESS of the dataset to copy
 
 STORE_NICKNAME of the destination store
 
@@ -320,7 +314,7 @@ ID for the dataset in the destination store
 COLUMN_NAMES, [COLUMN_NAMES, ...] to be included in the export, by default all will be included
 """
 )
-@click.argument("dataset_locator")
+@click.argument("address")
 @click.argument("store_nickname")
 @click.argument("imported_id")
 @click.argument("column_names", nargs=-1)
@@ -350,7 +344,7 @@ COLUMN_NAMES, [COLUMN_NAMES, ...] to be included in the export, by default all w
     ),
 )
 def export(
-    dataset_locator,
+    address,
     store_nickname,
     imported_id,
     column_names,
@@ -358,8 +352,8 @@ def export(
     hierarchy,
     use_original_paths,
 ):
-    dataset = Dataset.load(dataset_locator)
-    store = DataStore.load(store_nickname)
+    dataset = FrameSet.load(address)
+    store = Store.load(store_nickname)
     if hierarchy:
         hierarchy = hierarchy.split(",")
     if not column_names:
@@ -374,73 +368,18 @@ def export(
     )
 
 
-@dataset.command(
+@cli.command(
     help="""
 Creates a copy of a dataset definition under a new name (so it can be modified, e.g.
 for different analysis)
 
-DATASET_LOCATOR of the dataset to copy
+ADDRESS of the dataset to copy
 
 NEW_NAME for the dataset
 """
 )
-@click.argument("dataset_locator")
+@click.argument("address")
 @click.argument("new_name")
-def copy(dataset_locator, new_name):
-    dataset = Dataset.load(dataset_locator)
+def copy(address, new_name):
+    dataset = FrameSet.load(address)
     dataset.save(new_name)
-
-
-@dataset.command(
-    name="install-license",
-    help="""Installs a license within a store (i.e. site-wide) or dataset (project-specific)
-for use in a deployment pipeline
-
-LICENSE_NAME the name of the license to upload. Must match the name of the license specified
-in the deployment specification
-
-SOURCE_FILE path to the license file to upload
-
-INSTALL_LOCATIONS a list of installation locations, which are either the "nickname" of a
-store (as saved by `arcana store add`) or the ID of a dataset in form
-<store-nickname>//<dataset-id>[@<dataset-name>], where the dataset ID
-is either the location of the root directory (for file-system based stores) or the
-project ID for managed data repositories.
-""",
-)
-@click.argument("license_name")
-@click.argument("source_file", type=click.Path(exists=True, path_type=Path))
-@click.argument("install_locations", nargs=-1)
-@click.option(
-    "--logfile",
-    default=None,
-    type=click.Path(path_type=Path),
-    help="Log output to file instead of stdout",
-)
-@click.option("--loglevel", default="info", help="The level to display logs at")
-def install_license(install_locations, license_name, source_file, logfile, loglevel):
-    logging.basicConfig(filename=logfile, level=getattr(logging, loglevel.upper()))
-
-    if isinstance(source_file, bytes):  # FIXME: This shouldn't be necessary
-        source_file = Path(source_file.decode("utf-8"))
-
-    if not install_locations:
-        install_locations = ["dirtree"]
-
-    for install_loc in install_locations:
-        if "//" in install_loc:
-            dataset = Dataset.load(install_loc)
-            store_name, _, _ = Dataset.parse_id_str(install_loc)
-            msg = f"for '{dataset.name}' dataset on {store_name} store"
-        else:
-            store = DataStore.load(install_loc)
-            dataset = store.site_licenses_dataset()
-            if dataset is None:
-                raise ValueError(
-                    f"{install_loc} store doesn't support the installation of site-wide "
-                    "licenses, please specify a dataset to install it for"
-                )
-            msg = f"site-wide on {install_loc} store"
-
-        dataset.install_license(license_name, source_file)
-        logger.info("Successfully installed '%s' license %s", license_name, msg)

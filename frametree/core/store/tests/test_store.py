@@ -7,11 +7,11 @@ import pytest
 from fileformats.generic import File
 from fileformats.text import TextFile
 from fileformats.field import Text as TextField
-from frametree.core.set.base import Dataset
-from frametree.core.store import DataStore
+from frametree.core.frameset.base import FrameSet
+from frametree.core.store import Store
 from frametree.core.entry import DataEntry
 from frametree.core.serialize import asdict
-from frametree.common import DirTree
+from frametree.common import FileSystem
 from frametree.testing.blueprint import (
     TestDatasetBlueprint,
     FileSetEntryBlueprint as FileBP,
@@ -20,9 +20,9 @@ from frametree.testing.blueprint import (
 from frametree.testing import MockRemote
 
 
-def test_populate_tree(dataset: Dataset):
+def test_populate_tree(dataset: FrameSet):
     blueprint = dataset.__annotations__["blueprint"]
-    for freq in dataset.space:
+    for freq in dataset.axes:
         # For all non-zero bases in the row_frequency, multiply the dim lengths
         # together to get the combined number of rows expected for that
         # row_frequency
@@ -37,7 +37,7 @@ def test_populate_tree(dataset: Dataset):
 def test_populate_row(dataset):
     blueprint = dataset.__annotations__["blueprint"]
     for row in dataset.rows("abcd"):
-        if isinstance(dataset.store, DirTree):
+        if isinstance(dataset.store, FileSystem):
             expected_paths = sorted(
                 chain(
                     (e.path for e in blueprint.entries if isinstance(e, FieldBP)),
@@ -50,7 +50,7 @@ def test_populate_row(dataset):
         assert entry_paths == expected_paths
 
 
-def test_get(dataset: Dataset):
+def test_get(dataset: FrameSet):
     blueprint = dataset.__annotations__["blueprint"]
     for entry_bp in blueprint.entries:
         dataset.add_source(entry_bp.path, datatype=entry_bp.datatype)
@@ -66,7 +66,7 @@ def test_get(dataset: Dataset):
                 assert item.value == entry_bp.expected_value
 
 
-def test_post(dataset: Dataset):
+def test_post(dataset: FrameSet):
     blueprint = dataset.__annotations__["blueprint"]
 
     def check_inserted():
@@ -75,7 +75,7 @@ def test_post(dataset: Dataset):
             for row in dataset.rows(deriv_bp.row_frequency):
                 cell = row.cell(deriv_bp.path, allow_empty=False)
                 item = cell.item
-                if item.is_fileset and isinstance(dataset.store, DirTree):
+                if item.is_fileset and isinstance(dataset.store, FileSystem):
                     assert item.fspath.relative_to(dataset.id)
                 assert isinstance(item, deriv_bp.datatype)
                 if deriv_bp.datatype.is_fileset:
@@ -104,17 +104,17 @@ def test_post(dataset: Dataset):
     check_inserted()  # Check that objects can be recreated from store
 
 
-def test_dataset_definition_roundtrip(dataset: Dataset):
+def test_grid_roundtrip(dataset: FrameSet):
     definition = asdict(dataset, omit=["store", "name"])
     definition["store-version"] = "1.0.0"
 
     data_store = dataset.store
 
     with data_store.connection:
-        data_store.save_dataset_definition(
+        data_store.save_grid_definition(
             dataset_id=dataset.id, definition=definition, name="test_dataset"
         )
-        reloaded_definition = data_store.load_dataset_definition(
+        reloaded_definition = data_store.load_grid_definition(
             dataset_id=dataset.id, name="test_dataset"
         )
     assert definition == reloaded_definition
@@ -122,7 +122,7 @@ def test_dataset_definition_roundtrip(dataset: Dataset):
 
 # We use __file__ here as we just need any old file and can guarantee it exists
 @pytest.mark.parametrize("datatype,value", [(File, __file__), (TextField, "value")])
-def test_provenance_roundtrip(datatype: type, value: str, saved_dataset: Dataset):
+def test_provenance_roundtrip(datatype: type, value: str, saved_dataset: FrameSet):
     provenance = {"a": 1, "b": [1, 2, 3], "c": {"x": True, "y": "foo", "z": "bar"}}
     data_store = saved_dataset.store
 
@@ -135,8 +135,8 @@ def test_provenance_roundtrip(datatype: type, value: str, saved_dataset: Dataset
 
 
 def test_singletons():
-    standard = set(["dirtree"])
-    assert set(DataStore.singletons()) & standard == standard
+    standard = set(["file_system"])
+    assert set(Store.singletons()) & standard == standard
 
 
 @pytest.mark.skipif(

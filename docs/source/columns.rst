@@ -1,18 +1,8 @@
 
-.. _data_columns:
-
 Columns
 =======
 
-Before data within a dataset can be manipulated by FrameTree, they must be
-assigned to a data frame. The "rows" of a data frame correspond to nodes
-across a single layer of the data tree, such as
-
-* imaging sessions
-* subjects
-* study groups (e.g. 'test' or 'control')
-
-and the "columns" are slices of comparable data items across each row, e.g.
+The "columns" of a data frame are slices of comparable data items across each row, e.g.
 
 * T1-weighted MR acquisition for each imaging session
 * a genetic test for each subject
@@ -57,74 +47,76 @@ Each column is assigned a name when it is created, which is used when
 connecting pipeline inputs and outputs to the dataset and accessing the data directly.
 The column name is used as the default value for the path of sink columns.
 
-Use the ':ref:`frametree dataset add-source`' and ':ref:`frametree dataset add-sink`'
+Use the ':ref:`frametree add-source`' and ':ref:`frametree add-sink`'
 commands to add columns to a dataset using the CLI.
 
 .. code-block:: console
 
-    $ frametree dataset add-source 'xnat-central//MYXNATPROJECT' T1w \
+    $ frametree add-source 'xnat-central//MYXNATPROJECT' T1w \
       medimage/dicom-series --path '.*t1_mprage.*' \
       --order 1 --quality usable --regex
 
-    $ frametree dataset add-sink '/data/imaging/my-project' fmri_activation_map \
+    $ frametree add-sink '/data/imaging/my-project' fmri_activation_map \
       medimage/nifti-gz --row-frequency group
 
 
-Alternatively, the :meth:`.Dataset.add_source` and :meth:`.Dataset.add_sink`
-methods can be used directly to add sources and sinks via the Python API.
+Alternatively via the Python API:
 
-.. code-block:: python
+.. toggle:: Show/Hide Python Code Example
 
-    from frametree.common import Clinical
-    from fileformats.medimage import DicomSeries, NiftiGz
+    .. code-block:: python
 
-    xnat_dataset.add_source(
-        name='T1w',
-        path=r'.*t1_mprage.*'
-        datatype=DicomSeries,
-        order=1,
-        quality_threshold='usable',
-        is_regex=True
-    )
+        from frametree.common import Clinical
+        from fileformats.medimage import DicomSeries, NiftiGz
 
-    fs_dataset.add_sink(
-        name='brain_template',
-        datatype=NiftiGz,
-        row_frequency='group'
-    )
+        xnat_dataset.add_source(
+            name='T1w',
+            path=r'.*t1_mprage.*'
+            datatype=DicomSeries,
+            order=1,
+            quality_threshold='usable',
+            is_regex=True
+        )
 
-To access the data in the columns once they are defined use the ``Dataset[]``
-operator
+        fs_dataset.add_sink(
+            name='brain_template',
+            datatype=NiftiGz,
+            row_frequency='group'
+        )
 
-.. code-block:: python
+Once defined, the column data can be conveniently accessed and manipulated via the Python API:
 
-    import matplotlib.pyplot as plt
-    from frametree.core.set import Dataset
+.. toggle:: Show/Hide Python Code Example
 
-    # Get a column containing all T1-weighted MRI images across the dataset
-    xnat_dataset = Dataset.load('xnat-central//MYXNATPROJECT')
-    t1w = xnat_dataset['T1w']
+    .. code-block:: python
 
-    # Plot a slice of the image data from a Subject sub01's imaging session
-    # at Timepoint T2. (Note: such data access is only available for selected
-    # data formats that have convenient Python readers)
-    plt.imshow(t1w['T2', 'sub01'].data[:, :, 30])
+        import matplotlib.pyplot as plt
+        from frametree.core import FrameSet
+
+        # Get a column containing all T1-weighted MRI images across the dataset
+        xnat_dataset = FrameSet.load('xnat-central//MYXNATPROJECT')
+        t1w = xnat_dataset['T1w']
+
+        # Plot a slice of the image data from a Subject sub01's imaging session
+        # at visit Timepoint TP2. (Note: such data access is only available for selected
+        # data formats that have convenient Python readers)
+        plt.imshow(t1w['TP2', 'sub01'].data[:, :, 30])
 
 
-One of the main benefits of using datasets in BIDS_ datatype is that the names
-and file formats of the data are strictly defined. This allows the :class:`.Bids`
-data store object to automatically add sources to the dataset when it is
-initialised.
+    NB: one of the main benefits of using datasets in BIDS_ datatype is that the names
+    and file formats of the data are strictly defined. This allows the :class:`.Bids`
+    data store object to automatically add sources to the dataset when it is
+    initialised.
 
-.. code-block:: python
+    .. code-block:: python
 
-    from frametree.bids import Bids
+        from frametree.bids import Bids
 
-    bids_dataset = Bids().dataset(
-        id='/data/openneuro/ds00014')
+        bids_dataset = Bids().dataset(
+            id='/data/openneuro/ds00014')
 
-    # Print dimensions of T1-weighted MRI image for Subject 'sub01'
-    print(bids_dataset['T1w']['sub01'].header['dim'])
+        # Print dimensions of T1-weighted MRI image for Subject 'sub01'
+        print(bids_dataset['T1w']['sub01'].header['dim'])
 
 
 Entries
@@ -135,30 +127,50 @@ In FrameTree, these data items are represented using `fileformats <https://arcan
 classes, :class:`.FileSet`, (i.e. single files, files + header/side-cars or directories)
 and :class:`.Field` (e.g. integer, decimal, text, boolean, or arrays thereof), respectively.
 
-:class:`.FileSet` is typically subclassed to specify the file formats of the
-files/directories in the data items. For example, some common used standard types are
+Data types/file formats can be specified in the CLI using their `MIME-type <https://www.iana.org/assignments/media-types/media-types.xhtml>`__
+or a "MIME-like" string, where their type name and registry correspond directly to the
+fileformats to the fileformats sub-package/class name are specified in the CLI by *<module-path>/<class-name>*,
+in "kebab case" e.g. ``mediamge/nifti-gz``.
 
-* :class:`.fileformats.text.Plain`
-* :class:`.fileformats.application.Zip`
-* :class:`.fileformats.application.Json`
-* :class:`.fileformats.generic.File`
-* :class:`.fileformats.generic.Directory`
+Some frequently used data types are
 
-File-group classes specify the extensions of the expected files/directories,
-converters from alternative file formats, and may
-also contain methods for accessing the headers and the contents of files
-where applicable (e.g. :class:`.medimage.Dicom` and :class:`.medimage.NiftiGzX`).
+* ``text/plain`` - a text file
+* ``application/zip`` - a zip archive
+* ``application/json`` - a JSON file
+* ``generic/file`` - a single file of any type
+* ``generic/directory`` - a directory containing any files/sub-directories
+* ``medimage/nifti-gz-x`` - a gzipped NIfTI file with a BIDS_ JSON side-car (produced by Dcm2Niix_)
+* ``medimage/dicom-series`` - a directory containing a series of DICOM files
+* ``field/text`` - a text field
+* ``field/decimal`` - a decimal field
+
+The corresponding Python classes are:
+
+.. toggle:: Show/Hide Python Code Example
+
+    * :class:`fileformats.text.Plain`
+    * :class:`fileformats.application.Zip`
+    * :class:`fileformats.application.Json`
+    * :class:`fileformats.generic.File`
+    * :class:`fileformats.generic.Directory`
+    * :class:`fileformats.medimage.DicomSeries`
+    * :class:`fileformats.medimage.NiftiGz`
+    * :class:`fileformats.field.Text`
+    * :class:`fileformats.field.Decimal`
+
+"Extras" packages for some of the file formats may provide converters to alternative
+formats (e.g. ``medimage/dicom-series`` to ``medimage/nifti-gz-x`` via Dcm2Niix_).
+They may also contain methods for accessing the headers and the contents of files
+where applicable.
+
 Where a converter is specified from an alternative file format is specified,
 FrameTree will automatically run the conversion between the format required by
-a pipeline and that stored in the data store. See :ref:`adding_formats` for detailed
+a pipeline and that stored in the data store. See FileFormats_ for detailed
 instructions on how to specify new file formats and converters between them.
 
-File format can be specified in the CLI using their `MIME-type <https://www.iana.org/assignments/media-types/media-types.xhtml>`__
-or a "MIME-like" string, where their type name and registry correspond directly to the
-fileformats to the fileformats
-sub-package/class name are specified in the CLI by *<module-path>:<class-name>*,
-e.g. ``mediamge/nifti-gz``.
 
 
 .. _XNAT: https://xnat.org
+.. _FileFormats: https://arcanaframework.github.io/fileformats/
 .. _BIDS: https://bids.neuroimaging.io
+.. _Dcm2Niix: https://github.com/rordenlab/dcm2niix

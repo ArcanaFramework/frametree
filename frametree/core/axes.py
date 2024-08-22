@@ -5,48 +5,48 @@ from frametree.core.serialize import ClassResolver
 from frametree.core.utils import classproperty
 
 
-class DataSpace(Enum):
+class Axes(Enum):
     """
-    Base class for all "data space" enums. DataSpace enums specify
-    the relationships between rows of a dataset.
+    Base class for all "data axes" enums. Axes specify the categorical variables along
+    which grids of data points are laid out on.
 
     For example in imaging studies, scannings sessions are typically organised
     by analysis group (e.g. test & control), membership within the group (i.e
-    matched subjects) and time-points (for longitudinal studies). We can
-    visualise the rows arranged in a 3-D grid along the `group`, `member`, and
-    `timepoint` dimensions. Note that datasets that only contain one group or
+    control-matched subjects) and time-points (for longitudinal studies). We can
+    visualise the rows arranged in a 3-D frameset along the `group`, `member`, and
+    `visit` dimensions. Note that datasets that only contain one group or
     time-point can still be represented in the same space, and just be of
     depth=1 along those dimensions.
 
-    All dimensions should be included as members of a DataSpace subclass
+    All dimensions should be included as members of a Axes subclass
     enum with orthogonal binary vector values, e.g.
 
         member = 0b001
         group = 0b010
-        timepoint = 0b100
+        visit = 0b100
 
     In this space, an imaging session row is uniquely defined by its member,
-    group and timepoint ID. The most commonly present dimension should be given
+    group and visit ID. The most commonly present dimension should be given
     the least frequent bit (e.g. imaging datasets will not always have
     different groups or time-points but will always have different members
     (equivalent to subjects when there is one group).
 
     In addition to the data items stored in the data rows for each session,
-    some items only vary along a particular dimension of the grid. The
+    some items only vary along a particular dimension of the frameset. The
     "row_frequency" of these rows can be specified using the "basis" members
-    (i.e. member, group, timepoint) in contrast to the `session` row_frequency,
+    (i.e. member, group, visit) in contrast to the `session` row_frequency,
     which is the combination of all three
 
         session = 0b111
 
     Additionally, some data is stored in aggregated rows that across a plane
-    of the grid. These frequencies should also be added to the enum (all
+    of the frameset. These frequencies should also be added to the enum (all
     combinations of the basis frequencies must be included) and given intuitive
     names if possible, e.g.
 
         subject = 0b011 - uniquely identified subject within in the dataset.
-        batch = 0b110 - separate group+timepoint combinations
-        matchedpoint = 0b101 - matched members and time-points aggregated across groups
+        groupedvisit = 0b110 - separate group+visit combinations
+        matchedvisit = 0b101 - matched members and time-points aggregated across groups
 
     Finally, for items that are singular across the whole dataset there should
     also be a dataset-wide member with value=0:
@@ -62,12 +62,12 @@ class DataSpace(Enum):
         return max(cls)
 
     @classmethod
-    def axes(cls):
+    def bases(cls):
         return cls.leaf().span()
 
     @classproperty
     def ndim(self):
-        return len(self.axes())
+        return len(self.bases())
 
     def span(self):
         """Returns the basis dimensions in the data tree that the given
@@ -79,11 +79,11 @@ class DataSpace(Enum):
             dataset -> []
             group -> [group]
             member -> [member]
-            timepoint -> [timepoint]
+            visit -> [visit]
             subject -> [group, member]
-            batch -> [timepoint, group]
-            matchedpoint -> [timepoint, member]
-            session -> [timepoint, group, member]
+            groupedvisit -> [visit, group]
+            matchedvisit -> [visit, member]
+            session -> [visit, group, member]
         """
         # Check which bits are '1', and append them to the list of levels
         cls = type(self)
@@ -157,7 +157,7 @@ class DataSpace(Enum):
 
         Parameters
         ----------
-        child : DataSpace
+        child : Axes
             The data frequency to check parent/child relationship with
         if_match : bool
             Treat matching frequencies as "parents" of each other
@@ -185,6 +185,6 @@ class DataSpace(Enum):
 
     @classproperty
     def SUBPACKAGE(cls):
-        """Cannot be a regular class attribute because then DataSpace won't be able to
+        """Cannot be a regular class attribute because then Axes won't be able to
         be extended"""
         return "data"

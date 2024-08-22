@@ -6,7 +6,7 @@ from collections import defaultdict
 import attrs
 import attrs.filters
 from frametree.core.utils import NestedContext
-from frametree.core.space import DataSpace
+from frametree.core.axes import Axes
 from frametree.core.exceptions import (
     FrameTreeNameError,
     FrameTreeConstructionError,
@@ -14,7 +14,7 @@ from frametree.core.exceptions import (
 from .row import DataRow
 
 if ty.TYPE_CHECKING:  # pragma: no cover
-    from .set.base import Dataset
+    from .frameset.base import FrameSet
 
 
 logger = logging.getLogger("frametree")
@@ -27,7 +27,7 @@ def auto_ids_default():
 @attrs.define
 class DataTree(NestedContext):
 
-    dataset: ty.Optional[Dataset] = None
+    frameset: ty.Optional[FrameSet] = None
     root: ty.Optional[DataRow] = None
     _auto_ids: ty.Dict[ty.Tuple[str, ...], ty.Dict[str, int]] = attrs.field(
         factory=auto_ids_default
@@ -36,18 +36,18 @@ class DataTree(NestedContext):
     def enter(self):
         assert self.root is None
         self._set_root()
-        self.dataset.store.populate_tree(self)
+        self.frameset.store.populate_tree(self)
 
     def exit(self):
         self.root = None
 
     @property
     def dataset_id(self):
-        return self.dataset.id
+        return self.frameset.id
 
     @property
     def hierarchy(self):
-        return self.dataset.hierarchy
+        return self.frameset.hierarchy
 
     def add_leaf(
         self, tree_path, metadata: ty.Dict[str, ty.Dict[str, str]] = None
@@ -61,7 +61,7 @@ class DataTree(NestedContext):
             The sequence of labels for each layer in the hierarchy of the
             dataset leading to the current row.
         metadata : dict[str, ty.Dict[str, str]]
-            metadata passed to ``DataStore.infer_ids()`` used to infer IDs not directly
+            metadata passed to ``Store.infer_ids()`` used to infer IDs not directly
             represented in the hierarchy of the data tree.
 
         Returns
@@ -71,7 +71,7 @@ class DataTree(NestedContext):
         exclusions : list[str]
             the list of frequencies that caused the leaf to be excluded (empty if it
             was added) according to the the exclusion criteria provided to the dataset
-            (see ``Dataset.include`` and ``Dataset.exclude``)
+            (see ``FrameSet.include`` and ``FrameSet.exclude``)
 
         Raises
         ------
@@ -100,32 +100,32 @@ class DataTree(NestedContext):
         if metadata is None:
             metadata = {}
         # Get basis frequencies covered at the given depth of the
-        if len(tree_path) != len(self.dataset.hierarchy):
+        if len(tree_path) != len(self.frameset.hierarchy):
             raise FrameTreeConstructionError(
                 f"Tree path ({tree_path}) should have the same length as "
-                f"the hierarchy ({self.dataset.hierarchy}) of {self}"
+                f"the hierarchy ({self.frameset.hierarchy}) of {self}"
             )
-        if self.dataset.exclude:
-            for freq_str, label in zip(self.dataset.hierarchy, tree_path):
-                if matches_criteria(label, freq_str, self.dataset.exclude):
+        if self.frameset.exclude:
+            for freq_str, label in zip(self.frameset.hierarchy, tree_path):
+                if matches_criteria(label, freq_str, self.frameset.exclude):
                     return None  # Don't add leaf
         # Set a default ID of None for all parent frequencies that could be
         # inferred from a row at this depth
-        # ids = {f: None for f in self.dataset.space}
-        ids = dict(zip(self.dataset.hierarchy, tree_path))
+        # ids = {f: None for f in self.frameset.axes}
+        ids = dict(zip(self.frameset.hierarchy, tree_path))
         # Infer IDs and add them to those explicitly in the hierarchy
-        inferred_ids = self.dataset.infer_ids(ids, metadata=metadata)
+        inferred_ids = self.frameset.infer_ids(ids, metadata=metadata)
         ids.update(inferred_ids)
         # Calculate the combined freqs after each layer is added
-        cummulative_freq = self.dataset.space(0)
-        for i, layer_str in enumerate(self.dataset.hierarchy):
-            layer_freq = self.dataset.space[layer_str]
+        cummulative_freq = self.frameset.axes(0)
+        for i, layer_str in enumerate(self.frameset.hierarchy):
+            layer_freq = self.frameset.axes[layer_str]
             # If all the axes introduced by the layer not present in parent layers
             # and none of the IDs of these axes have been inferred from other IDs,
             # then the ID of the axis out of the layer's axes with the least-
             # significant bit can be considered to be equivalent to the
             # ID of the layer and the IDs of the other axes of the layer set to None
-            # (the order of # the bits in the DataSpace class should be arranged to
+            # (the order of # the bits in the Axes class should be arranged to
             # account for this default behaviour).
             #
             # For example, given a hierarchy of ['subject', 'session'] in the `Clinical`
@@ -135,16 +135,16 @@ class DataTree(NestedContext):
             # correspdonds to the least significant bit in the value of the subject in
             # the `Clinical` data space enum.
             #
-            # Conversely, the timepoint can't be assumed to be equal to the `session`
+            # Conversely, the visit can't be assumed to be equal to the `session`
             # ID, since the session ID could be expected to also contain both the `member` and
             # `group` ID in it, and should be explicitly extracted by via `id_patterns`
             #
             #       session ID: MRH010_CONTROL03_MR02
             #
-            # with the '02' part representing as the timepoint can be extracted with the
+            # with the '02' part representing as the visit can be extracted with the
             #
             #       id_inference = {
-            #           'timepoint': r'session:id:.*MR(0-9+)$'
+            #           'visit': r'session:id:.*MR(0-9+)$'
             #       }
             # Axes already added by predecessor layers
             prev_accounted_for = layer_freq & cummulative_freq
@@ -173,8 +173,8 @@ class DataTree(NestedContext):
                         self._auto_ids[node_path][layer_label] = assumed_id
                 ids[unresolved_axes[-1]] = assumed_id
             cummulative_freq |= layer_freq
-        assert cummulative_freq == self.dataset.space.leaf()
-        assert set(ids).issuperset(str(f) for f in self.dataset.space.axes())
+        assert cummulative_freq == self.frameset.axes.leaf()
+        assert set(ids).issuperset(str(f) for f in self.frameset.axes.bases())
         # # Set or override any inferred IDs within the ones that have been
         # # explicitly provided
         # clashing_ids = set(ids) & set(additional_ids)
@@ -185,7 +185,7 @@ class DataTree(NestedContext):
         # ids.update(additional_ids)
         # Create composite IDs for non-basis frequencies if they are not
         # explicitly in the layer dimensions
-        for freq in set(self.dataset.space) - set(self.dataset.space.axes()):
+        for freq in set(self.frameset.axes) - set(self.frameset.axes.bases()):
             freq_str = str(freq)
             if freq_str not in ids:
                 id_ = tuple(ids[str(b)] for b in freq.span() if ids[str(b)] is not None)
@@ -197,26 +197,26 @@ class DataTree(NestedContext):
                 ids[freq_str] = id_
         # Determine whether leaf node is included in the dataset definition according
         # to the include and exclude criteria
-        if self.dataset.include:
-            for freq in self.dataset.space:
+        if self.frameset.include:
+            for freq in self.frameset.axes:
                 freq_str = str(freq)
                 if (
-                    matches_criteria(ids[freq_str], freq_str, self.dataset.include)
+                    matches_criteria(ids[freq_str], freq_str, self.frameset.include)
                     is False
                 ):
                     return None
         return self._add_row(
-            ids={f: ids.get(str(f)) for f in self.dataset.space},
-            row_frequency=self.dataset.space.leaf(),
+            ids={f: ids.get(str(f)) for f in self.frameset.axes},
+            row_frequency=self.frameset.axes.leaf(),
         )
 
-    def _add_row(self, ids: ty.Dict[DataSpace, str], row_frequency):
+    def _add_row(self, ids: ty.Dict[Axes, str], row_frequency):
         """Adds a row to the dataset, creating all parent "aggregate" rows
-        (e.g. for each subject, group or timepoint) where required
+        (e.g. for each subject, group or visit) where required
 
         Parameters
         ----------
-        ids : dict[DataSpace, str]
+        ids : dict[Axes, str]
             ids of the row in all frequencies that it intersects
         row: DataRow
             The row to add into the data tree
@@ -230,8 +230,8 @@ class DataTree(NestedContext):
         # logger.debug(
         #     "Found %s row in %s dataset: %s", row_frequency, self.dataset_id, ids
         # )
-        row_frequency = self.dataset.parse_frequency(row_frequency)
-        row = DataRow(ids=ids, frequency=row_frequency, dataset=self.dataset)
+        row_frequency = self.frameset.parse_frequency(row_frequency)
+        row = DataRow(ids=ids, frequency=row_frequency, frameset=self.frameset)
         # Create new data row
         try:
             row_dict = self.root.children[row.frequency]
@@ -240,7 +240,7 @@ class DataTree(NestedContext):
         if row.id in row_dict:
             raise FrameTreeConstructionError(
                 f"ID clash ({row.id}) between rows inserted into the data tree of "
-                f"{self.dataset.id} in {self.dataset.store.name} store:\n"
+                f"{self.frameset.id} in {self.frameset.store.name} store:\n"
                 "  exist: "
                 + ", ".join(f"{f}={i}" for f, i in sorted(row_dict[row.id].ids.items()))
                 + "\n  added: "
@@ -256,7 +256,7 @@ class DataTree(NestedContext):
             diff_freq = (row.frequency ^ parent_freq) & row.frequency
             if diff_freq:
                 try:
-                    parent_row = self.dataset.row(frequency=parent_freq, id=parent_id)
+                    parent_row = self.frameset.row(frequency=parent_freq, id=parent_id)
                 except FrameTreeNameError:
                     parent_ids = {
                         f: i
@@ -277,15 +277,15 @@ class DataTree(NestedContext):
                         f"({children_dict[diff_id]} and {row}). You may "
                         f"need to set the `id_patterns` attr of the dataset "
                         "to disambiguate ID components (e.g. how to extract "
-                        "the timepoint ID from a session label)"
+                        "the visit ID from a session label)"
                     )
                 children_dict[diff_id] = row
         return row
 
     def _set_root(self):
         self.root = DataRow(
-            ids={self.dataset.root_freq: None},
-            frequency=self.dataset.root_freq,
-            dataset=self.dataset,
+            ids={self.frameset.root_freq: None},
+            frequency=self.frameset.root_freq,
+            frameset=self.frameset,
         )
         self._auto_ids = auto_ids_default()

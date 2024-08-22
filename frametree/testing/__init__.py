@@ -1,2 +1,2 @@
-from .space import TestDataSpace
+from .axes import TestAxes
 from .store import MockRemote, AlternateMockRemote

@@ -51,6 +51,7 @@ extensions = [
     "sphinxarg.ext",
     "sphinx_click.ext",
     "numpydoc",
+    "sphinx_togglebutton",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
