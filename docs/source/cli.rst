@@ -50,14 +50,14 @@ Processing
 
 Commands for applying workflows and analyses to framesets and generate derivative data
 
-.. click:: frametree.core.cli.apply:apply
+.. click:: frametree.core.cli.processing:apply
    :prog: frametree apply
 
-.. click:: frametree.core.cli.derive:derive_column
+.. click:: frametree.core.cli.processing:derive
    :prog: frametree derive
 
-.. click:: frametree.core.cli.derive:menu
+.. click:: frametree.core.cli.processing:menu
    :prog: frametree menu
 
-.. click:: frametree.core.cli.derive:ignore_diff
+.. click:: frametree.core.cli.processing:ignore_diff
    :prog: frametree ignore-diff

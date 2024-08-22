@@ -40,8 +40,9 @@ create an issue for it in the `GitHub Issue Tracker <https://github.com/ArcanaFr
 
 In addition to the base :class:`.Store` class, which lays out the interface to be
 implemented by all backend implementations, two partial implementations, :class:`.LocalStore`
-:class:`.RemoteStore` are provided as starting points for alternative backend implementations.
-These partial implementations have more specific abstract methods to implement
+and :class:`.RemoteStore` are provided as starting points for alternative backend implementations.
+These partial implementations have slightly more specific abstract methods to implement
+and handle some of the common functionality of local and remote stores.
 
 
 Local stores

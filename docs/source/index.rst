@@ -20,17 +20,45 @@ that can be fed directly into statistical analysis.
 
 The key elements of FrameTree's data model are:
 
-* :ref:`Stores` - tree-like file storage system backends
-* :ref:`FrameSets` - mapping of datasets (or subsets thereof) onto a set of data frames
-* :ref:`Columns` - cross-section of equivalent data types across a dataset
-* :ref:`Pipelines` - applied workflows and tasks on the data
+* :ref:`Stores` - tree-like file storage system backends (e.g. file systems, XNAT_, BIDS_, Flywheel_)
+* :ref:`FrameSets` - virtual mapping of datasets (or subsets thereof) onto a set of data frames
+* :ref:`Columns` - cross-section of data acquisitions across a frameset (e.g. anatomical MRI, subject's age)
+* :ref:`Pipelines` - workflows and tasks applied to a frameset
+
+
+Installation
+------------
+
+FrameTree requires a recent version of Python (>=3.8) to run. So you may
+need to upgrade your Python version before it is installed. It can be installed along
+with its dependencies from the `Python Package Index <http://pypi.org>`_ using *Pip3*
+
+.. code-block:: console
+
+    $ pip3 install frametree
+
+To add support for XNAT_ or BIDS_ stores you will also need to install the respective
+extension modules ``frametree-xnat`` and ``frametree-bids``, e.g.
+
+
+.. code-block:: console
+
+    $ pip3 install frametree-xnat frametree-bids
+
+
+Licence
+-------
+
+FrameTree is licenced under the `Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International Public License <https://creativecommons.org/licenses/by-nc-sa/4.0/>`_
+(see `LICENCE <https://raw.githubusercontent.com/Australian-Imaging-Service/frametree/master/LICENSE>`_).
+Non-commercial usage is permitted freely on the condition that FrameTree is
+appropriately acknowledged in related publications.
 
 
 .. toctree::
    :maxdepth: 2
    :hidden:
 
-   installation
    basic_usage
    stores
    frame_sets
@@ -46,14 +74,6 @@ The key elements of FrameTree's data model are:
    CLI <cli.rst>
    API <api.rst>
 
-
-Licence
--------
-
-FrameTree is licenced under the `Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International Public License <https://creativecommons.org/licenses/by-nc-sa/4.0/>`_
-(see `LICENCE <https://raw.githubusercontent.com/Australian-Imaging-Service/frametree/master/LICENSE>`_).
-Non-commercial usage is permitted freely on the condition that FrameTree is
-appropriately acknowledged in related publications.
 
 
 .. _Pydra: http://pydra.readthedocs.io
