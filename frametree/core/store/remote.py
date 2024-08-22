@@ -346,12 +346,12 @@ class RemoteStore(Store):
         except KeyError:
             # If no site-wide licenses dataset exists, try to create one
             try:
-                space = store.DEFAULT_SPACE
+                axes = store.DEFAULT_AXES
                 hierarchy = store.DEFAULT_HIERRACHY
             except AttributeError:
                 from frametree.common.axes import Samples
 
-                space = Samples
+                axes = Samples
                 hierarchy = [Samples.sample]  # just create a dummy one
             with store.connection:
                 store.create_data_tree(
@@ -359,7 +359,7 @@ class RemoteStore(Store):
                 )
             with store.connection:
                 dataset = store.define_grid(
-                    self.SITE_LICENSES_DATASET, space=space, hierarchy=hierarchy
+                    self.SITE_LICENSES_DATASET, axes=axes, hierarchy=hierarchy
                 )
                 dataset.save()
             return store.load_grid(self.SITE_LICENSES_DATASET)

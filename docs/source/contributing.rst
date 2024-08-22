@@ -6,8 +6,8 @@ Contributions to the project and extensions are more than welcome in various for
 for details. If you contribute code, documentation or bug reports to the repository please
 add your name and affiliation to the `Zenodo file <https://github.com/ArcanaFramework/frametree/blob/main/.zenodo.json>`_
 
-Development installation
-------------------------
+Dev install
+-----------
 
 To install a development version of frametree, clone the GitHub repository
 https://github.com/ArcanaFramework/frametree and install an editable package with *pip*
@@ -23,7 +23,7 @@ Extensions
 The core FrameTree code base is implemented in the :mod:`frametree.core` module. Extensions
 which implement data store connectors and analyses are installed in separate packages
 (e.g. ``frametree-xnat``, ``frametree-bids``). Use the `extension template <https://github.com/ArcanaFramework/frametree-extension-template>`__
-on GitHub as a starting point. Note that all ``Store`` and ``Space`` subclasses should be
+on GitHub as a starting point. Note that all ``Store`` and ``Axes`` subclasses should be
 imported into the extension package root (e.g. ``frametree.xnat.__init__.py``) so they can
 be found by CLI commands. Additional CLI commands specific to a particular backend should
 be implemented as ``click`` commands under the ``frametree.core.cli.ext`` group and also
@@ -35,9 +35,8 @@ Alternative Backends
 --------------------
 
 Alternative storage systems can be implemented by writing a new subclass of
-:class:`.Store`. The developers are interested in adding support for new systems,
-so if you would help to use FrameTree with a different storage system please
-create an issue for it in the `GitHub Issue Tracker <https://github.com/Australian-Imaging-Service/frametree/issues>`__.
+:class:`.Store`. If you would like help writing a new storage backend please
+create an issue for it in the `GitHub Issue Tracker <https://github.com/ArcanaFramework/frametree/issues>`__.
 
 In addition to the base :class:`.Store` class, which lays out the interface to be
 implemented by all backend implementations, two partial implementations, :class:`.LocalStore`
@@ -50,9 +49,9 @@ Local stores
 
 The :class:`.LocalStore` partial implementation is for data stores that are mappings from
 specific data structures stored in directory trees on the local file-system (even if
-they are mounted from network drives), such as the basic :class:`.FileSystem` or the BIDS_,
-:class:`.bids.Bids`, stores. The following abstract methdos are required to create a
-local store.
+they are mounted from network drives), such as the basic :class:`.FileSystem` or the
+:class:`.Bids` stores. Implementations for the following abstract methods are required to
+create a local store.
 
 .. autoclass:: frametree.core.store.LocalStore
     :noindex:
@@ -73,20 +72,19 @@ be implemented, such as `connect` and `disconnect`, which handle the login/out m
 
 .. _adding_formats:
 
-New spaces
-----------
+New axes
+--------
 
 FrameTree was initially developed for medical-imaging analysis. Therefore, if you
 planning to use it for alternative domains you may need to add support for domain-specific
-file formats and "data spaces". File formats are specified using the FileFormats_ package.
+file formats and "data axes". File formats are specified using the FileFormats_ package.
 Please refer to its documentation on how to add new file formats.
 
-New data spaces (see :ref:`data_spaces`) are defined by extending the
+New data axes (see :ref:`axes`) are defined by extending the
 :class:`.Axes` abstract base class. :class:`.Axes` subclasses are be
 `enums <https://docs.python.org/3/library/enum.html>`_ with binary string
 values of consistent length (i.e. all of length 2 or all of length 3, etc...).
-The length of the binary string defines the rank of the data space,
-i.e. the maximum depth of a data tree within the space. The enum must contain
+The length of the binary string defines the number of axes. The enum must contain
 members for each permutation of the bit string (e.g. for 2 dimensions, there
 must be members corresponding to the values 0b00, 0b01, 0b10, 0b11).
 
@@ -95,7 +93,7 @@ by analysis group (e.g. test & control), membership within the group (i.e
 matched subject ID) and time-points for longitudinal studies. In this case, we can
 visualise the imaging sessions arranged in a 3-D grid along the `group`, `member`, and
 `timepoint` axes. Note that datasets that only contain one group or
-time-point can still be represented in this space, and just be singleton along
+time-point can still be represented by these axes, and just be singleton along
 the corresponding axis.
 
 All axes should be included as members of a Axes subclass

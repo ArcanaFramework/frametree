@@ -1,35 +1,7 @@
 
-.. _data_columns:
-
-Frames
-======
-
-Before data within a grid is manipulated it is be assigned to data frames via the creation
-of data "columns" across different layers of the grid.
-
-Rows
-----
-
-The "rows" of a data frame correspond either to individual data points in the data grid
-(e.g. imaging sessions in the :class:`Clincial` axes) or lines, planes for higher layers
-in the hierarchy of the data tree (e.g. subjects or study groups). For example within the
-:class:`Clinical` axes, the "row frequency" of frames are
-
-* imaging sessions
-* subjects
-* study groups (e.g. 'test' or 'control')
-* longitudinal timepoints
-* control-matched pairs
-* batches (separate groups at separate timepoints)
-* matched-point (matched members (e.g. test & control) across all groups and timepoints)
-* constant/singular
-
-Note that these "rows" do not correspond to rows of data points in the intermediate grid
-conception, rather rows in the final data frame.
-
-
 Columns
--------
+=======
+
 The "columns" of a data frame are slices of comparable data items across each row, e.g.
 
 * T1-weighted MR acquisition for each imaging session
@@ -75,16 +47,16 @@ Each column is assigned a name when it is created, which is used when
 connecting pipeline inputs and outputs to the dataset and accessing the data directly.
 The column name is used as the default value for the path of sink columns.
 
-Use the ':ref:`frametree dataset add-source`' and ':ref:`frametree dataset add-sink`'
+Use the ':ref:`frametree add-source`' and ':ref:`frametree add-sink`'
 commands to add columns to a dataset using the CLI.
 
 .. code-block:: console
 
-    $ frametree dataset add-source 'xnat-central//MYXNATPROJECT' T1w \
+    $ frametree add-source 'xnat-central//MYXNATPROJECT' T1w \
       medimage/dicom-series --path '.*t1_mprage.*' \
       --order 1 --quality usable --regex
 
-    $ frametree dataset add-sink '/data/imaging/my-project' fmri_activation_map \
+    $ frametree add-sink '/data/imaging/my-project' fmri_activation_map \
       medimage/nifti-gz --row-frequency group
 
 

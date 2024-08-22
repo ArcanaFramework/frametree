@@ -119,7 +119,7 @@ def test_define_cli(dataset: Grid, cli_runner):
         args.extend(["--include", axis, slce])
     for axis, slce in excluded.items():
         args.extend(["--exclude", axis, slce])
-    args.extend(["--space", "frametree.testing:TestAxes"])
+    args.extend(["--axes", "frametree.testing:TestAxes"])
     # Run the command line
     result = cli_runner(define, [path, *args])
     # Check tool completed successfully

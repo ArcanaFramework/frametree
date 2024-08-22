@@ -186,7 +186,7 @@ class Store(metaclass=ABCMeta):
         cls.save_configs(entries)
 
     def define_grid(
-        self, id, space=None, hierarchy=None, id_patterns=None, **kwargs
+        self, id, axes=None, hierarchy=None, id_patterns=None, **kwargs
     ) -> Grid:
         """
         Creates a FrameTree dataset definition for an existing data in the
@@ -197,17 +197,14 @@ class Store(metaclass=ABCMeta):
         id : str
             The ID (or file-system path) of the project (or directory) within
             the store
-        space: Axes
-            The data space of the dataset
+        axes: Axes
+            The data axes of the frametree
         hierarchy: ty.List[str]
-            The hierarchy of the dataset
+            The hierarchy of the frametree
         id_patterns : dict[str, str], optional
             Patterns used to infer row IDs not explicitly within the hierarchy of the
             data tree, e.g. groups and timepoints in an XNAT project with subject>session
             hierarchy
-        space : EnumMeta
-            The Axes enum that defines the frequencies (e.g.
-            per-session, per-subject,...) present in the dataset.
         **kwargs:
             Keyword args passed on to the Grid init method
 
@@ -216,24 +213,19 @@ class Store(metaclass=ABCMeta):
         Grid
             the newly defined dataset
         """
-        if space is None:
+        if axes is None:
             try:
-                space = self.DEFAULT_SPACE
+                axes = self.DEFAULT_AXES
             except AttributeError as e:
                 raise FrameTreeUsageError(
-                    "'space' kwarg must be specified for datasets in "
+                    "'axes' kwarg must be specified for datasets in "
                     f"{type(self)} stores"
                 ) from e
         if hierarchy is None:
             try:
                 hierarchy = list(self.DEFAULT_HIERARCHY)
             except AttributeError:
-                hierarchy = [str(max(space))]  # one-layer with only leaf nodes
-        # if id_patterns is None:
-        #     try:
-        #         id_patterns = dict(self.DEFAULT_ID_PATTERNS)
-        #     except AttributeError:
-        #         pass
+                hierarchy = [str(max(axes))]  # one-layer with only leaf nodes
         from frametree.core.grid import (
             Grid,
         )  # avoid circular imports it is imported here rather than at the top of the file
@@ -241,7 +233,7 @@ class Store(metaclass=ABCMeta):
         dataset = Grid(
             id=id,
             store=self,
-            axes=space,
+            axes=axes,
             hierarchy=hierarchy,
             id_patterns=id_patterns,
             **kwargs,
@@ -306,7 +298,7 @@ class Store(metaclass=ABCMeta):
         id: str,
         leaves: ty.Iterable[ty.Tuple[str, ...]],
         hierarchy: ty.List[str],
-        space: type,
+        axes: type,
         name: ty.Optional[str] = None,
         id_patterns: ty.Optional[ty.Dict[str, str]] = None,
         **kwargs,
@@ -324,8 +316,8 @@ class Store(metaclass=ABCMeta):
             save the dataset with the default name pass an empty string.
         hierarchy : list[str], optional
             hierarchy of the dataset tree
-        space : type, optional
-            the space of the dataset
+        axes : type, optional
+            the axes of the dataset
         id_patterns : dict[str, str]
             Patterns for inferring IDs of rows not explicitly present in the hierarchy of
             the data tree. See ``Store.infer_ids()`` for syntax
@@ -339,12 +331,12 @@ class Store(metaclass=ABCMeta):
             id=id,
             leaves=list(leaves),
             hierarchy=hierarchy,
-            space=space,
+            axes=axes,
         )
         dataset = self.define_grid(
             id=id,
             hierarchy=hierarchy,
-            space=space,
+            axes=axes,
             id_patterns=id_patterns,
             **kwargs,
         )
@@ -408,7 +400,7 @@ class Store(metaclass=ABCMeta):
             # Create a new dataset in the store to import the data into
             imported = self.create_dataset(
                 id,
-                space=dataset.axes,
+                axes=dataset.axes,
                 hierarchy=hierarchy,
                 leaves=[
                     tuple(r.frequency_id(h) for h in hierarchy) for r in dataset.rows()
@@ -836,7 +828,7 @@ class Store(metaclass=ABCMeta):
         id: str,
         leaves: ty.List[ty.Tuple[str, ...]],
         hierarchy: ty.List[str],
-        space: type,
+        axes: type,
         **kwargs,
     ):
         """Creates a new empty dataset within in the store. Used in test routines and
@@ -853,8 +845,8 @@ class Store(metaclass=ABCMeta):
             [("SUBJ01", "TIMEPOINT01"), ("SUBJ01", "TIMEPOINT02"), ....]
         hierarchy: ty.List[str]
             the hierarchy of the dataset to be created
-        space : type(Axes)
-            the data space of the dataset
+        axes : type(Axes)
+            the data axes of the dataset
         id_patterns : dict[str, str]
             Patterns for inferring IDs of rows not explicitly present in the hierarchy of
             the data tree. See ``Store.infer_ids()`` for syntax

@@ -17,7 +17,7 @@ def apply():
     help="""Apply a Pydra workflow to a dataset as a pipeline between
 two columns
 
-DATASET_LOCATOR string containing the nickname of the data store, the ID of the dataset
+ADDRESS string containing the nickname of the data store, the ID of the dataset
 (e.g. XNAT project ID or file-system directory) and the dataset's name in the
 format <store-nickname>//<dataset-id>[@<dataset-name>]
 
@@ -26,7 +26,7 @@ PIPELINE_NAME is the name of the pipeline
 WORKFLOW_LOCATION is the location to a Pydra workflow on the Python system path,
 <MODULE>:<WORKFLOW>""",
 )
-@click.argument("dataset_locator")
+@click.argument("address")
 @click.argument("pipeline_name")
 @click.argument("workflow_location")
 @click.option(
@@ -112,7 +112,7 @@ WORKFLOW_LOCATION is the location to a Pydra workflow on the Python system path,
     help=("whether to overwrite previous pipelines"),
 )
 def apply_pipeline(
-    dataset_locator,
+    address,
     pipeline_name,
     workflow_location,
     input,
@@ -124,7 +124,7 @@ def apply_pipeline(
     overwrite,
 ):
 
-    grid = Grid.load(dataset_locator)
+    grid = Grid.load(address)
     workflow = ClassResolver(TaskBase, alternative_types=[ty.Callable])(
         workflow_location
     )(name="workflow", **{n: parse_value(v) for n, v in parameter})

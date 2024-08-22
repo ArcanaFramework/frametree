@@ -1,5 +1,5 @@
-Grids
-=====
+FrameTrees
+==========
 
 FrameTree *Data grids* refer to all, or a subset thereof, of data points (e.g. imaging session)
 data within a dataset. The data points are conceptualised on a multi-dimensional grid
@@ -92,6 +92,25 @@ the subject level of the tree sit in special *SUBJECT* branches
 In this case, the genomics data maps onto a different conceptual data frame, in which
 each row corresponds to a subject instead of a session.
 
+The "rows" of a data frame correspond either to individual data points in the data grid
+(e.g. imaging sessions in the :class:`Clincial` axes) or lines, planes for higher layers
+in the hierarchy of the data tree (e.g. subjects or study groups). For example within the
+:class:`Clinical` axes, the "row frequency" of frames are
+
+* imaging sessions
+* subjects
+* study groups (e.g. 'test' or 'control')
+* longitudinal timepoints
+* control-matched pairs
+* batches (separate groups at separate timepoints)
+* matched-point (matched members (e.g. test & control) across all groups and timepoints)
+* constant/singular
+
+Note that these "rows" do not correspond to rows of data points in the intermediate grid
+conception, rather rows in the final data frame.
+
+
+
 In the CLI, grids are referred to by ``<store-name>//<dataset-id>[@<dataset-name>]``,
 where *<store-name>* is the nickname of the store as saved by ':ref:`frametree store add`'
 (see :ref:`Stores`), and *<dataset-id>* is
@@ -124,7 +143,7 @@ By default all data points within the dataset are included in the grid. However,
 often there are data points that need to be removed from a given
 analysis due to missing or corrupted data. Such sections need to be removed
 in a way that the data points still lie on a rectangular grid within the
-data space (see :ref:`data_spaces`) so derivatives computed over a given axis
+data axes (see :ref:`axes`) so derivatives computed over a given axis
 or axes are drawn from comparable number of data points.
 
 .. note::
@@ -144,8 +163,8 @@ a dataset.
 
 .. code-block:: console
 
-    $ frametree define-grid '/data/imaging/my-project@manually_qcd' \
-      common:Clinical subject session \
+    $ frametree define '/data/imaging/my-project@manually_qcd' \
+      common/clinical subject session \
       --exclude member 03,11,27
 
 
@@ -156,8 +175,8 @@ frequencies.
 
 .. code-block:: console
 
-    $ frametree define-grid '/data/imaging/my-project@manually_qcd' \
-      common:Clinical subject session \
+    $ frametree define '/data/imaging/my-project@manually_qcd' \
+      common/clinical subject session \
       --exclude member 03,11,27 \
       --include timepoint 1,2
 
@@ -171,8 +190,8 @@ CLI, append the name to the dataset's ID string separated by '::', e.g.
 
 .. code-block:: console
 
-    $ frametree define-grid '/data/imaging/my-project@training' \
-      common:Clinical group subject \
+    $ frametree define '/data/imaging/my-project@training' \
+      common/clinical group subject \
       --include member 10:20
 
 
@@ -356,16 +375,15 @@ axes
 .. and how the layers add to one another
 
 For stores that support datasets with arbitrary tree structures
-(i.e. :class:`.FileSystem`), the "data space" and the hierarchy of layers
-in the data tree needs to be provided. Data spaces are explained in more
-detail in :ref:`data_spaces`. However, for the majority of datasets in the
-medical imaging field, the :class:`frametree.medimage.data.Clinical` space is
+(i.e. :class:`.FileSystem`), the "data axes" and the hierarchy of layers
+in the data tree needs to be provided. Data axes are explained in more
+detail in :ref:`axes`. However, for the majority of datasets in the
+medical imaging field, the :class:`frametree.medimage.data.Clinical` is
 appropriate.
 
 .. code-block:: python
 
-    from frametree.file_system import FileSystem
-    from frametree.common import Clinical
+    from frametree.common import Clinical, FileSystem
 
     fs_dataset = FileSystem().dataset(
         id='/data/imaging/my-project',
@@ -412,7 +430,7 @@ the IDs to be inferred, e.g.
 
 .. code-block:: console
 
-    $ frametree dataset define 'xnat-central//MYXNATPROJECT' \
+    $ frametree define 'xnat-central//MYXNATPROJECT' \
       --id-inference subject '(?P<group>[A-Z]+)_(?P<member>\d+)' \
       --id-inference session '[A-Z0-9]+_MR(?P<timepoint>\d+)'
 

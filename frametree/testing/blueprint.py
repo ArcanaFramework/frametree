@@ -228,7 +228,7 @@ class TestDatasetBlueprint:
                 leaves=self.all_ids,
                 name=name,
                 hierarchy=self.hierarchy,
-                space=self.axes,
+                axes=self.axes,
                 metadata=metadata,
                 include=self.include,
                 exclude=self.exclude,
@@ -263,7 +263,7 @@ class TestDatasetBlueprint:
         # Create copy of the blueprint
         blueprint = deepcopy(self)
         try:
-            blueprint.axes = data_store.DEFAULT_SPACE
+            blueprint.axes = data_store.DEFAULT_AXES
         except AttributeError:
             space = TestAxes
         else:

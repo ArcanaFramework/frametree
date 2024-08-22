@@ -25,9 +25,9 @@ def grid():
 dataset. Where possible, the definition file is saved inside the dataset for
 use by multiple users, if not possible it is stored in the ~/.frametree directory.
 
-DATASET_LOCATOR string containing the nick-name of the store, the ID of the dataset
-(e.g. XNAT project ID or file-system directory) and the dataset's name in the
-format <store-nickname>//<dataset-id>[@<dataset-name>]
+ADDRESS string containing the nick-name of the store, the ID of the dataset
+(e.g. XNAT project ID or file-system directory) and the frame tree's name in the
+format <store-nickname>//<dataset-id>[@<frametree-name>]
 
 HIERARCHY the data frequencies that are present in the data tree. For some
 store types this is fixed (e.g. XNAT-> subject > session) but for more flexible
@@ -35,14 +35,14 @@ store types this is fixed (e.g. XNAT-> subject > session) but for more flexible
 can be arbitrarily specified. dimensions"""
     ),
 )
-@click.argument("dataset_locator")
+@click.argument("address")
 @click.argument("hierarchy", nargs=-1)
 @click.option(
-    "--space",
+    "--axes",
     default="common:Clinical",
     type=str,
     help=(
-        "The enum that specifies the data dimensions of the dataset. "
+        "The enum that specifies the axes of the FrameTree. "
         "Defaults to `Clinical`, which "
         "consists of the typical dataset>group>subject>session "
         "data tree used in medimage trials/studies"
@@ -99,22 +99,22 @@ the inferred IDs
 
 """,
 )
-def define(dataset_locator, hierarchy, include, exclude, space, id_pattern):
+def define(address, hierarchy, include, exclude, axes, id_pattern):
 
-    store_name, id, name = Grid.parse_id_str(dataset_locator)
+    store_name, id, name = Grid.parse_id_str(address)
 
     if not hierarchy:
         hierarchy = None
 
     store = Store.load(store_name)
 
-    if space:
-        space = ClassResolver(Axes)(space)
+    if axes:
+        axes = ClassResolver(Axes)(axes)
 
     dataset = store.define_grid(
         id,
         hierarchy=hierarchy,
-        space=space,
+        axes=axes,
         id_patterns=dict(id_pattern),
         include=dict(include),
         exclude=dict(exclude),
@@ -129,7 +129,7 @@ def define(dataset_locator, hierarchy, include, exclude, space, id_pattern):
 selects comparable items along a dimension of the dataset to serve as
 an input to pipelines and analyses.
 
-DATASET_LOCATOR The path to the dataset including store and dataset name
+ADDRESS The path to the dataset including store and dataset name
 (where applicable), e.g. central-xnat//MYXNATPROJECT:pass_t1w_qc
 
 NAME: The name the source will be referenced by
@@ -139,7 +139,7 @@ field array (ty.List[int|float|str|bool]) or
 "file-set" (file, file+header/side-cars or directory)
 """,
 )
-@click.argument("dataset_locator")
+@click.argument("address")
 @click.argument("name")
 @click.argument("datatype")
 @click.option(
@@ -199,7 +199,7 @@ field array (ty.List[int|float|str|bool]) or
     ),
 )
 def add_source(
-    dataset_locator,
+    address,
     name,
     datatype,
     row_frequency,
@@ -209,7 +209,7 @@ def add_source(
     is_regex,
     header,
 ):
-    dataset = Grid.load(dataset_locator)
+    dataset = Grid.load(address)
     dataset.add_source(
         name=name,
         path=path,
@@ -241,7 +241,7 @@ datatype
     (file, file+header/side-cars or directory)
 """,
 )
-@click.argument("dataset_locator")
+@click.argument("address")
 @click.argument("name")
 @click.argument("datatype")
 @click.option(
@@ -271,8 +271,8 @@ datatype
         "'frametree derive menu'"
     ),
 )
-def add_sink(dataset_locator, name, datatype, row_frequency, path, salience):
-    dataset = Grid.load(dataset_locator)
+def add_sink(address, name, datatype, row_frequency, path, salience):
+    dataset = Grid.load(address)
     dataset.add_sink(
         name=name,
         path=path,
@@ -288,16 +288,16 @@ def add_sink(dataset_locator, name, datatype, row_frequency, path, salience):
     help="""Finds the IDs of rows that are missing a valid entry for an item in
 the column.
 
-DATASET_LOCATOR of the dataset including store and dataset name (where
+ADDRESS of the dataset including store and dataset name (where
     applicable), e.g. central-xnat//MYXNATPROJECT:pass_t1w_qc
 
 COLUMN_NAMES, [COLUMN_NAMES, ...] for the columns to check, defaults to all source columns
 """,
 )
-@click.argument("dataset_locator")
+@click.argument("address")
 @click.argument("column_names", nargs=-1)
-def missing_items(dataset_locator, column_names):
-    dataset = Grid.load(dataset_locator)
+def missing_items(address, column_names):
+    dataset = Grid.load(address)
     if not column_names:
         column_names = [n for n, c in dataset.columns.items() if not c.is_sink]
     for column_name in column_names:
@@ -311,7 +311,7 @@ def missing_items(dataset_locator, column_names):
     help="""
 Exports a dataset from one data store into another
 
-DATASET_LOCATOR of the dataset to copy
+ADDRESS of the dataset to copy
 
 STORE_NICKNAME of the destination store
 
@@ -320,7 +320,7 @@ ID for the dataset in the destination store
 COLUMN_NAMES, [COLUMN_NAMES, ...] to be included in the export, by default all will be included
 """
 )
-@click.argument("dataset_locator")
+@click.argument("address")
 @click.argument("store_nickname")
 @click.argument("imported_id")
 @click.argument("column_names", nargs=-1)
@@ -350,7 +350,7 @@ COLUMN_NAMES, [COLUMN_NAMES, ...] to be included in the export, by default all w
     ),
 )
 def export(
-    dataset_locator,
+    address,
     store_nickname,
     imported_id,
     column_names,
@@ -358,7 +358,7 @@ def export(
     hierarchy,
     use_original_paths,
 ):
-    dataset = Grid.load(dataset_locator)
+    dataset = Grid.load(address)
     store = Store.load(store_nickname)
     if hierarchy:
         hierarchy = hierarchy.split(",")
@@ -379,15 +379,15 @@ def export(
 Creates a copy of a dataset definition under a new name (so it can be modified, e.g.
 for different analysis)
 
-DATASET_LOCATOR of the dataset to copy
+ADDRESS of the dataset to copy
 
 NEW_NAME for the dataset
 """
 )
-@click.argument("dataset_locator")
+@click.argument("address")
 @click.argument("new_name")
-def copy(dataset_locator, new_name):
-    dataset = Grid.load(dataset_locator)
+def copy(address, new_name):
+    dataset = Grid.load(address)
     dataset.save(new_name)
 
 

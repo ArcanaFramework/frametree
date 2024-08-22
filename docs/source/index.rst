@@ -3,26 +3,27 @@
 FrameTree
 =========
 
-FrameTree is a Python package sets out to bridge the gap between
+FrameTree is a Python package that sets out to bridge the gap between
 the semi-structured data trees that file-based data are typically stored in,
-and the tabular data frames used in statistical analysis. Note that this
+and the tabular data frames used in statistical analysis. This
 transformation is abstract, with the source data remaining within original data
 tree and generated derivatives stored alongside them.
 
-Data store interactions are abstracted by modular handlers, making it possible to write
-backends for different storage systems. Currently, XNAT_ and BIDS_ backends are supported,
-with a prototype started for Flywheel_. Frametree facilitates pulling data
-from the data store to a (typically neighbouring) computing resource, and then uploading
-the processed data alongside the original data in a location that can be accessed by
-subsequent analysis steps. In this manner chains of modular pipelines can be applied
-and used to produce output metrics that can be fed directly into statistical analysis.
+Data store interactions are mediated by well-defined interfaces, making it possible to write
+backends for different storage systems and data structures. In addition to the generic
+"file system" backend, backends for XNAT_ and BIDS_ are currently supported, with a prototype started
+for Flywheel_. FrameTree facilitates pulling data from the data store to a (typically
+neighbouring) computing resource, and then uploading the processed data alongside the
+original data in a location that can be accessed by subsequent analysis steps. In this
+manner chains of modular pipelines can be applied and used to produce output metrics
+that can be fed directly into statistical analysis.
 
 The key elements of FrameTree's data model are:
 
 * :ref:`Stores` - encapsulations of tree-based file storage systems
-* :ref:`Grids` - sets of comparable data to be jointly analysed
-* :ref:`data_columns` - abstract tables within datasets
-
+* :ref:`FrameTrees` - set of comparable data points to be jointly analysed
+* :ref:`Columns` - abstract tables that can be drawn from datasets
+* :ref:`Pipelines` - application of workflows and tasks to the
 
 
 .. toctree::
@@ -32,8 +33,9 @@ The key elements of FrameTree's data model are:
    installation
    basic_usage
    stores
-   grids
-   frames
+   frametrees
+   columns
+   pipelines
    contributing
 
 .. toctree::

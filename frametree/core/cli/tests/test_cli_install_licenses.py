@@ -23,16 +23,14 @@ def test_cli_install_dataset_license(
     store_nickname = saved_dataset.id + "_store"
     license_name = "test-license"
     saved_dataset.store.save(store_nickname)
-    dataset_locator = (
-        store_nickname + "//" + saved_dataset.id + "@" + saved_dataset.name
-    )
+    address = store_nickname + "//" + saved_dataset.id + "@" + saved_dataset.name
 
     result = cli_runner(
         install_license,
         [
             license_name,
             test_license,
-            dataset_locator,
+            address,
         ],
     )
     assert result.exit_code == 0, show_cli_trace(result)
@@ -48,7 +46,7 @@ def test_cli_install_dataset_license(
         [
             license_name,
             str(new_license),
-            dataset_locator,
+            address,
         ],
     )
     assert result.exit_code == 0, show_cli_trace(result)

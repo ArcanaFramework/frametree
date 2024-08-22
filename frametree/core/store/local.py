@@ -316,7 +316,7 @@ class LocalStore(Store):
         except KeyError:
             from frametree.common import Samples
 
-            dataset = self.define_grid(dataset_root, space=Samples)
+            dataset = self.define_grid(dataset_root, axes=Samples)
         return dataset
 
     ###################
