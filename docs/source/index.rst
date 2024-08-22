@@ -21,9 +21,9 @@ that can be fed directly into statistical analysis.
 The key elements of FrameTree's data model are:
 
 * :ref:`Stores` - encapsulations of tree-based file storage systems
-* :ref:`FrameTrees` - set of comparable data points to be jointly analysed
-* :ref:`Columns` - abstract tables that can be drawn from datasets
-* :ref:`Pipelines` - application of workflows and tasks to the
+* :ref:`FrameSets` - mapping of datasets (or subsets thereof) onto a set of data frames
+* :ref:`Columns` - cross-section of equivalent data types across a dataset (e.g. all T1-weighted scans across all imaging sessions)
+* :ref:`Pipelines` - applied workflows and tasks on the data
 
 
 .. toctree::
@@ -33,7 +33,7 @@ The key elements of FrameTree's data model are:
    installation
    basic_usage
    stores
-   frametrees
+   framesets
    columns
    pipelines
    contributing

@@ -1,15 +1,12 @@
-FrameTrees
-==========
+FrameSets
+=========
 
-FrameTree *Data grids* refer to all, or a subset thereof, of data points (e.g. imaging session)
-data within a dataset. The data points are conceptualised on a multi-dimensional grid
-within a space for which  the categorical variables form the bases. Data points within
-a consist of both source data and the derivatives derived from them.
-
-Grid definitions map the tree structure the data is stored within onto the grid by specifying
-"hierarchy" of branches (e.g. groups > subjects > sessions) expected within dataset trees.
-For example, the following dataset consisting of imaging sessions is sorted by subjects, then
-longintudinal timepoints
+FrameSets consist of all, or a subset thereof, data points (e.g. imaging session)
+within a dataset mapped onto a set of frames. The mapping is done via gridding a
+multi-dimensional grid, where the categorical variables used to distinguish the data
+points form the axes. The "hierarchy" of branches (e.g. groups > subjects > sessions)
+within the data tree. Consider the following example dataset consisting of imaging sessions is
+sorted by subjects, then longintudinal timepoints
 
 .. code-block::
 
