@@ -299,6 +299,7 @@ class FrameSet:
         id: str,
         store: datastore.Store = None,
         name: ty.Optional[str] = "",
+        default_if_missing: bool = False,
         **kwargs,
     ):
         """Loads a dataset from an store/ID/name string, as used in the CLI
@@ -315,6 +316,9 @@ class FrameSet:
             the name of the dataset within the project/directory
             (e.g. 'test', 'training'). Used to specify a subset of data rows
             to work with, within a greater project
+        default_if_missing: bool, optional
+            If True, then a new dataset is created if the dataset is not found
+            in the store
         **kwargs
             keyword arguments parsed to the data store load
 
@@ -327,7 +331,12 @@ class FrameSet:
             store = datastore.Store.load(store_name, **kwargs)
             if not name and parsed_name:
                 name = parsed_name
-        return store.load_frameset(id, name=name)
+        try:
+            return store.load_frameset(id, name=name)
+        except KeyError:
+            if default_if_missing:
+                return cls(id, store, **kwargs)
+            raise
 
     @property
     def root_freq(self):
@@ -621,7 +630,7 @@ class FrameSet:
         """
         return self.columns[name]
 
-    def apply_pipeline(
+    def apply(
         self,
         name,
         workflow,
@@ -706,9 +715,6 @@ class FrameSet:
         self.pipelines[name] = pipeline
 
         return pipeline
-
-    def apply(self, analysis):
-        self.analyses[analysis.name] = analysis
 
     def derive(self, *sink_names, ids=None, cache_dir=None, **kwargs):
         """Generate derivatives from the workflows
