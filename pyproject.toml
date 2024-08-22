@@ -51,6 +51,7 @@ docs = [
     "sphinx >=2.1.2",
     "sphinx-argparse>=0.2.0",
     "sphinx-click>=3.1",
+    "sphinx-togglebutton >=0.3.2",
 ]
 test = [
     "fileformats-medimage-extras",
