@@ -255,7 +255,7 @@ def apply(
         frameset.add_sink(col_name, datatype)
         outputs.append((col_name, field, datatype))
 
-    frameset.apply_pipeline(
+    frameset.apply(
         pipeline_name,
         workflow,
         inputs,
