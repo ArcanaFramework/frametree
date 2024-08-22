@@ -32,7 +32,7 @@ logger = logging.getLogger("frametree")
 
 
 if ty.TYPE_CHECKING:  # pragma: no cover
-    from ..set import FrameSet
+    from ..frameset import FrameSet
     from ..tree import DataTree
     from ..entry import DataEntry
     from ..row import DataRow
