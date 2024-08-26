@@ -27,13 +27,14 @@ Alternatively, for a meterological analysis, data could be categorised by
 * **datetime** - the time of the reading
 * **location** - the location of the weather station
 
-These "axes" are combined to produce the different "row frequencies" of the frames in
-the frameset, e.g. "per-session", "per-subject", "per-location", with one frame per frequency.
-In this conceptualisation, different data acquisitions belong in different frames.
-For example, the "per-session" frame in a clinical imaging dataset is a combination of
-three axes, *group*, *member* and *visit*, and contains the data acquired from the
-imaging protocol. Whereas, the social economic status and genetic data are constant per
-subject so conceptually exist within the "per subject" (group + membership ID) data frame.
+These "axes", and combinations thereof, form the "row frequencies" of the frames in
+the frameset, with one frame per frequency. Different types of acquisitions or metrics
+form the columns of the data frames. For example, the "per-session" frequency in a clinical
+imaging dataset is a combination of the three bases, *group*, *member* and *visit*, and
+the corresponding frame has columns corresponding to the different imaging acquisitions,
+e.g. 'T1-weighted MRI' or'functional MRI'. Whereas, social economic status and genetic data
+are constant per subject so would correspond to columns in the "per subject"
+(group + membership ID) data frame.
 
 
 Defining framesets
