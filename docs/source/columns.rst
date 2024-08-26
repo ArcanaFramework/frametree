@@ -32,7 +32,6 @@ in each row of the frame based on several criteria:
     * only available for selected item formats such as :class:`.medimage.Dicom`
 * **order** - the order that an item appears the data row
     * e.g. first T1-weighted scan that meets all other criteria in a session
-    * only applicable for XNAT_ stores
 
 If no items, or multiple items are matched, then an error is raised. The *order*
 flag, can be used to select one of muliple valid options.

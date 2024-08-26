@@ -64,7 +64,7 @@ appropriately acknowledged in related publications.
    frame_sets
    columns
    pipelines
-   contributing
+   developer
 
 .. toctree::
    :maxdepth: 2

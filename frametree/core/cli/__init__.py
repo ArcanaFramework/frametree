@@ -1,3 +1,4 @@
+from .base import cli
 from .store import store  # noqa: F401
 from .frameset import (  # noqa: F401
     define,
