@@ -91,7 +91,7 @@ Alternatively via the Python API:
         xnat_ct.save("xnat-central")
 
         # Create the frameset definition
-        frameset = xnat_ct.define(id='MYXNATPROJECT')
+        frameset = xnat_ct.define_frameset(id='MYXNATPROJECT')
 
         # Save the frameset definition in the XNAT project
         frameset.save()
@@ -384,7 +384,7 @@ Alternatively via the Python API:
 
         from frametree.common import Clinical, FileSystem
 
-        fs_frameset = FileSystem().define(
+        fs_frameset = FileSystem().define_frameset(
             id='/data/imaging/my-project',
             # Define the hierarchy of the dataset in which imaging session
             # sub-directories are separated into directories via their study group
@@ -501,8 +501,12 @@ Alternatively, via Python API:
         xnat_store = Xnat.load('xnat-central')
 
         # Partition dataset into training and test
-        training = xnat_store.define(id='MYXNATPROJECT', include={'member': range(1, 81)})
-        test = xnat_store.define(id='MYXNATPROJECT', include={'member': range(81, 101)})
+        training = xnat_store.define_frameset(
+            id='MYXNATPROJECT', include={'member': range(1, 81)}
+        )
+        test = xnat_store.define_frameset(
+            id='MYXNATPROJECT', include={'member': range(81, 101)}
+        )
 
         # Save to the dataset
         training.save("training")
