@@ -22,7 +22,7 @@ timepoint. The subjects themselves are often classified by different study group
     * e.g. the '03' in 'TEST03' & 'CONT03' pair of control-matched subject IDs
 * **visit** - longintudinal timepoint
 
-Alternatively, for a meterological analysis, data would typically be categorised by
+Alternatively, for a meterological analysis, data could be categorised by
 
 * **datetime** - the time of the reading
 * **location** - the location of the weather station
