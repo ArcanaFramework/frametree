@@ -11,10 +11,10 @@ container service) or only via the API.
 There are currently four supported store classes in the common, `frametree-bids` and `frametree-xnat`
 packages
 
-* :class:`.FileSystem` - access data organised within an arbitrary directory tree on the file system
-* :class:`.Bids` - access data on file systems organised in the `Brain Imaging Data Structure (BIDS) <https://bids.neuroimaging.io/>`__
-* :class:`.Xnat` - access data stored in XNAT_ repositories vi its REST API
-* :class:`.XnatViaCS` - access data stored in XNAT_ via its `container service <https://wiki.xnat.org/container-service/using-the-container-service-122978908.html>`_
+* :class:`.common.FileSystem` - access data organised within an arbitrary directory tree on the file system
+* :class:`.bids.Bids` - access data on file systems organised in the `Brain Imaging Data Structure (BIDS) <https://bids.neuroimaging.io/>`__
+* :class:`.xnat.Xnat` - access data stored in XNAT_ repositories vi its REST API
+* :class:`.xnat.XnatViaCS` - access data stored in XNAT_ via its `container service <https://wiki.xnat.org/container-service/using-the-container-service-122978908.html>`_
 
 For instructions on how to add support for new systems see :ref:`alternative_backends`.
 
@@ -27,8 +27,11 @@ in that module, just the module name, e.g. ``bids``.
 
 .. code-block:: console
 
-    $ frametree store add xnat xnat-central https://central.xnat.org \
-      --user user123 --cache /work/xnat-cache
+    $ frametree store add xnat \
+      xnat-central \
+      https://central.xnat.org \
+      --user user123 \
+      --cache /work/xnat-cache
     Password:
 
 This command will create a YAML configuration file for the store in the
