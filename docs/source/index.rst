@@ -12,7 +12,9 @@ alongside them.
 Data store interactions are mediated by clearly defined interfaces, making it possible to write
 backends for different storage systems and data structures. In addition to the generic
 "file system" backend, backends for XNAT_ and BIDS_ are currently supported, with a prototype started
-for Flywheel_. FrameTree facilitates pulling data from the data store to a (typically
+for Flywheel_.
+
+FrameTree facilitates pulling data from the data store to a (typically
 neighbouring) computing resource, and then uploading the processed data alongside the
 original data in a location that can be accessed by subsequent analysis steps. In this
 manner chains of modular pipelines can be applied and used to produce output metrics
@@ -71,8 +73,8 @@ appropriately acknowledged in related publications.
    :caption: Reference
    :hidden:
 
-   CLI <cli.rst>
-   API <api.rst>
+   cli.rst
+   api.rst
 
 
 

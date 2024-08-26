@@ -21,13 +21,13 @@ over all sessions using the command line interface
 
     $ # Define a frameset stored within a file-system directory '/data/my-dataset'
     $ # with a 2-layer directory structure: top level subject IDs, bottom level visit IDs
-    $ frametree define /data/my-dataset subject visit
+    $ frametree define /data/my-dataset subject visit --axes common/clinical
 
     $ # Add source column to select a single T1-weighted image in each session subdirectory
     $ frametree add-source /data/my-dataset T1w medimage/dicom-series --regex '.*mprage.*'
 
     $ # Add sink column to store brain mask
-    $ frametree add-sink /data/my-dataset brain_mask medimage/nifti-gz
+    $ frametree add-sink /data/my-dataset derivs/brain_mask medimage/nifti-gz
 
     $ # Apply BET Pydra task, connecting it between the source and sink
     $ frametree apply /data/my-dataset brain_extraction pydra.tasks.fsl.preprocess.bet:BET \
@@ -35,10 +35,10 @@ over all sessions using the command line interface
       --output brain_mask out_file
 
     $ # Derive brain masks for all imaging sessions in dataset
-    $ frametree derive /data/my-dataset brain_mask
+    $ frametree derive /data/my-dataset derivs/brain_mask
 
 This code will iterate over all imaging sessions in the directory tree, find and
-convert T1-weighted images (which contain 'mprage' in their names) from
+convert T1-weighted images that contain 'mprage' in their names from
 DICOM into the required gzipped NIfTI format, and then execute BET on the converted
 files before they are saved back into the directory structure at
 ``<subject-id>/<session-id>/derivs/brain_mask.nii.gz``.
@@ -70,7 +70,7 @@ Alternatively via Python API:
             'brain_extraction',
             BET,
             inputs=[('T1w', 'in_file', NiftiGz)],  # Specify required input format
-            outputs=[('brain_mask', 'out_file')])  # Output datatype matches stored so can be omitted
+            outputs=[('derivs/brain_mask', 'out_file')])  # Output datatype matches stored so can be omitted
 
         # Derive brain masks for all imaging sessions in dataset
-        frames['brain_mask'].derive()
+        frames['derivs/brain_mask'].derive()

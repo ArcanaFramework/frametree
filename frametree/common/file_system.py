@@ -30,13 +30,6 @@ class FileSystem(LocalStore):
     A Repository class for data stored hierarchically within sub-directories
     of a file-system directory. The depth and which layer in the data tree
     the sub-directories correspond to is defined by the `hierarchy` argument.
-
-    Parameters
-    ----------
-    base_dir : str
-        Path to the base directory of the "store", i.e. datasets are
-        arranged by name as sub-directories of the base dir.
-
     """
 
     PROV_SUFFIX = ".provenance"

@@ -6,6 +6,9 @@
 ![Latest Version](https://img.shields.io/pypi/v/frametree.svg)
 [![Docs](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](https://arcanaframework.github.io/frametree/)
 
+
+<img src="./docs/source/_static/images/logo_small.png" alt="Logo Small" style="float: right;">
+
 FrameTree is Python framework that is used to map categorical data organised into trees
 (e.g. MRI sessions for multiple subjects and visits, saved in a file-system directory)
 onto virtual "data frames" for analysis. Cells in these data frames can be scalars, arrays
@@ -25,14 +28,21 @@ Detailed documentation on FrameTree can be found at [https://frametree.readthedo
 FrameTree can be installed for Python 3 using *pip*
 
 ```bash
-   $ python3 -m pip install frametree
+    $ python3 -m pip install frametree
 ```
 
-## Extensions
+## Extensions for backends
 
-Support for specific  specific repository software or data structures (e.g. XNAT or BIDS)
+Support for specific data repository platforms software or data structures (e.g. XNAT or BIDS)
 are provided by extension packages (see [frametree-xnat](https://github.com/ArcanaFramework/frametree-xnat)
-and [frametree-bids](https://github.com/ArcanaFramework/frametree-bids)).
+and [frametree-bids](https://github.com/ArcanaFramework/frametree-bids)). They can be installed with
+
+```bash
+    $ python3 -m pip install frametree-xnat frametree-bids
+```
+
+See the [extension template](https://github.com/ArcanaFramework/frametree-extension-template)
+to get started with support for different backends
 
 ## License
 
