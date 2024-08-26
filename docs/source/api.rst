@@ -7,7 +7,7 @@ Core
 .. autoclass:: frametree.core.store.Store
 
 .. autoclass:: frametree.core.frameset.FrameSet
-    :members: add_source, add_sink
+    :members: add_source, add_sink, apply, save, load, row, rows, __getitem__, install_license, derive
 
 .. autoclass:: frametree.core.axes.Axes
 
@@ -30,8 +30,8 @@ Available Backends
 .. autoclass:: frametree.xnat.XnatViaCS
 
 
-Available Spaces
-~~~~~~~~~~~~~~~~
+Available Axes
+~~~~~~~~~~~~~~
 
 .. autoclass:: frametree.common.Samples
 

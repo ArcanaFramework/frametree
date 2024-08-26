@@ -1,5 +1,5 @@
-Contributing
-============
+Developer guide
+===============
 
 Contributions to the project and extensions are more than welcome in various forms. Please see the
 `contribution guide  <https://github.com/ArcanaFramework/frametree/blob/main/CONTRIBUTING.md>`_

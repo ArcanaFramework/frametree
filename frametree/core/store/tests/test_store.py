@@ -104,7 +104,7 @@ def test_post(dataset: FrameSet):
     check_inserted()  # Check that objects can be recreated from store
 
 
-def test_grid_roundtrip(dataset: FrameSet):
+def test_frameset_roundtrip(dataset: FrameSet):
     definition = asdict(dataset, omit=["store", "name"])
     definition["store-version"] = "1.0.0"
 
