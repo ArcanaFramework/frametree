@@ -19,7 +19,13 @@ save the the connection details
 .. code-block:: console
 
     # Save a reference to an XNAT store in the $HOME/.frametree/stores.json file
-    $ frametree store add my-xnat xnat https://xnat.example.com --user $XNAT_USER --password $XNAT_PASS
+    $ frametree store add my-xnat xnat \
+      --server https://xnat.example.com \
+      --user $XNAT_USER \
+      --password $XNAT_PASS
+
+Datasets (projects) stored within this XNAT repository are then accessed via addresses
+of the form ``my-xnat//MY_PROJECT_ID``.
 
 .. note::
     If your dataset is on your file system in a plain directory structure or BIDS layout
@@ -55,6 +61,11 @@ convert T1-weighted images that contain 'mprage' in their names from
 DICOM into the required gzipped NIfTI format, and then execute BET on the converted
 files before they are saved back into the directory structure at
 ``<subject-id>/<session-id>/derivs/brain_mask.nii.gz``.
+
+.. note::
+    For XNAT projects or BIDS datasets, the same steps can be followed, by simply replacing
+    ``/data/my-dataset`` with addresses of the form ``my-xnat//MY_PROJECT_ID`` or
+    ``bids//data/my-bids-dataset`` prefix respectively.
 
 Alternatively via Python API:
 
