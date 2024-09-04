@@ -1,15 +1,17 @@
-FrameSets
-=========
+Frame sets
+==========
 
-"FrameSets" are defined on datasets consisting of a collection of experiments
+"Frame-sets" are defined on datasets consisting of a collection of experiments
 classified by several categorical variables. For example, medical imaging sessions in
-a clinical trial categorised by study group and subject ID, or weather readings in
-a meterological analysis by date-time and weather station. These experiments are mapped
-onto the rows of virtual frames for each combination of
-categorical variables, with the different measurements in each experiment (e.g.
+a clinical trial could be categorised by study group and subject and longitudinal timepoint,
+or weather readings in a meterological analysis by date-time and weather station.
+In frame-sets, such experiments (i.e. imaging sessions or weather readings) are mapped
+onto the rows of virtual frames for each combination of categorical variables.
+The different measurements in each experiment (e.g.
 T1-weighted MRI, fMRI, atomospheric pressure, humidity), metadata (e.g.
 subject year of birth, weather station altitude) or derived metrics (e.g.
-average grey matter thickness, dew point) corresponding to the columns of the frames.
+average grey matter thickness, dew point) are considered to form the the columns of
+the frames in the set.
 
 In the case of clinical imaging research studies/trials, imaging sessions
 are classified by the subject who was scanned and, if applicable, the longitudinal
@@ -28,11 +30,12 @@ Alternatively, for a meterological analysis, data could be categorised by
 * **location** - the location of the weather station
 
 These "axes", and combinations thereof, form the "row frequencies" of the frames in
-the frameset, with one frame per frequency. Different types of acquisitions or metrics
-form the columns of the data frames. For example, the "per-session" frequency in a clinical
-imaging dataset is a combination of the three bases, *group*, *member* and *visit*, and
-the corresponding frame has columns corresponding to the different imaging acquisitions,
-e.g. 'T1-weighted MRI' or'functional MRI'. Whereas, social economic status and genetic data
+the frameset. There is considered to be one frame in the set per row frequency.
+Different types of acquisitions or metrics form the columns of the data frames. For example,
+the "per-session" frequency in a clinical imaging dataset is a combination of the three
+bases, *group*, *member* and *visit*, and the corresponding frame has columns
+corresponding to the different imaging acquisitions, e.g. 'T1-weighted MRI'
+or 'functional MRI'. Whereas, social economic status and genetic data
 are constant per subject so would correspond to columns in the "per subject"
 (group + membership ID) data frame.
 

@@ -18,7 +18,7 @@ save the the connection details
 
 .. code-block:: console
 
-    # Save a reference to an XNAT store in the $HOME/.frametree/stores.json file
+    # Save a reference to an XNAT store in the $HOME/.frametree/stores/my-xnat.yaml file
     $ frametree store add my-xnat xnat \
       --server https://xnat.example.com \
       --user $XNAT_USER \

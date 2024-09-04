@@ -2,7 +2,8 @@
 Columns
 =======
 
-The "columns" of a data frame are slices of comparable data items across each row, e.g.
+The "columns" of a data frame are slices of comparable data items across each row in
+a frame (see :ref:`Frame sets` for description of the rows), e.g.
 
 * T1-weighted MR acquisition for each imaging session
 * a genetic test for each subject
