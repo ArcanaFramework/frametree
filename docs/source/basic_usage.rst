@@ -7,15 +7,28 @@ API or via the command-line interface (CLI).
 
 The basic usage pattern is
 
-#. Define a frame-tree to work with (see :ref:`FrameSets`)
+#. Save a connection details to a remote data store (if applicable) (see :ref:`Stores`)
+#. Define a frame-set to work with (see :ref:`FrameSets`)
 #. Specify columns in the dataset to access data from and store data to (see :ref:`columns`)
 #. Connect a `Pydra task or workflow <https://pydra.readthedocs.io/en/latest/components.html#dataflows-components-task-and-workflow>`_
 #. Request derivative of the workflow
 
-For example, given a dataset stored within the ``/data/my-dataset`` directory,
-which contains two-layers of sub-directories, for subjects and sessions
-respectively, FSL's Brain Extraction Tool (BET) can be executed
-over all sessions using the command line interface
+If your dataset is stored in an XNAT repository, use the ``frametree store`` command to
+save the the connection details
+
+.. code-block:: console
+
+    # Save a reference to an XNAT store in the $HOME/.frametree/stores.json file
+    $ frametree store add my-xnat xnat https://xnat.example.com --user $XNAT_USER --password $XNAT_PASS
+
+.. note::
+    If your dataset is on your file system in a plain directory structure or BIDS layout
+    you can skip this step.
+
+For example, a dataset stored in the ``/data/my-dataset`` directory that contains
+two-layers of sub-directories, for subjects and sessions respectively,
+FSL's Brain Extraction Tool (BET) can be executed over all sessions using the command
+line interface
 
 .. code-block:: console
 
