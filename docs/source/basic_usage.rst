@@ -62,11 +62,6 @@ DICOM into the required gzipped NIfTI format, and then execute BET on the conver
 files before they are saved back into the directory structure at
 ``<subject-id>/<session-id>/derivs/brain_mask.nii.gz``.
 
-.. note::
-    For XNAT projects or BIDS datasets, the same steps can be followed, by simply replacing
-    ``/data/my-dataset`` with addresses of the form ``my-xnat//MY_PROJECT_ID`` or
-    ``bids//data/my-bids-dataset`` prefix respectively.
-
 Alternatively via Python API:
 
 .. toggle:: Show/Hide Python Code Example
@@ -98,3 +93,8 @@ Alternatively via Python API:
 
         # Derive brain masks for all imaging sessions in dataset
         frames['derivs/brain_mask'].derive()
+
+.. note::
+    For XNAT projects or BIDS datasets, the same steps can be followed, by simply replacing
+    ``/data/my-dataset`` with addresses of the form ``my-xnat//MY_PROJECT_ID`` or
+    ``bids//data/my-bids-dataset`` prefix respectively.
