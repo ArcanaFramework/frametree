@@ -11,8 +11,8 @@ alongside them.
 
 Data store interactions are mediated by clearly defined interfaces, making it possible to write
 backends for different storage systems and data structures. In addition to the generic
-"file system" backend, backends for XNAT_ and BIDS_ are currently supported, with a prototype started
-for Flywheel_.
+"file system" backend, backends for common biomedical imaging data repository platforms/structures,
+XNAT_ and BIDS_, are currently supported, with a prototype also started for Flywheel_.
 
 FrameTree facilitates pulling data from the data store to a (typically
 neighbouring) computing resource, and then uploading the processed data alongside the
@@ -24,8 +24,8 @@ The key elements of FrameTree's data model are:
 
 * :ref:`Stores` - tree-like file storage system backends (e.g. file systems, XNAT_, BIDS_, Flywheel_)
 * :ref:`FrameSets` - virtual mapping of datasets (or subsets thereof) onto a set of data frames
-* :ref:`Columns` - cross-section of data acquisitions across a frameset (e.g. anatomical MRI, subject's age)
-* :ref:`Pipelines` - workflows and tasks applied to a frameset
+* :ref:`Columns` - cross-section of data acquisitions and derived metrics across a frameset (e.g. anatomical MRI, subject's age)
+* :ref:`Pipelines` - parameterised analysis workflows and tasks applied to data in a frameset
 
 
 Installation
