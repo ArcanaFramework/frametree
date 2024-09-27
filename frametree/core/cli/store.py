@@ -65,7 +65,7 @@ store when using the frametree CLI.
     default=None,
     help="Additional key-word arguments that are passed to the store class",
 )
-def add(name, type, option, cache, **kwargs):
+def add(type, name, option, cache, **kwargs):
     if option is not None:
         options = dict(option)
         conflicting = set(options) & set(kwargs)
