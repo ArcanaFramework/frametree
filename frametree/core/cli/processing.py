@@ -282,7 +282,7 @@ in the deployment specification
 SOURCE_FILE path to the license file to upload
 
 INSTALL_LOCATIONS a list of installation locations, which are either the "nickname" of a
-store (as saved by `arcana store add`) or the ID of a dataset in form
+store (as saved by `frametree store add`) or the ID of a dataset in form
 <store-nickname>//<dataset-id>[@<dataset-name>], where the dataset ID
 is either the location of the root directory (for file-system based stores) or the
 project ID for managed data repositories.

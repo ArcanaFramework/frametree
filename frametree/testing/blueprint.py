@@ -145,7 +145,9 @@ class FileSetEntryBlueprint(EntryBlueprint):
                     contents = '{"a": 1.0}'
                 else:
                     contents = fname
-                with open(tmp_dir / next_path, "w") as f:
+                inner_path = tmp_dir / next_path
+                inner_path.parent.mkdir(exist_ok=True, parents=True)
+                with open(inner_path, "w") as f:
                     f.write(contents)
                 if fname.endswith(".zip"):
                     with zipfile.ZipFile(out_path, mode="w") as zfile, set_cwd(tmp_dir):
