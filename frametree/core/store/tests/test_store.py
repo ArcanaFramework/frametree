@@ -171,7 +171,7 @@ def delayed_download(entry: DataEntry, start_offset: float):
     # Set the downloads off at slightly different times
     time.sleep(start_offset)
     text_file = TextFile(entry.item)
-    contents = text_file.contents
+    contents = text_file.raw_contents
     if not start_offset:
         with open(text_file.fspath, "w") as f:
             f.write("modified")

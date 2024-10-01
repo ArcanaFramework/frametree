@@ -36,7 +36,7 @@ from .serialize import (
 )
 
 
-logger = logging.getLogger("arcana")
+logger = logging.getLogger("frametree")
 
 
 @attrs.define
@@ -69,7 +69,7 @@ class PipelineField:
         return self.name
 
 
-logger = logging.getLogger("arcana")
+logger = logging.getLogger("frametree")
 
 
 @attrs.define
