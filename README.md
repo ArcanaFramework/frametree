@@ -6,29 +6,26 @@
 ![Latest Version](https://img.shields.io/pypi/v/frametree.svg)
 [![Docs](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](https://arcanaframework.github.io/frametree/)
 
-
 <img src="./docs/source/_static/images/logo_small.png" alt="Logo Small" style="float: right;">
 
 FrameTree is Python framework that is used to map categorical data organised into trees
-(e.g. MRI sessions for multiple subjects and visits, saved in a file-system directory)
+(e.g. MRI sessions for multiple subjects and visits saved in a file-system directory)
 onto virtual "data frames" for analysis. Cells in these data frames can be scalars, arrays
 or a set of files and/or directories stored at each node across a level in the given tree.
-Derivatives are stored along with the parameters used to derive them back into
+Derivatives are stored, along with the parameters used to derive them, back into
 the store for reference and reuse by subsequent analysis steps.
 Extracted metrics can be exported to actual data frames for statistical analysis.
-
 
 ## Documentation
 
 Detailed documentation on FrameTree can be found at [https://frametree.readthedocs.io](https://frametree.readthedocs.io)
-
 
 ## Quick Installation
 
 FrameTree can be installed for Python 3 using *pip*
 
 ```bash
-    $ python3 -m pip install frametree
+    python3 -m pip install frametree
 ```
 
 ## Extensions for backends
@@ -38,7 +35,7 @@ are provided by extension packages (see [frametree-xnat](https://github.com/Arca
 and [frametree-bids](https://github.com/ArcanaFramework/frametree-bids)). They can be installed with
 
 ```bash
-    $ python3 -m pip install frametree-xnat frametree-bids
+    python3 -m pip install frametree-xnat frametree-bids
 ```
 
 See the [extension template](https://github.com/ArcanaFramework/frametree-extension-template)
@@ -50,14 +47,7 @@ This work is licensed under a [Creative Commons Attribution-NonCommercial-ShareA
 
 ![Creative Commons License: Attribution-NonCommercial-ShareAlike 4.0 International](https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png)
 
-
 ### Acknowledgements
 
 The authors acknowledge the facilities and scientific and technical assistance of the
 National Imaging Facility, a National Collaborative Research Infrastructure Strategy (NCRIS) capability.
-
-[FrameTree]: http://frametree.readthedocs.io
-[Pydra]: http://pydra.readthedocs.io
-[XNAT]: http://xnat.org
-[BIDS]: http://bids.neuroimaging.io/
-[Environment Modules]: http://modules.sourceforge.net
