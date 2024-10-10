@@ -4,9 +4,11 @@ import re
 import typing as ty
 from pathlib import Path
 import shutil
+from warnings import warn
 import attrs
 import attrs.filters
 from attrs.converters import default_if_none
+from typing_extensions import Self
 from pydra.utils.hash import hash_single, bytes_repr_mapping_contents
 from fileformats.text import Plain as PlainText
 from frametree.core.exceptions import (
@@ -338,6 +340,16 @@ class FrameSet:
                 return cls(id, store, **kwargs)
             raise
 
+    def reload(self) -> Self:
+        """Reload the frameset from the store
+
+        Returns
+        -------
+        FrameSet
+            The reloaded frame-set
+        """
+        return self.store.load_frameset(self.id, name=self.name)
+
     @property
     def root_freq(self):
         return self.axes(0)
@@ -374,16 +386,21 @@ class FrameSet:
             return self.tree.root
 
     @property
-    def locator(self):
+    def address(self):
         if self.store.name is None:
             raise Exception(
                 f"Must save store {self.store} first before accessing locator for "
                 f"{self}"
             )
-        locator = f"{self.store.name}//{self.id}"
+        address = f"{self.store.name}//{self.id}"
         if self.name:
-            locator += f"@{self.name}"
-        return locator
+            address += f"@{self.name}"
+        return address
+
+    @property
+    def locator(self):
+        warn("'FrameSet.locator' is deprecated use, 'address' instead'")
+        return self.address
 
     def add_source(
         self,
