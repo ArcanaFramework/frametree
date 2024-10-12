@@ -11,6 +11,8 @@ import os.path
 import attrs
 from contextlib import contextmanager
 from collections.abc import Iterable
+from typing_extensions import Self
+from types import TracebackType
 import cloudpickle as cp
 from pydra.engine.core import Workflow, LazyField, TaskBase
 from pydra.engine.task import FunctionTask
@@ -57,7 +59,7 @@ class NestedContext:
 
     depth: int = attrs.field(default=0, init=False)
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         # This allows the store to be used within nested contexts
         # but still only use one connection. This is useful for calling
         # methods that need connections, and therefore control their
@@ -68,21 +70,26 @@ class NestedContext:
             self.enter()
         return self
 
-    def __exit__(self, exception_type, exception_value, traceback):
+    def __exit__(
+        self,
+        exception_type: ty.Optional[ty.Type[BaseException]],
+        exception_value: ty.Optional[BaseException],
+        traceback: ty.Optional[TracebackType],
+    ) -> None:
         self.depth -= 1
         if self.depth == 0:
             self.exit()
 
-    def enter(self):
+    def enter(self) -> None:
         "To be overridden in subclasses as necessary"
         pass
 
-    def exit(self):
+    def exit(self) -> None:
         "To be overridden in subclasses as necessary"
         pass
 
 
-def get_home_dir():
+def get_home_dir() -> Path:
     try:
         home_dir = Path(os.environ["FRAMETREE_HOME"])
     except KeyError:
@@ -92,7 +99,7 @@ def get_home_dir():
     return home_dir
 
 
-def get_config_file_path(name: str):
+def get_config_file_path(name: str) -> Path:
     """Gets the file path for the configuration file corresponding to `name`
 
     Parameters
@@ -110,49 +117,53 @@ def get_config_file_path(name: str):
 
 # Escape values for invalid characters for Python variable names
 PATH_ESCAPES = {
-    "_": "_u_",
-    "/": "__l__",
-    ".": "__o__",
-    " ": "__s__",
-    "\t": "__t__",
-    ",": "__comma__",
-    ">": "__gt__",
-    "<": "__lt__",
-    "-": "__H__",
-    "'": "__singlequote__",
-    '"': "__doublequote__",
-    "(": "__openparens__",
-    ")": "__closeparens__",
-    "[": "__openbracket__",
-    "]": "__closebracket__",
-    "{": "__openbrace__",
-    "}": "__closebrace__",
-    ":": "__colon__",
-    ";": "__semicolon__",
-    "`": "__tick__",
-    "~": "__tilde__",
-    "|": "__pipe__",
-    "?": "__question__",
-    "\\": "__backslash__",
-    "$": "__dollar__",
-    "@": "__at__",
-    "!": "__exclaimation__",
-    "#": "__pound__",
-    "%": "__percent__",
-    "^": "__caret__",
-    "&": "__ampersand__",
-    "*": "__star__",
-    "+": "__plus__",
-    "=": "__equals__",
-    "XXX": "__tripplex__",
+    "___": "x___x",
+    "/": "___l___",
+    ".": "___o___",
+    " ": "___s___",
+    "\t": "___t___",
+    ",": "___comma___",
+    ">": "___gt___",
+    "<": "___lt___",
+    "-": "___H___",
+    "'": "___singlequote___",
+    '"': "___doublequote___",
+    "(": "___openparens___",
+    ")": "___closeparens___",
+    "[": "___openbracket___",
+    "]": "___closebracket___",
+    "{": "___openbrace___",
+    "}": "___closebrace___",
+    ":": "___colon___",
+    ";": "___semicolon___",
+    "`": "___tick___",
+    "~": "___tilde___",
+    "|": "___pipe___",
+    "?": "___question___",
+    "\\": "___backslash___",
+    "$": "___dollar___",
+    "@": "___at___",
+    "!": "___exclaimation___",
+    "#": "___pound___",
+    "%": "___percent___",
+    "^": "___caret___",
+    "&": "___ampersand___",
+    "*": "___star___",
+    "+": "___plus___",
+    "=": "___equals___",
+    "XXX": "___tripleX___",
 }
+
+# As long as no escape sequences start or end with the beginning or end of the triple
+# underscore escape 'x___x' then it should always be reversible
+assert not any(e.startswith("___x") and e.endswith("x___") for e in PATH_ESCAPES)
 
 PATH_NAME_PREFIX = "XXX"
 
-EMPTY_PATH_NAME = "__empty__"
+EMPTY_PATH_NAME = "___empty___"
 
 
-def path2varname(path):
+def path2varname(path: str) -> str:
     """Escape a string (typically a file-system path) so that it can be used as a Python
     variable name by replacing non-valid characters with escape sequences in PATH_ESCAPES.
 
@@ -177,7 +188,7 @@ def path2varname(path):
     return name
 
 
-def varname2path(name):
+def varname2path(name: str) -> str:
     """Unescape a Pythonic name created by `path2varname`
 
     Parameters
@@ -203,7 +214,12 @@ def varname2path(name):
     return path
 
 
-def func_task(func, in_fields, out_fields, **inputs):
+def func_task(
+    func: ty.Callable[..., ty.Any],
+    in_fields: ty.List[ty.Tuple[str, ty.Type[ty.Any]]],
+    out_fields: ty.List[ty.Tuple[str, ty.Type[ty.Any]]],
+    **inputs: ty.Any,
+) -> FunctionTask:
     """Syntactic sugar for creating a FunctionTask
 
     Parameters
@@ -232,7 +248,9 @@ def func_task(func, in_fields, out_fields, **inputs):
     )
 
 
-def set_loggers(loglevel, pydra_level="warning", depend_level="warning"):
+def set_loggers(
+    loglevel: str, pydra_level: str = "warning", depend_level: str = "warning"
+) -> None:
     """Sets loggers for frametree and pydra. To be used in CLI
 
     Parameters
@@ -245,7 +263,7 @@ def set_loggers(loglevel, pydra_level="warning", depend_level="warning"):
         the threshold to produce logs in dependency packages
     """
 
-    def parse(level):
+    def parse(level: str) -> str:
         if isinstance(level, str):
             level = getattr(logging, level.upper())
         return level
@@ -258,7 +276,7 @@ def set_loggers(loglevel, pydra_level="warning", depend_level="warning"):
 
 
 @contextmanager
-def set_cwd(path):
+def set_cwd(path: str) -> ty.Iterator[str]:
     """Sets the current working directory to `path` and back to original
     working directory on exit
 
@@ -275,7 +293,7 @@ def set_cwd(path):
         os.chdir(pwd)
 
 
-def dir_modtime(dpath):
+def dir_modtime(dpath: str) -> float:
     """
     Returns the latest modification time of all files/subdirectories in a
     directory
@@ -283,7 +301,7 @@ def dir_modtime(dpath):
     return max(os.path.getmtime(d) for d, _, _ in os.walk(dpath))
 
 
-def iscontainer(*items):
+def iscontainer(*items: ty.Any) -> bool:
     """
     Checks whether all the provided items are containers (i.e of class list,
     dict, tuple, etc...)
@@ -347,7 +365,9 @@ def iscontainer(*items):
 #     return mismatch
 
 
-def wrap_text(text, line_length, indent, prefix_indent=False):
+def wrap_text(
+    text: str, line_length: int, indent: int, prefix_indent: bool = False
+) -> str:
     """
     Wraps a text block to the specified line-length, without breaking across
     words, using the specified indent to join the lines
@@ -395,10 +415,10 @@ def wrap_text(text, line_length, indent, prefix_indent=False):
 
 
 class classproperty(object):
-    def __init__(self, f):
+    def __init__(self, f: ty.Callable[..., ty.Any]) -> None:
         self.f = f
 
-    def __get__(self, obj, owner):
+    def __get__(self, obj: object, owner: object) -> ty.Any:
         return self.f(owner)
 
 
@@ -407,7 +427,7 @@ extract_import_re = re.compile(r"\s*(?:from|import)\s+([\w\.]+)")
 NOTHING_STR = "__PIPELINE_INPUT__"
 
 
-def pydra_eq(a: TaskBase, b: TaskBase):
+def pydra_eq(a: TaskBase, b: TaskBase) -> bool:
     """Compares two Pydra Task/Workflows for equality
 
     Parameters
@@ -422,7 +442,7 @@ def pydra_eq(a: TaskBase, b: TaskBase):
     bool
         whether the two objects are equal
     """
-    if type(a) != type(b):
+    if type(a) is not type(b):
         return False
     if a.name != b.name:
         return False
@@ -454,7 +474,7 @@ def pydra_eq(a: TaskBase, b: TaskBase):
 
 
 def show_workflow_errors(
-    pipeline_cache_dir: Path, omit_nodes: ty.List[str] = None
+    pipeline_cache_dir: Path, omit_nodes: ty.Collection[str] = ()
 ) -> str:
     """Extract nodes with errors and display results
 
@@ -462,7 +482,7 @@ def show_workflow_errors(
     ----------
     pipeline_cache_dir : Path
         the path container the pipeline cache directories
-    omit_nodes : list[str], optional
+    omit_nodes : collection[str], optional
         The names of the nodes to omit from the error message
 
     Returns
@@ -473,7 +493,7 @@ def show_workflow_errors(
     # PKL_FILES = ["_task.pklz", "_result.pklz", "_error.pklz"]
     out_str = ""
 
-    def load_contents(fpath):
+    def load_contents(fpath: Path) -> ty.Optional[TaskBase]:
         contents = None
         if fpath.exists():
             with open(fpath, "rb") as f:
@@ -485,7 +505,7 @@ def show_workflow_errors(
             continue
         if "_error.pklz" in [p.name for p in path.iterdir()]:
             task = load_contents(path / "_task.pklz")
-            if task.name in omit_nodes:
+            if not task or task.name in omit_nodes:
                 continue
             if task:
                 out_str += f"{task.name} ({type(task)}):\n"
@@ -501,21 +521,22 @@ def show_workflow_errors(
             else:
                 out_str += "Anonymous task:\n"
             error = load_contents(path / "_error.pklz")
-            out_str += "\n\n    errors:\n"
-            for k, v in error.items():
-                if k == "error message":
-                    indent = "            "
-                    out_str += (
-                        "        message:\n"
-                        + indent
-                        + "".join(ln.replace("\n", "\n" + indent) for ln in v)
-                    )
-                else:
-                    out_str += f"        {k}: {v}\n"
+            if error:
+                out_str += "\n\n    errors:\n"
+                for k, v in error.items():
+                    if k == "error message":
+                        indent = "            "
+                        out_str += (
+                            "        message:\n"
+                            + indent
+                            + "".join(ln.replace("\n", "\n" + indent) for ln in v)
+                        )
+                    else:
+                        out_str += f"        {k}: {v}\n"
     return out_str
 
 
-def add_exc_note(e, note):
+def add_exc_note(e: Exception, note: str) -> Exception:
     """Adds a note to an exception in a Python <3.11 compatible way
 
     Parameters
@@ -537,7 +558,12 @@ def add_exc_note(e, note):
     return e
 
 
-def dict_diff(dict1, dict2, label1="dict1", label2="dict2"):
+def dict_diff(
+    dict1: ty.Dict[ty.Any, ty.Any],
+    dict2: ty.Dict[ty.Any, ty.Any],
+    label1: str = "dict1",
+    label2: str = "dict2",
+) -> str:
     """Create a human readable diff between two dictionaries
 
     Parameters
@@ -568,12 +594,12 @@ def dict_diff(dict1, dict2, label1="dict1", label2="dict2"):
     return "\n".join(diff)
 
 
-def full_path(fspath: ty.Union[str, bytes, Path]):
+def full_path(fspath: ty.Union[str, Path]) -> Path:
     return Path(fspath).resolve().absolute()
 
 
 class fromdict_converter:
-    def __init__(self, tp):
+    def __init__(self, tp: ty.Type[ty.Any]):
         try:
             self.container_type = tp.__origin__
         except AttributeError:
@@ -587,7 +613,7 @@ class fromdict_converter:
                 )
             self.type = tp.__args__[0]
 
-    def __call__(self, to_convert):
+    def __call__(self, to_convert: ty.Any) -> ty.Any:
         if self.container_type:
             converted = self.container_type(
                 self.type(**d) if isinstance(d, dict) else d for d in to_convert
@@ -599,7 +625,7 @@ class fromdict_converter:
         return converted
 
 
-def show_cli_trace(result):
+def show_cli_trace(result: ty.Any) -> str:
     "Used in testing to show traceback of CLI output"
     return "".join(traceback.format_exception(*result.exc_info))
 
@@ -616,7 +642,7 @@ MIN_SERIAL_VERSION = "0.0.0"
 
 
 package_dir = os.path.join(os.path.dirname(__file__), "..")
-
+HOSTNAME: ty.Optional[str]
 try:
     HOSTNAME = sp.check_output("hostname").strip().decode("utf-8")
 except sp.CalledProcessError:
