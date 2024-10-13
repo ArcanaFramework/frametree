@@ -484,7 +484,7 @@ def pydra_asdict(
     return dct
 
 
-def lazy_field_fromdict(dct: dict, workflow: Workflow):
+def lazy_field_fromdict(dct: ty.Dict[ty.Any, ty.Any], workflow: Workflow) -> LazyField:
     """Unserialises a LazyField object from a dictionary"""
     if "task" in dct:
         inpt_task = getattr(workflow, dct["task"])
@@ -495,7 +495,9 @@ def lazy_field_fromdict(dct: dict, workflow: Workflow):
 
 
 def pydra_fromdict(
-    dct: dict, workflow: ty.Optional[Workflow] = None, **kwargs
+    dct: ty.Dict[ty.Any, ty.Any],
+    workflow: ty.Optional[Workflow] = None,
+    **kwargs: ty.Any,
 ) -> TaskBase:
     """Recreates a Pydra Task/Workflow from a dictionary object created by
     `pydra_asdict`
@@ -552,10 +554,10 @@ class ObjectConverter:
     accept_metadata: bool = False
     package: str = PACKAGE_NAME
 
-    def __call__(self, value):
+    def __call__(self, value: ty.Any) -> ty.Any:
         return self._create_object(value)
 
-    def _create_object(self, value, **kwargs):
+    def _create_object(self, value: ty.Any, **kwargs: ty.Any) -> ty.Any:
         if value is None:
             if kwargs:
                 value = {}
@@ -612,8 +614,8 @@ class ObjectConverter:
 
 @attrs.define
 class ObjectListConverter(ObjectConverter):
-    def __call__(self, value):
-        converted = []
+    def __call__(self, value: ty.Any) -> ty.List[ty.Any]:
+        converted: ty.List[ty.Any] = []
         if value is None:
             if self.allow_none:
                 return converted
@@ -628,7 +630,7 @@ class ObjectListConverter(ObjectConverter):
         return converted
 
     @classmethod
-    def asdict(cls, objs: list, **kwargs) -> dict:
+    def asdict(cls, objs: ty.List[ty.Any], **kwargs: ty.Any) -> ty.Dict[str, ty.Any]:
         dct = {}
         for obj in objs:
             obj_dict = attrs.asdict(obj, **kwargs)
@@ -636,11 +638,11 @@ class ObjectListConverter(ObjectConverter):
         return dct
 
     @classmethod
-    def aslist(cls, objs: list, **kwargs) -> list:
+    def aslist(cls, objs: ty.List[ty.Any], **kwargs: ty.Any) -> ty.List[ty.Any]:
         return [attrs.asdict(obj, **kwargs) for obj in objs]
 
 
-def parse_value(value):
+def parse_value(value: ty.Any) -> ty.Any:
     """Parses values from string representations"""
     try:
         value = json.loads(
