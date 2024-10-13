@@ -20,7 +20,7 @@ from frametree.core.exceptions import (
     FrameTreeWrongAxesError,
 )
 from frametree.core.licence import License
-from ..column import DataColumn, DataSink, DataSource
+from ..column import DataColumn, SinkColumn, SourceColumn
 from ..row import DataRow
 from .. import store as datastore
 from ..tree import DataTree
@@ -101,7 +101,7 @@ class FrameSet:
         omitted or its value is None, then all available will be used
     name : str
         The name of the dataset as saved in the store under
-    columns : list[tuple[str, DataSource or DataSink]
+    columns : list[tuple[str, SourceColumn or SinkColumn]
         The sources and sinks to be initially added to the dataset (columns are
         explicitly added when workflows are applied to the dataset).
     pipelines : dict[str, pydra.Workflow]
@@ -353,19 +353,19 @@ class FrameSet:
         return self.store.load_frameset(self.id, name=self.name)
 
     @property
-    def root_freq(self):
+    def root_freq(self) -> Axes:
         return self.axes(0)
 
     @property
-    def root_dir(self):
+    def root_dir(self) -> Path:
         return Path(self.id)
 
     @property
-    def leaf_freq(self):
-        return max(self.axes)
+    def leaf_freq(self) -> Axes:
+        return max(self.axes)  # type: ignore[no-any-return]
 
     @property
-    def prov(self):
+    def prov(self) -> ty.Dict[str, ty.Any]:
         return {
             "id": self.id,
             "store": self.store.prov,
@@ -373,7 +373,7 @@ class FrameSet:
         }
 
     @property
-    def root(self):
+    def root(self) -> DataRow:
         """Lazily loads the data tree from the store on demand and return root
 
         Returns
@@ -388,7 +388,7 @@ class FrameSet:
             return self.tree.root
 
     @property
-    def address(self):
+    def address(self) -> str:
         if self.store.name is None:
             raise Exception(
                 f"Must save store {self.store} first before accessing locator for "
@@ -400,7 +400,7 @@ class FrameSet:
         return address
 
     @property
-    def locator(self):
+    def locator(self) -> str:
         warn("'FrameSet.locator' is deprecated use, 'address' instead'")
         return self.address
 
@@ -411,8 +411,8 @@ class FrameSet:
         path: ty.Optional[str] = None,
         row_frequency: ty.Optional[str] = None,
         overwrite: bool = False,
-        **kwargs,
-    ) -> DataSource:
+        **kwargs: ty.Any,
+    ) -> SourceColumn:
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
 
@@ -431,16 +431,15 @@ class FrameSet:
         overwrite : bool
             Whether to overwrite existing columns
         **kwargs : ty.Dict[str, Any]
-            Additional kwargs to pass to DataSource.__init__
+            Additional kwargs to pass to SourceColumn.__init__
         """
-        row_frequency = self.parse_frequency(row_frequency)
         if path is None:
             path = name
-        source = DataSource(
+        source = SourceColumn(
             name=name,
             datatype=datatype,
             path=path,
-            row_frequency=row_frequency,
+            row_frequency=self.parse_frequency(row_frequency),
             frameset=self,
             **kwargs,
         )
@@ -453,8 +452,8 @@ class FrameSet:
         datatype: type,
         row_frequency: ty.Optional[str] = None,
         overwrite: bool = False,
-        **kwargs,
-    ) -> DataSink:
+        **kwargs: ty.Any,
+    ) -> SinkColumn:
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
 
@@ -475,18 +474,17 @@ class FrameSet:
         overwrite : bool
             Whether to overwrite an existing sink
         """
-        row_frequency = self.parse_frequency(row_frequency)
-        sink = DataSink(
+        sink = SinkColumn(
             name=name,
             datatype=datatype,
-            row_frequency=row_frequency,
+            row_frequency=self.parse_frequency(row_frequency),
             frameset=self,
             **kwargs,
         )
         self._add_column(name, sink, overwrite)
         return sink
 
-    def _add_column(self, name: str, spec, overwrite):
+    def _add_column(self, name: str, spec: DataColumn, overwrite: bool) -> None:
         if name in self.columns:
             if overwrite:
                 logger.info(
@@ -501,7 +499,12 @@ class FrameSet:
                 )
         self.columns[name] = spec
 
-    def row(self, frequency=None, id=attrs.NOTHING, **id_kwargs):
+    def row(
+        self,
+        frequency: ty.Union[Axes, str, None] = None,
+        id: ty.Union[str, ty.Tuple[str, ...]] = attrs.NOTHING,
+        **id_kwargs: ty.Any,
+    ) -> DataRow:
         """Returns the row associated with the given frequency and ids dict
 
         Parameters
@@ -751,7 +754,13 @@ class FrameSet:
 
         return pipeline
 
-    def derive(self, *sink_names, ids=None, cache_dir=None, **kwargs):
+    def derive(
+        self,
+        *sink_names: str,
+        ids: ty.Optional[ty.Iterable[str]] = None,
+        cache_dir: Path = None,
+        **kwargs: ty.Any,
+    ) -> None:
         """Generate derivatives from the workflows
 
         Parameters
@@ -778,7 +787,7 @@ class FrameSet:
             with self.tree:
                 pipeline(ids=ids, cache_dir=cache_dir)(**kwargs)
 
-    def parse_frequency(self, freq):
+    def parse_frequency(self, freq: ty.Union[Axes, str, None]) -> Axes:
         """Parses the data row_frequency, converting from string if necessary and
         checks it matches the dimensions of the dataset"""
         if freq is None:
@@ -882,7 +891,7 @@ class FrameSet:
 
         if dataset is None:
             dataset = self
-        column = DataSink(
+        column = SinkColumn(
             name=f"{name}_license",
             datatype=PlainText,
             row_frequency=self.root_freq,

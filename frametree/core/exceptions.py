@@ -65,7 +65,7 @@ class FrameTreeDesignError(FrameTreeError):
 
 
 class NamedFrameTreeError(FrameTreeError):
-    def __init__(self, name, msg):
+    def __init__(self, name: str, msg: str) -> None:
         super(NamedFrameTreeError, self).__init__(msg)
         self.name = name
 
@@ -79,7 +79,7 @@ class FrameTreeWrongFrequencyError(NamedFrameTreeError):
 
 
 class FrameTreeIndexError(FrameTreeError):
-    def __init__(self, index, msg):
+    def __init__(self, index: int, msg: str) -> None:
         super(FrameTreeIndexError, self).__init__(msg)
         self.index = index
 

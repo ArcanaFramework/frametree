@@ -4,6 +4,7 @@ import typing as ty
 from collections import OrderedDict
 import logging
 from copy import copy, deepcopy
+from typing_extensions import Self
 import attrs.converters
 import pydra.mark
 from pydra.engine.core import Workflow
@@ -400,13 +401,15 @@ class Pipeline:
     PROVENANCE_VERSION = "1.0"
     WORKFLOW_NAME = "processing"
 
-    def asdict(self, required_modules=None):
+    def asdict(
+        self, required_modules: ty.Optional[ty.Set[str]] = None
+    ) -> ty.Dict[str, ty.Any]:
         dct = asdict(self, omit=["workflow"], required_modules=required_modules)
         dct["workflow"] = pydra_asdict(self.workflow, required_modules=required_modules)
         return dct
 
     @classmethod
-    def fromdict(cls, dct, **kwargs):
+    def fromdict(cls, dct: ty.Dict[str, ty.Any], **kwargs: ty.Any) -> Self:
         return fromdict(dct, workflow=pydra_fromdict(dct["workflow"]), **kwargs)
 
     @classmethod
@@ -416,12 +419,12 @@ class Pipeline:
 
         Parameters
         ----------
-        sinks : Iterable[DataSink or str]
+        sinks : Iterable[SinkColumn or str]
             the sink columns, or their names, that are to be generated
 
         Returns
         -------
-        ty.List[tuple[Pipeline, ty.List[DataSink]]]
+        ty.List[tuple[Pipeline, ty.List[SinkColumn]]]
             stack of pipelines required to produce the specified data sinks,
             along with the sinks each stage needs to produce.
 
@@ -442,7 +445,7 @@ class Pipeline:
 
             Parameters
             ----------
-            sink: DataSink
+            sink: SinkColumn
                 the sink to push its deriving pipeline for
             downstream : tuple[Pipeline]
                 The pipelines directly downstream of the pipeline to be added.

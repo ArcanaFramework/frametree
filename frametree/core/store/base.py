@@ -11,6 +11,7 @@ from frametree.core.serialize import (
     fromdict,
 )
 import frametree
+from ..axes import Axes
 from fileformats.core import DataType
 from fileformats.text import Plain as PlainText
 from frametree.core.utils import (
@@ -95,7 +96,7 @@ class Store(metaclass=ABCMeta):
 
     def save(
         self, name: ty.Optional[str] = None, config_path: ty.Optional[Path] = None
-    ):
+    ) -> None:
         """Saves the configuration of a Store in 'stores.yaml'
 
         Parameters
@@ -126,11 +127,13 @@ class Store(metaclass=ABCMeta):
             entries[dct.pop("name")] = dct
         self.save_configs(entries, config_path=config_path)
 
-    def asdict(self, **kwargs):
+    def asdict(self, **kwargs: ty.Any) -> ty.Dict[str, ty.Any]:
         return asdict(self, **kwargs)
 
     @classmethod
-    def load(cls, name: str, config_path: ty.Optional[Path] = None, **kwargs) -> Store:
+    def load(
+        cls, name: str, config_path: ty.Optional[Path] = None, **kwargs: ty.Any
+    ) -> Store:
         """Loads a Store from that has been saved in the configuration file.
         If no entry is saved under that name, then it searches for Store
         sub-classes with aliases matching `name` and checks whether they can
@@ -186,7 +189,12 @@ class Store(metaclass=ABCMeta):
         cls.save_configs(entries)
 
     def define_frameset(
-        self, id, axes=None, hierarchy=None, id_patterns=None, **kwargs
+        self,
+        id: str,
+        axes: ty.Type[Axes] = None,
+        hierarchy: ty.List[ty.Union[str, Axes]] = None,
+        id_patterns: ty.Optional[ty.Dict[str, str]] = None,
+        **kwargs: ty.Any,
     ) -> FrameSet:
         """
         Creates a FrameTree dataset definition for an existing data in the
@@ -240,7 +248,7 @@ class Store(metaclass=ABCMeta):
         )
         return dataset
 
-    def save_frameset(self, frameset: FrameSet, name: str = ""):
+    def save_frameset(self, frameset: FrameSet, name: str = "") -> None:
         """Save metadata in project definition file for future reference
 
         Parameters
@@ -261,7 +269,7 @@ class Store(metaclass=ABCMeta):
         with self.connection:
             self.save_frameset_definition(frameset.id, definition, name=save_name)
 
-    def load_frameset(self, id, name: str = "", **kwargs) -> FrameSet:
+    def load_frameset(self, id: str, name: str = "", **kwargs: ty.Any) -> FrameSet:
         """Load an existing dataset definition
 
         Parameters
@@ -291,7 +299,7 @@ class Store(metaclass=ABCMeta):
             raise KeyError(f"Did not find a dataset '{id}@{name}'")
         store_version = dct.pop(self.VERSION_KEY)
         self.check_store_version(store_version)
-        return fromdict(dct, id=id, name=name, store=self, **kwargs)
+        return fromdict(dct, id=id, name=name, store=self, **kwargs)  # type: ignore[no-any-return]
 
     def create_dataset(
         self,
