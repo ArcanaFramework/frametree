@@ -1,6 +1,7 @@
 import os
 import logging
 from pathlib import Path
+import typing as ty
 from datetime import datetime
 import shutil
 from tempfile import mkdtemp
@@ -46,7 +47,7 @@ PKG_DIR = Path(__file__).parent
 
 
 @pytest.fixture
-def work_dir():
+def work_dir() -> Path:
     # work_dir = Path.home() / '.frametree-tests'
     # work_dir.mkdir(exist_ok=True)
     # return work_dir
@@ -56,7 +57,7 @@ def work_dir():
 
 
 @pytest.fixture(scope="session")
-def build_cache_dir():
+def build_cache_dir() -> Path:
     # build_cache_dir = Path.home() / '.frametree-test-build-cache'
     # if build_cache_dir.exists():
     #     shutil.rmtree(build_cache_dir)
@@ -76,12 +77,12 @@ def cli_runner(catch_cli_exceptions):
 
 
 @pytest.fixture(scope="session")
-def pkg_dir():
+def pkg_dir() -> Path:
     return PKG_DIR
 
 
 @pytest.fixture(scope="session")
-def run_prefix():
+def run_prefix() -> str:
     "A datetime string used to avoid stale data left over from previous tests"
     return datetime.strftime(datetime.now(), "%Y%m%d%H%M%S")
 
@@ -130,15 +131,15 @@ def pydra_task(request):
 DATA_STORES = ["file_system", "mock_remote"]
 
 
-@pytest.fixture
-def frametree_home(work_dir):
-    frametree_home = work_dir / "frametree-home"
+@pytest.fixture(scope="session")
+def frametree_home() -> Path:
+    frametree_home = Path(mkdtemp()) / "frametree-home"
     with patch.dict(os.environ, {"FRAMETREE_HOME": str(frametree_home)}):
         yield frametree_home
 
 
 @pytest.fixture(params=DATA_STORES)
-def data_store(work_dir: Path, frametree_home: Path, request):
+def data_store(work_dir: Path, frametree_home: Path, request: ty.Any) -> Store:
     store: Store
     if request.param == "file_system":
         store = FileSystem()

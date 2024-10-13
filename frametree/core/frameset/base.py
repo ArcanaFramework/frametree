@@ -9,6 +9,7 @@ import attrs
 import attrs.filters
 from attrs.converters import default_if_none
 from typing_extensions import Self
+from pydra import Workflow
 from pydra.utils.hash import hash_single, bytes_repr_mapping_contents
 from fileformats.text import Plain as PlainText
 from frametree.core.exceptions import (
@@ -20,6 +21,7 @@ from frametree.core.exceptions import (
 )
 from frametree.core.licence import License
 from ..column import DataColumn, DataSink, DataSource
+from ..row import DataRow
 from .. import store as datastore
 from ..tree import DataTree
 from ..axes import Axes
@@ -28,7 +30,7 @@ from .metadata import Metadata, metadata_converter
 
 if ty.TYPE_CHECKING:  # pragma: no cover
     from frametree.core.entry import DataEntry
-    from frametree.core.pipeline import Pipeline
+    from frametree.core.pipeline import Pipeline, Input, Output
 
 logger = logging.getLogger("frametree")
 
@@ -574,7 +576,11 @@ class FrameSet:
                 )
             return row
 
-    def rows(self, frequency=None, ids=None):
+    def rows(
+        self,
+        frequency: ty.Optional[str] = None,
+        ids: ty.Optional[ty.Collection[str]] = None,
+    ) -> ty.List[DataRow]:
         """Return all the IDs in the dataset for a given frequency
 
         Parameters
@@ -607,7 +613,7 @@ class FrameSet:
                 rows = (n for n in rows if n.id in set(ids))
             return rows
 
-    def row_ids(self, frequency: ty.Optional[str] = None):
+    def row_ids(self, frequency: ty.Optional[str] = None) -> ty.List[ty.Optional[str]]:
         """Return all the IDs in the dataset for a given row_frequency
 
         Parameters
@@ -628,11 +634,11 @@ class FrameSet:
             return [None]
         with self.tree:
             try:
-                return self.root.children[frequency].keys()
+                return list(self.root.children[frequency].keys())
             except KeyError:
-                return ()
+                return []
 
-    def __getitem__(self, name):
+    def __getitem__(self, name: str) -> DataColumn:
         """Return all data items across the dataset for a given source or sink
 
         Parameters
@@ -649,14 +655,26 @@ class FrameSet:
 
     def apply(
         self,
-        name,
-        workflow,
-        inputs,
-        outputs,
-        row_frequency=None,
-        overwrite=False,
-        converter_args=None,
-    ):
+        name: str,
+        workflow: Workflow,
+        inputs: ty.List[
+            ty.Union[
+                "Input",
+                ty.Tuple[str, str, type],
+                ty.Tuple[str, str],
+            ]
+        ],
+        outputs: ty.List[
+            ty.Union[
+                "Output",
+                ty.Tuple[str, str, type],
+                ty.Tuple[str, str],
+            ]
+        ],
+        row_frequency: ty.Union[Axes, str, None] = None,
+        overwrite: bool = False,
+        converter_args: ty.Optional[ty.Dict[str, ty.Any]] = None,
+    ) -> "Pipeline":
         """Connect a Pydra workflow as a pipeline of the dataset
 
         Parameters
