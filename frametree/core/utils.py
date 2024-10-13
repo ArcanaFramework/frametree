@@ -214,6 +214,17 @@ def varname2path(name: str) -> str:
     return path
 
 
+def path2label(path: str) -> str:
+    return path2varname(path.rstrip("@"))
+
+
+def label2path(label: str) -> str:
+    path = varname2path(label)
+    if "@" not in path:
+        path += "@"
+    return path
+
+
 def func_task(
     func: ty.Callable[..., ty.Any],
     in_fields: ty.List[ty.Tuple[str, ty.Type[ty.Any]]],
