@@ -30,7 +30,7 @@ from .metadata import Metadata, metadata_converter
 
 if ty.TYPE_CHECKING:  # pragma: no cover
     from frametree.core.entry import DataEntry
-    from frametree.core.pipeline import Pipeline, Input, Output
+    from frametree.core.pipeline import Pipeline, PipelineField
 
 logger = logging.getLogger("frametree")
 
@@ -141,7 +141,7 @@ class FrameSet:
     )
     tree: DataTree = attrs.field(factory=DataTree, init=False, repr=False, eq=False)
 
-    def __attrs_post_init__(self):
+    def __attrs_post_init__(self) -> None:
         self.tree.frameset = self
         # Set reference to pipeline in columns and pipelines
         for column in self.columns.values():
@@ -150,31 +150,31 @@ class FrameSet:
             pipeline.frameset = self
 
     @store.default
-    def store_default(self):
+    def store_default(self) -> datastore.Store:
         from frametree.common import FileSystem
 
         return FileSystem()
 
     @axes.default
-    def axes_default(self):
+    def axes_default(self) -> ty.Type[Axes]:
         try:
-            return self.store.DEFAULT_AXES
+            return self.store.DEFAULT_AXES  # type: ignore[attr-defined, no-any-return]
         except AttributeError:
-            return TypeError(
+            raise TypeError(
                 f"FrameSets in {type(self.store)} need to explicitly set their axes"
             )
 
     @hierarchy.default
-    def hierarchy_default(self):
+    def hierarchy_default(self) -> ty.List[str]:
         try:
-            return self.store.DEFAULT_HIERARCHY
+            return self.store.DEFAULT_HIERARCHY  # type: ignore[attr-defined, no-any-return]
         except AttributeError:
-            return TypeError(
+            raise TypeError(
                 f"FrameSets in {type(self.store)} need to explicitly set their hierarchy"
             )
 
     @name.validator
-    def name_validator(self, _, name: str):
+    def name_validator(self, _: ty.Any, name: str) -> None:
         if name and not name.isidentifier():
             raise FrameTreeUsageError(
                 f"Name provided to dataset, '{name}' should be a valid Python identifier, "
@@ -188,7 +188,7 @@ class FrameSet:
             )
 
     @columns.validator
-    def columns_validator(self, _, columns):
+    def columns_validator(self, _: ty.Any, columns: ty.Dict[str, DataColumn]) -> None:
         wrong_freq = [
             m for m in columns.values() if not isinstance(m.row_frequency, self.axes)
         ]
@@ -199,7 +199,9 @@ class FrameSet:
             )
 
     @include.validator
-    def include_validator(self, _, include: ty.Dict[str, ty.Union[str, ty.List[str]]]):
+    def include_validator(
+        self, _: ty.Any, include: ty.Dict[str, ty.Union[str, ty.List[str]]]
+    ) -> None:
         valid = set(str(f) for f in self.axes)
         freqs = set(include)
         unrecognised = freqs - valid
@@ -211,7 +213,9 @@ class FrameSet:
         self._validate_criteria(include, "inclusion")
 
     @exclude.validator
-    def exclude_validator(self, _, exclude: ty.Dict[str, ty.Union[str, ty.List[str]]]):
+    def exclude_validator(
+        self, _: ty.Any, exclude: ty.Dict[str, ty.Union[str, ty.List[str]]]
+    ) -> None:
         valid = set(self.hierarchy)
         freqs = set(exclude)
         unrecognised = freqs - valid
@@ -223,7 +227,11 @@ class FrameSet:
             )
         self._validate_criteria(exclude, "exclusion")
 
-    def _validate_criteria(self, criteria, type_):
+    def _validate_criteria(
+        self,
+        criteria: ty.Dict[str, ty.Union[str, ty.List[str]]],
+        type_: ty.Type[ty.Any],
+    ) -> None:
         for freq, criterion in criteria.items():
             try:
                 re.compile(criterion)
@@ -238,7 +246,7 @@ class FrameSet:
                     )
 
     @hierarchy.validator
-    def hierarchy_validator(self, _, hierarchy):
+    def hierarchy_validator(self, _: ty.Any, hierarchy: ty.List[str]) -> None:
         not_valid = [f for f in hierarchy if str(f) not in self.axes.__members__]
         if not_valid:
             raise FrameTreeWrongAxesError(
@@ -278,7 +286,7 @@ class FrameSet:
         #         ids[m] = None
 
     @id_patterns.validator
-    def id_patterns_validator(self, _, id_patterns):
+    def id_patterns_validator(self, _: ty.Any, id_patterns: ty.List[str]) -> None:
         non_valid_keys = [f for f in id_patterns if f not in self.axes.__members__]
         if non_valid_keys:
             raise FrameTreeWrongAxesError(
@@ -294,18 +302,18 @@ class FrameSet:
                     f"are not part of the {self.axes} data space"
                 )
 
-    def save(self, name=""):
+    def save(self, name: str = "") -> None:
         self.store.save_frameset(self, name=name)
 
     @classmethod
     def load(
         cls,
         id: str,
-        store: datastore.Store = None,
+        store: ty.Optional[datastore.Store] = None,
         name: ty.Optional[str] = "",
         default_if_missing: bool = False,
-        **kwargs,
-    ):
+        **kwargs: ty.Any,
+    ) -> "FrameSet":
         """Loads a dataset from an store/ID/name string, as used in the CLI
 
         Parameters
@@ -662,14 +670,14 @@ class FrameSet:
         workflow: Workflow,
         inputs: ty.List[
             ty.Union[
-                "Input",
+                "PipelineField",
                 ty.Tuple[str, str, type],
                 ty.Tuple[str, str],
             ]
         ],
         outputs: ty.List[
             ty.Union[
-                "Output",
+                "PipelineField",
                 ty.Tuple[str, str, type],
                 ty.Tuple[str, str],
             ]
@@ -804,11 +812,11 @@ class FrameSet:
         return freq
 
     @classmethod
-    def _sink_path(cls, workflow_name, sink_name):
+    def _sink_path(cls, workflow_name: str, sink_name: str) -> str:
         return f"{workflow_name}/{sink_name}"
 
     @classmethod
-    def parse_id_str(cls, id):
+    def parse_id_str(cls, id: str) -> ty.Tuple[str, str, str]:
         parts = id.split("//")
         if len(parts) == 1:  # No store definition, default to the `FileSystem` store
             store_name = "file_system"
@@ -821,7 +829,7 @@ class FrameSet:
             id, name = parts
         return store_name, id, name
 
-    def download_licenses(self, licenses: ty.List[License]):
+    def download_licenses(self, licenses: ty.List[License]) -> None:
         """Install licenses from project-specific location in data store and
         install them at the destination location
 
@@ -868,7 +876,7 @@ class FrameSet:
                 )
             shutil.copyfile(license_file, lic.destination)
 
-    def install_license(self, name: str, source_file: PlainText):
+    def install_license(self, name: str, source_file: PlainText) -> None:
         """Store project-specific license in dataset
 
         Parameters
@@ -887,7 +895,7 @@ class FrameSet:
             )
         self.store.put(PlainText(source_file), entry)
 
-    def _get_license_entry(self, name, dataset=None) -> DataEntry:
+    def _get_license_entry(self, name: str, dataset: "FrameSet" = None) -> DataEntry:
 
         if dataset is None:
             dataset = self
@@ -900,17 +908,21 @@ class FrameSet:
         )
         return column.match_entry(dataset.root)
 
-    def get_license_file(self, name, dataset=None) -> PlainText:
+    def get_license_file(
+        self, name: str, dataset: ty.Optional["FrameSet"] = None
+    ) -> PlainText:
         return PlainText(self._get_license_entry(name, dataset).item)
 
     def infer_ids(
         self, ids: ty.Dict[str, str], metadata: ty.Dict[str, ty.Dict[str, str]]
-    ):
+    ) -> ty.Dict[str, str]:
         return self.store.infer_ids(
             ids=ids, id_patterns=self.id_patterns, metadata=metadata
         )
 
-    def __bytes_repr__(self, cache):
+    def __bytes_repr__(
+        self, cache: ty.Dict[str, ty.Any]
+    ) -> ty.Generator[bytes, None, None]:
         """For Pydra input hashing"""
         yield f"{type(self).__module__}.{type(self).__name__}(".encode()
         yield self.id.encode()
@@ -932,3 +944,6 @@ class SplitDataset:
 
     source_dataset: FrameSet = attrs.field()
     sink_dataset: FrameSet = attrs.field()
+
+
+__all__ = ["FrameSet", "SplitDataset"]

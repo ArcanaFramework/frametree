@@ -9,6 +9,7 @@ import attrs
 from fileformats.core import FileSet, Field
 from frametree.core.exceptions import FrameTreeUsageError
 from frametree.core.frameset.base import DataTree
+from frametree.core.axes import Axes
 from frametree.core.row import DataRow
 from frametree.core.entry import DataEntry
 from frametree.core.store import LocalStore
@@ -44,7 +45,7 @@ class FileSystem(LocalStore):
     # Abstract-method implementations
     #################################
 
-    def populate_tree(self, tree: DataTree):
+    def populate_tree(self, tree: DataTree) -> None:
         """
         Scans the data present in the dataset and populates the data tree with nodes
 
@@ -67,7 +68,7 @@ class FileSystem(LocalStore):
                 continue
             tree.add_leaf(tree_path)
 
-    def populate_row(self, row: DataRow):
+    def populate_row(self, row: DataRow) -> None:
         """Scans the node in the data tree corresponding to the data row and populates
         the row with data entries found in the tree node
 
@@ -77,7 +78,7 @@ class FileSystem(LocalStore):
             the data row to populate
         """
 
-        def filter_entry_dir(entry_dir):
+        def filter_entry_dir(entry_dir: Path) -> ty.Iterator[Path]:
             for subpath in entry_dir.iterdir():
                 entry_name = subpath.name
                 if (
@@ -130,7 +131,9 @@ class FileSystem(LocalStore):
                             uri=str(fields_json.relative_to(root_dir)) + "::" + name,
                         )
 
-    def get_field(self, entry: DataEntry, datatype: type) -> Field:
+    def get_field(
+        self, entry: DataEntry, datatype: ty.Type[Field[ty.Any, ty.Any]]
+    ) -> Field[ty.Any, ty.Any]:
         """Retrieve the field associated with the given entry and return it cast
         to the specified datatype
 
@@ -149,7 +152,7 @@ class FileSystem(LocalStore):
         fspath, key = self._fields_fspath_and_key(entry)
         return datatype(self.read_from_json(fspath, key))
 
-    def get_fileset(self, entry: DataEntry, datatype: type) -> FileSet:
+    def get_fileset(self, entry: DataEntry, datatype: ty.Type[FileSet]) -> FileSet:
         """Retrieve the file-set associated with the given entry and return it cast
         to the specified datatype
 
@@ -204,7 +207,7 @@ class FileSystem(LocalStore):
         )
         return copied_fileset
 
-    def put_field(self, field: Field, entry: DataEntry):
+    def put_field(self, field: Field, entry: DataEntry) -> None:
         """Put a field into the specified data entry
 
         Parameters
@@ -238,7 +241,7 @@ class FileSystem(LocalStore):
 
     def put_fileset_provenance(
         self, provenance: ty.Dict[str, ty.Any], entry: DataEntry
-    ):
+    ) -> None:
         """Puts provenance associated with a file-set data entry into the store
 
         Parameters
@@ -271,7 +274,9 @@ class FileSystem(LocalStore):
             fields_provenance = json.load(f)
         return fields_provenance[key]
 
-    def put_field_provenance(self, provenance: ty.Dict[str, ty.Any], entry: DataEntry):
+    def put_field_provenance(
+        self, provenance: ty.Dict[str, ty.Any], entry: DataEntry
+    ) -> None:
         """Puts provenance associated with a field data entry into the store
 
         Parameters
@@ -328,7 +333,14 @@ class FileSystem(LocalStore):
         row_dir = self._row_relpath(row, dataset_name=dataset_name)
         return str(row_dir / self.FIELDS_FNAME) + "::" + path
 
-    def create_data_tree(self, id: str, leaves: ty.List[ty.Tuple[str, ...]], **kwargs):
+    def create_data_tree(
+        self,
+        id: str,
+        leaves: ty.List[ty.Tuple[str, ...]],
+        hierarchy: ty.List[str],
+        axes: ty.Type[Axes],
+        **kwargs: ty.Any,
+    ) -> None:
         """creates a new empty dataset within in the store. Used in test routines and
         importing/exporting datasets between stores
 
@@ -356,7 +368,7 @@ class FileSystem(LocalStore):
     # Helper functions
     ##################
 
-    def _row_relpath(self, row: DataRow, dataset_name=None):
+    def _row_relpath(self, row: DataRow, dataset_name: ty.Optional[str] = None) -> Path:
         """Get the file-system path to the dataset root for the given row, taking into
         account non-leaf rows
 
@@ -399,7 +411,7 @@ class FileSystem(LocalStore):
                 relpath /= dataset_name
         return relpath
 
-    def _row_dataset_names(self, row: DataRow):
+    def _row_dataset_names(self, row: DataRow) -> ty.List[str]:
         """list all dataset names stored in the given row
 
         Parameters
@@ -424,17 +436,17 @@ class FileSystem(LocalStore):
             )
         return dataset_names
 
-    def _fileset_fspath(self, entry):
+    def _fileset_fspath(self, entry: DataEntry) -> Path:
         return Path(entry.row.frameset.id) / entry.uri
 
-    def _fields_fspath_and_key(self, entry):
+    def _fields_fspath_and_key(self, entry: DataEntry) -> ty.Tuple[Path, str]:
         relpath, key = entry.uri.split("::")
         fspath = Path(entry.row.frameset.id) / relpath
         return fspath, key
 
-    def _fileset_prov_fspath(self, entry):
+    def _fileset_prov_fspath(self, entry: DataEntry) -> Path:
         return self._fileset_fspath(entry).with_suffix(self.PROV_SUFFIX)
 
-    def _fields_prov_fspath_and_key(self, entry):
+    def _fields_prov_fspath_and_key(self, entry: DataEntry) -> ty.Tuple[Path, str]:
         fields_fspath, key = self._fields_fspath_and_key(entry)
         return fields_fspath.parent / self.FIELDS_PROV_FNAME, key
