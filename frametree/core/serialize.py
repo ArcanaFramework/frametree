@@ -2,6 +2,7 @@ from __future__ import annotations
 from dataclasses import is_dataclass, fields as dataclass_fields
 from typing import Sequence
 import typing as ty
+from types import TracebackType
 from enum import Enum
 import builtins
 from copy import copy
@@ -41,10 +42,15 @@ class _FallbackContext:
 
     permit: bool = False
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         self.permit = True
 
-    def __exit__(self, exception_type, exception_value, traceback):
+    def __exit__(
+        self,
+        exception_type: ty.Optional[ty.Type[BaseException]],
+        exception_value: ty.Optional[BaseException],
+        traceback: ty.Optional[TracebackType],
+    ) -> None:
         self.permit = False
 
 
@@ -121,14 +127,16 @@ class ClassResolver:
         return klass
 
     @classmethod
-    def _get_subpkg(cls, klass):
+    def _get_subpkg(cls, klass: ty.Type[ty.Any]) -> ty.Optional[str]:
         try:
             return klass.SUBPACKAGE
         except AttributeError:
             return None
 
     @classmethod
-    def fromstr(cls, class_str, subpkg=None, pkg=PACKAGE_NAME):
+    def fromstr(
+        cls, class_str: str, subpkg: ty.Optional[str] = None, pkg: str = PACKAGE_NAME
+    ) -> ty.Union[ty.Type[ty.Any], ty.Callable]:
         """Resolves a class/function from a string containing its module an its name
         separated by a ':'
 
@@ -211,7 +219,7 @@ class ClassResolver:
         return klass
 
     @classmethod
-    def tostr(cls, klass, strip_prefix: bool = True):
+    def tostr(cls, klass: ty.Type[ty.Any], strip_prefix: bool = True) -> str:
         """Records the location of a class so it can be loaded later using
         `ClassResolver`, in the format <module-name>:<class-name>
 
@@ -242,7 +250,7 @@ class ClassResolver:
                 module_name += "."  # To distinguish it from extension module name
         return module_name + ":" + klass.__name__
 
-    def _check_type(self, klass):
+    def _check_type(self, klass: ty.Type[ty.Any]) -> None:
         if self.FALLBACK_TO_STR.permit and isinstance(klass, str):
             return
         if self.base_class:
@@ -267,7 +275,11 @@ class ClassResolver:
     FALLBACK_TO_STR = _FallbackContext()
 
 
-def asdict(obj, omit: ty.Iterable[str] = (), required_modules: ty.Optional[set] = None):
+def asdict(
+    obj: ty.Any,
+    omit: ty.Iterable[str] = (),
+    required_modules: ty.Optional[ty.Set[str]] = None,
+) -> ty.Dict[str, ty.Any]:
     """Serialises an object of a class defined with attrs to a dictionary
 
     Parameters
@@ -277,10 +289,16 @@ def asdict(obj, omit: ty.Iterable[str] = (), required_modules: ty.Optional[set] 
         decorator
     omit: Iterable[str]
         the names of attributes to omit from the dictionary
-    required_modules: set
-        modules required to reload the serialised object into memory"""
+    required_modules: set[str], optional
+        modules required to reload the serialised object into memory
 
-    def filter(atr, value):
+    Returns
+    -------
+    dict
+        the serialised object
+    """
+
+    def filter(atr: attrs.Attribute[ty.Any], value: ty.Any) -> bool:
         return atr.init and atr.metadata.get("asdict", True)
 
     if required_modules is None:
@@ -289,11 +307,11 @@ def asdict(obj, omit: ty.Iterable[str] = (), required_modules: ty.Optional[set] 
     else:
         include_versions = False
 
-    def serialise_class(klass):
+    def serialise_class(klass: ty.Type[ty.Any]) -> str:
         required_modules.add(klass.__module__)
         return "<" + ClassResolver.tostr(klass, strip_prefix=False) + ">"
 
-    def value_asdict(value):
+    def value_asdict(value: ty.Any) -> ty.Dict[str, ty.Any]:
         if isclass(value):
             value = serialise_class(value)
         elif hasattr(value, "asdict"):
@@ -338,14 +356,14 @@ def asdict(obj, omit: ty.Iterable[str] = (), required_modules: ty.Optional[set] 
     return dct
 
 
-def _replace_hidden(dct):
+def _replace_hidden(dct: ty.Dict[str, ty.Any]) -> None:
     "Replace hidden attributes (those starting with '_') with non-hidden"
     for key in list(dct):
         if key.startswith("_"):
             dct[key[1:]] = dct.pop(key)
 
 
-def fromdict(dct: dict, **kwargs):
+def fromdict(dct: ty.Dict[str, ty.Any], **kwargs: ty.Any) -> object:
     """Unserialise an object from a dict created by the `asdict` method
 
     Parameters
@@ -370,33 +388,46 @@ def fromdict(dct: dict, **kwargs):
     #                 f"read by this version of frametree ('{__version__}'), the minimum "
     #                 f"version is {MIN_SERIAL_VERSION}")
 
-    def field_filter(klass, field_name):
+    def field_filter(klass: ty.Type[ty.Any], field_name: str) -> bool:
         if attrs.has(klass):
             return field_name in (f.name for f in attrs.fields(klass))
         else:
             return field_name != "class"
 
-    def fromdict(value):
+    def fromdict(
+        value: ty.Union[
+            ty.Dict[str, ty.Any],
+            str,
+            ty.Sequence[ty.Dict[str, ty.Any]],
+        ]
+    ) -> ty.Any:
+        resolved_value: ty.Any = value
         if isinstance(value, dict):
             if "class" in value:
                 klass = ClassResolver()(value["class"])
                 if hasattr(klass, "fromdict"):
                     return klass.fromdict(value)
-            value = {fromdict(k): fromdict(v) for k, v in value.items()}
-            if "class" in value:
-                value = klass(
-                    **{k: v for k, v in value.items() if field_filter(klass, k)}
+            resolved_value = {fromdict(k): fromdict(v) for k, v in value.items()}
+            if "class" in resolved_value:
+                resolved_value = klass(
+                    **{
+                        k: v
+                        for k, v in resolved_value.items()
+                        if field_filter(klass, k)
+                    }
                 )
         elif isinstance(value, str):
             if match := re.match(r"<(.*)>$", value):  # Class location
-                value = ClassResolver()(match.group(1))
-            elif match := re.match(r"<(.*)>\[(.*)\]$", value):  # Enum
-                value = ClassResolver()(match.group(1))[match.group(2)]
+                resolved_value = ClassResolver()(match.group(1))
+            elif match := re.match(
+                r"<(.*)>\[(.*)\]$", value
+            ):  # Enum or classified format
+                resolved_value = ClassResolver()(match.group(1))[match.group(2)]  # type: ignore[index]
             elif match := re.match(r"file://(.*)", value):
-                value = Path(match.group(1))
+                resolved_value = Path(match.group(1))
         elif isinstance(value, Sequence):
-            value = [fromdict(x) for x in value]
-        return value
+            resolved_value = [fromdict(x) for x in value]
+        return resolved_value
 
     klass = ClassResolver()(dct["class"])
 
@@ -418,7 +449,7 @@ NOTHING_STR = "__PIPELINE_INPUT__"
 
 def pydra_asdict(
     obj: TaskBase, required_modules: ty.Set[str], workflow: ty.Optional[Workflow] = None
-) -> dict:
+) -> ty.Dict[str, ty.Any]:
     """Converts a Pydra Task/Workflow into a dictionary that can be serialised
 
     Parameters
@@ -484,7 +515,7 @@ def pydra_asdict(
     return dct
 
 
-def lazy_field_fromdict(dct: dict, workflow: Workflow):
+def lazy_field_fromdict(dct: ty.Dict[ty.Any, ty.Any], workflow: Workflow) -> LazyField:
     """Unserialises a LazyField object from a dictionary"""
     if "task" in dct:
         inpt_task = getattr(workflow, dct["task"])
@@ -495,7 +526,9 @@ def lazy_field_fromdict(dct: dict, workflow: Workflow):
 
 
 def pydra_fromdict(
-    dct: dict, workflow: ty.Optional[Workflow] = None, **kwargs
+    dct: ty.Dict[ty.Any, ty.Any],
+    workflow: ty.Optional[Workflow] = None,
+    **kwargs: ty.Any,
 ) -> TaskBase:
     """Recreates a Pydra Task/Workflow from a dictionary object created by
     `pydra_asdict`
@@ -552,10 +585,10 @@ class ObjectConverter:
     accept_metadata: bool = False
     package: str = PACKAGE_NAME
 
-    def __call__(self, value):
+    def __call__(self, value: ty.Any) -> ty.Any:
         return self._create_object(value)
 
-    def _create_object(self, value, **kwargs):
+    def _create_object(self, value: ty.Any, **kwargs: ty.Any) -> ty.Any:
         if value is None:
             if kwargs:
                 value = {}
@@ -612,8 +645,8 @@ class ObjectConverter:
 
 @attrs.define
 class ObjectListConverter(ObjectConverter):
-    def __call__(self, value):
-        converted = []
+    def __call__(self, value: ty.Any) -> ty.List[ty.Any]:
+        converted: ty.List[ty.Any] = []
         if value is None:
             if self.allow_none:
                 return converted
@@ -628,7 +661,7 @@ class ObjectListConverter(ObjectConverter):
         return converted
 
     @classmethod
-    def asdict(cls, objs: list, **kwargs) -> dict:
+    def asdict(cls, objs: ty.List[ty.Any], **kwargs: ty.Any) -> ty.Dict[str, ty.Any]:
         dct = {}
         for obj in objs:
             obj_dict = attrs.asdict(obj, **kwargs)
@@ -636,11 +669,11 @@ class ObjectListConverter(ObjectConverter):
         return dct
 
     @classmethod
-    def aslist(cls, objs: list, **kwargs) -> list:
+    def aslist(cls, objs: ty.List[ty.Any], **kwargs: ty.Any) -> ty.List[ty.Any]:
         return [attrs.asdict(obj, **kwargs) for obj in objs]
 
 
-def parse_value(value):
+def parse_value(value: ty.Any) -> ty.Any:
     """Parses values from string representations"""
     try:
         value = json.loads(

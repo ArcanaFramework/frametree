@@ -11,6 +11,7 @@ import json
 import shutil
 import attrs
 from fileformats.core import DataType, FileSet, Field
+from fileformats.generic import File
 from frametree.core.utils import (
     dir_modtime,
     JSON_ENCODING,
@@ -27,6 +28,9 @@ from .base import Store
 
 
 logger = logging.getLogger("frametree")
+
+
+DT = ty.TypeVar("DT", bound=DataType)
 
 
 @attrs.define
@@ -278,7 +282,7 @@ class RemoteStore(Store):
     # Abstractmethod implementations
     ################################
 
-    def get(self, entry: DataEntry, datatype: type) -> DataType:
+    def get(self, entry: DataEntry, datatype: ty.Type[DT]) -> DT:
         with self.connection:
             if entry.datatype.is_fileset:
                 item = self.get_fileset(entry, datatype)
@@ -289,7 +293,7 @@ class RemoteStore(Store):
         assert isinstance(item, datatype)
         return item
 
-    def put(self, item: DataType, entry: DataEntry):
+    def put(self, item: DT, entry: DataEntry) -> DT:
         with self.connection:
             if entry.datatype.is_fileset:
                 item = self.put_fileset(item, entry)
@@ -355,7 +359,7 @@ class RemoteStore(Store):
                 hierarchy = [Samples.sample]  # just create a dummy one
             with store.connection:
                 store.create_data_tree(
-                    self.SITE_LICENSES_DATASET, [], hierarchy=hierarchy
+                    self.SITE_LICENSES_DATASET, [], hierarchy=hierarchy, axes=axes
                 )
             with store.connection:
                 dataset = store.define_frameset(
@@ -458,7 +462,11 @@ class RemoteStore(Store):
         if cache_path.exists():
             shutil.rmtree(cache_path)
         # Copy to cache
-        cached = fileset.copy(cache_path, make_dirs=True, trim=False)
+        if isinstance(fileset, File):
+            new_stem = entry.path.split("/")[-1].split("@")[0]
+        else:
+            new_stem = None
+        cached = fileset.copy(cache_path, make_dirs=True, new_stem=new_stem, trim=False)
         self.upload_files(cache_path, entry)
         try:
             checksums = self.put_checksums(entry.uri, cached)
@@ -509,7 +517,7 @@ class RemoteStore(Store):
         """
         return datatype(self.download_value(entry))
 
-    def put_field(self, field: Field, entry: DataEntry):
+    def put_field(self, field: Field, entry: DataEntry) -> None:
         """Store the value for a field in the XNAT repository
 
         Parameters

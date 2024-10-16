@@ -4,9 +4,12 @@ import re
 import typing as ty
 from pathlib import Path
 import shutil
+from warnings import warn
 import attrs
 import attrs.filters
 from attrs.converters import default_if_none
+from typing_extensions import Self
+from pydra import Workflow
 from pydra.utils.hash import hash_single, bytes_repr_mapping_contents
 from fileformats.text import Plain as PlainText
 from frametree.core.exceptions import (
@@ -17,7 +20,8 @@ from frametree.core.exceptions import (
     FrameTreeWrongAxesError,
 )
 from frametree.core.licence import License
-from ..column import DataColumn, DataSink, DataSource
+from ..column import DataColumn, SinkColumn, SourceColumn
+from ..row import DataRow
 from .. import store as datastore
 from ..tree import DataTree
 from ..axes import Axes
@@ -26,7 +30,7 @@ from .metadata import Metadata, metadata_converter
 
 if ty.TYPE_CHECKING:  # pragma: no cover
     from frametree.core.entry import DataEntry
-    from frametree.core.pipeline import Pipeline
+    from frametree.core.pipeline import Pipeline, PipelineField
 
 logger = logging.getLogger("frametree")
 
@@ -97,7 +101,7 @@ class FrameSet:
         omitted or its value is None, then all available will be used
     name : str
         The name of the dataset as saved in the store under
-    columns : list[tuple[str, DataSource or DataSink]
+    columns : list[tuple[str, SourceColumn or SinkColumn]
         The sources and sinks to be initially added to the dataset (columns are
         explicitly added when workflows are applied to the dataset).
     pipelines : dict[str, pydra.Workflow]
@@ -137,7 +141,7 @@ class FrameSet:
     )
     tree: DataTree = attrs.field(factory=DataTree, init=False, repr=False, eq=False)
 
-    def __attrs_post_init__(self):
+    def __attrs_post_init__(self) -> None:
         self.tree.frameset = self
         # Set reference to pipeline in columns and pipelines
         for column in self.columns.values():
@@ -146,31 +150,31 @@ class FrameSet:
             pipeline.frameset = self
 
     @store.default
-    def store_default(self):
+    def store_default(self) -> datastore.Store:
         from frametree.common import FileSystem
 
         return FileSystem()
 
     @axes.default
-    def axes_default(self):
+    def axes_default(self) -> ty.Type[Axes]:
         try:
-            return self.store.DEFAULT_AXES
+            return self.store.DEFAULT_AXES  # type: ignore[attr-defined, no-any-return]
         except AttributeError:
-            return TypeError(
+            raise TypeError(
                 f"FrameSets in {type(self.store)} need to explicitly set their axes"
             )
 
     @hierarchy.default
-    def hierarchy_default(self):
+    def hierarchy_default(self) -> ty.List[str]:
         try:
-            return self.store.DEFAULT_HIERARCHY
+            return self.store.DEFAULT_HIERARCHY  # type: ignore[attr-defined, no-any-return]
         except AttributeError:
-            return TypeError(
+            raise TypeError(
                 f"FrameSets in {type(self.store)} need to explicitly set their hierarchy"
             )
 
     @name.validator
-    def name_validator(self, _, name: str):
+    def name_validator(self, _: ty.Any, name: str) -> None:
         if name and not name.isidentifier():
             raise FrameTreeUsageError(
                 f"Name provided to dataset, '{name}' should be a valid Python identifier, "
@@ -184,7 +188,7 @@ class FrameSet:
             )
 
     @columns.validator
-    def columns_validator(self, _, columns):
+    def columns_validator(self, _: ty.Any, columns: ty.Dict[str, DataColumn]) -> None:
         wrong_freq = [
             m for m in columns.values() if not isinstance(m.row_frequency, self.axes)
         ]
@@ -195,7 +199,9 @@ class FrameSet:
             )
 
     @include.validator
-    def include_validator(self, _, include: ty.Dict[str, ty.Union[str, ty.List[str]]]):
+    def include_validator(
+        self, _: ty.Any, include: ty.Dict[str, ty.Union[str, ty.List[str]]]
+    ) -> None:
         valid = set(str(f) for f in self.axes)
         freqs = set(include)
         unrecognised = freqs - valid
@@ -207,7 +213,9 @@ class FrameSet:
         self._validate_criteria(include, "inclusion")
 
     @exclude.validator
-    def exclude_validator(self, _, exclude: ty.Dict[str, ty.Union[str, ty.List[str]]]):
+    def exclude_validator(
+        self, _: ty.Any, exclude: ty.Dict[str, ty.Union[str, ty.List[str]]]
+    ) -> None:
         valid = set(self.hierarchy)
         freqs = set(exclude)
         unrecognised = freqs - valid
@@ -219,7 +227,11 @@ class FrameSet:
             )
         self._validate_criteria(exclude, "exclusion")
 
-    def _validate_criteria(self, criteria, type_):
+    def _validate_criteria(
+        self,
+        criteria: ty.Dict[str, ty.Union[str, ty.List[str]]],
+        type_: ty.Type[ty.Any],
+    ) -> None:
         for freq, criterion in criteria.items():
             try:
                 re.compile(criterion)
@@ -234,7 +246,7 @@ class FrameSet:
                     )
 
     @hierarchy.validator
-    def hierarchy_validator(self, _, hierarchy):
+    def hierarchy_validator(self, _: ty.Any, hierarchy: ty.List[str]) -> None:
         not_valid = [f for f in hierarchy if str(f) not in self.axes.__members__]
         if not_valid:
             raise FrameTreeWrongAxesError(
@@ -274,7 +286,7 @@ class FrameSet:
         #         ids[m] = None
 
     @id_patterns.validator
-    def id_patterns_validator(self, _, id_patterns):
+    def id_patterns_validator(self, _: ty.Any, id_patterns: ty.List[str]) -> None:
         non_valid_keys = [f for f in id_patterns if f not in self.axes.__members__]
         if non_valid_keys:
             raise FrameTreeWrongAxesError(
@@ -290,18 +302,18 @@ class FrameSet:
                     f"are not part of the {self.axes} data space"
                 )
 
-    def save(self, name=""):
+    def save(self, name: str = "") -> None:
         self.store.save_frameset(self, name=name)
 
     @classmethod
     def load(
         cls,
         id: str,
-        store: datastore.Store = None,
+        store: ty.Optional[datastore.Store] = None,
         name: ty.Optional[str] = "",
         default_if_missing: bool = False,
-        **kwargs,
-    ):
+        **kwargs: ty.Any,
+    ) -> "FrameSet":
         """Loads a dataset from an store/ID/name string, as used in the CLI
 
         Parameters
@@ -338,20 +350,30 @@ class FrameSet:
                 return cls(id, store, **kwargs)
             raise
 
+    def reload(self) -> Self:
+        """Reload the frameset from the store
+
+        Returns
+        -------
+        FrameSet
+            The reloaded frame-set
+        """
+        return self.store.load_frameset(self.id, name=self.name)
+
     @property
-    def root_freq(self):
+    def root_freq(self) -> Axes:
         return self.axes(0)
 
     @property
-    def root_dir(self):
+    def root_dir(self) -> Path:
         return Path(self.id)
 
     @property
-    def leaf_freq(self):
-        return max(self.axes)
+    def leaf_freq(self) -> Axes:
+        return max(self.axes)  # type: ignore[no-any-return]
 
     @property
-    def prov(self):
+    def prov(self) -> ty.Dict[str, ty.Any]:
         return {
             "id": self.id,
             "store": self.store.prov,
@@ -359,7 +381,7 @@ class FrameSet:
         }
 
     @property
-    def root(self):
+    def root(self) -> DataRow:
         """Lazily loads the data tree from the store on demand and return root
 
         Returns
@@ -374,16 +396,21 @@ class FrameSet:
             return self.tree.root
 
     @property
-    def locator(self):
+    def address(self) -> str:
         if self.store.name is None:
             raise Exception(
                 f"Must save store {self.store} first before accessing locator for "
                 f"{self}"
             )
-        locator = f"{self.store.name}//{self.id}"
+        address = f"{self.store.name}//{self.id}"
         if self.name:
-            locator += f"@{self.name}"
-        return locator
+            address += f"@{self.name}"
+        return address
+
+    @property
+    def locator(self) -> str:
+        warn("'FrameSet.locator' is deprecated use, 'address' instead'")
+        return self.address
 
     def add_source(
         self,
@@ -392,8 +419,8 @@ class FrameSet:
         path: ty.Optional[str] = None,
         row_frequency: ty.Optional[str] = None,
         overwrite: bool = False,
-        **kwargs,
-    ) -> DataSource:
+        **kwargs: ty.Any,
+    ) -> SourceColumn:
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
 
@@ -412,16 +439,15 @@ class FrameSet:
         overwrite : bool
             Whether to overwrite existing columns
         **kwargs : ty.Dict[str, Any]
-            Additional kwargs to pass to DataSource.__init__
+            Additional kwargs to pass to SourceColumn.__init__
         """
-        row_frequency = self.parse_frequency(row_frequency)
         if path is None:
             path = name
-        source = DataSource(
+        source = SourceColumn(
             name=name,
             datatype=datatype,
             path=path,
-            row_frequency=row_frequency,
+            row_frequency=self.parse_frequency(row_frequency),
             frameset=self,
             **kwargs,
         )
@@ -434,8 +460,8 @@ class FrameSet:
         datatype: type,
         row_frequency: ty.Optional[str] = None,
         overwrite: bool = False,
-        **kwargs,
-    ) -> DataSink:
+        **kwargs: ty.Any,
+    ) -> SinkColumn:
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
 
@@ -456,18 +482,17 @@ class FrameSet:
         overwrite : bool
             Whether to overwrite an existing sink
         """
-        row_frequency = self.parse_frequency(row_frequency)
-        sink = DataSink(
+        sink = SinkColumn(
             name=name,
             datatype=datatype,
-            row_frequency=row_frequency,
+            row_frequency=self.parse_frequency(row_frequency),
             frameset=self,
             **kwargs,
         )
         self._add_column(name, sink, overwrite)
         return sink
 
-    def _add_column(self, name: str, spec, overwrite):
+    def _add_column(self, name: str, spec: DataColumn, overwrite: bool) -> None:
         if name in self.columns:
             if overwrite:
                 logger.info(
@@ -482,7 +507,12 @@ class FrameSet:
                 )
         self.columns[name] = spec
 
-    def row(self, frequency=None, id=attrs.NOTHING, **id_kwargs):
+    def row(
+        self,
+        frequency: ty.Union[Axes, str, None] = None,
+        id: ty.Union[str, ty.Tuple[str, ...]] = attrs.NOTHING,
+        **id_kwargs: ty.Any,
+    ) -> DataRow:
         """Returns the row associated with the given frequency and ids dict
 
         Parameters
@@ -557,7 +587,11 @@ class FrameSet:
                 )
             return row
 
-    def rows(self, frequency=None, ids=None):
+    def rows(
+        self,
+        frequency: ty.Optional[str] = None,
+        ids: ty.Optional[ty.Collection[str]] = None,
+    ) -> ty.List[DataRow]:
         """Return all the IDs in the dataset for a given frequency
 
         Parameters
@@ -590,7 +624,7 @@ class FrameSet:
                 rows = (n for n in rows if n.id in set(ids))
             return rows
 
-    def row_ids(self, frequency: ty.Optional[str] = None):
+    def row_ids(self, frequency: ty.Optional[str] = None) -> ty.List[ty.Optional[str]]:
         """Return all the IDs in the dataset for a given row_frequency
 
         Parameters
@@ -611,11 +645,11 @@ class FrameSet:
             return [None]
         with self.tree:
             try:
-                return self.root.children[frequency].keys()
+                return list(self.root.children[frequency].keys())
             except KeyError:
-                return ()
+                return []
 
-    def __getitem__(self, name):
+    def __getitem__(self, name: str) -> DataColumn:
         """Return all data items across the dataset for a given source or sink
 
         Parameters
@@ -632,14 +666,26 @@ class FrameSet:
 
     def apply(
         self,
-        name,
-        workflow,
-        inputs,
-        outputs,
-        row_frequency=None,
-        overwrite=False,
-        converter_args=None,
-    ):
+        name: str,
+        workflow: Workflow,
+        inputs: ty.List[
+            ty.Union[
+                "PipelineField",
+                ty.Tuple[str, str, type],
+                ty.Tuple[str, str],
+            ]
+        ],
+        outputs: ty.List[
+            ty.Union[
+                "PipelineField",
+                ty.Tuple[str, str, type],
+                ty.Tuple[str, str],
+            ]
+        ],
+        row_frequency: ty.Union[Axes, str, None] = None,
+        overwrite: bool = False,
+        converter_args: ty.Optional[ty.Dict[str, ty.Any]] = None,
+    ) -> "Pipeline":
         """Connect a Pydra workflow as a pipeline of the dataset
 
         Parameters
@@ -716,7 +762,13 @@ class FrameSet:
 
         return pipeline
 
-    def derive(self, *sink_names, ids=None, cache_dir=None, **kwargs):
+    def derive(
+        self,
+        *sink_names: str,
+        ids: ty.Optional[ty.Iterable[str]] = None,
+        cache_dir: Path = None,
+        **kwargs: ty.Any,
+    ) -> None:
         """Generate derivatives from the workflows
 
         Parameters
@@ -743,7 +795,7 @@ class FrameSet:
             with self.tree:
                 pipeline(ids=ids, cache_dir=cache_dir)(**kwargs)
 
-    def parse_frequency(self, freq):
+    def parse_frequency(self, freq: ty.Union[Axes, str, None]) -> Axes:
         """Parses the data row_frequency, converting from string if necessary and
         checks it matches the dimensions of the dataset"""
         if freq is None:
@@ -760,11 +812,11 @@ class FrameSet:
         return freq
 
     @classmethod
-    def _sink_path(cls, workflow_name, sink_name):
+    def _sink_path(cls, workflow_name: str, sink_name: str) -> str:
         return f"{workflow_name}/{sink_name}"
 
     @classmethod
-    def parse_id_str(cls, id):
+    def parse_id_str(cls, id: str) -> ty.Tuple[str, str, str]:
         parts = id.split("//")
         if len(parts) == 1:  # No store definition, default to the `FileSystem` store
             store_name = "file_system"
@@ -777,7 +829,7 @@ class FrameSet:
             id, name = parts
         return store_name, id, name
 
-    def download_licenses(self, licenses: ty.List[License]):
+    def download_licenses(self, licenses: ty.List[License]) -> None:
         """Install licenses from project-specific location in data store and
         install them at the destination location
 
@@ -824,7 +876,7 @@ class FrameSet:
                 )
             shutil.copyfile(license_file, lic.destination)
 
-    def install_license(self, name: str, source_file: PlainText):
+    def install_license(self, name: str, source_file: PlainText) -> None:
         """Store project-specific license in dataset
 
         Parameters
@@ -843,11 +895,11 @@ class FrameSet:
             )
         self.store.put(PlainText(source_file), entry)
 
-    def _get_license_entry(self, name, dataset=None) -> DataEntry:
+    def _get_license_entry(self, name: str, dataset: "FrameSet" = None) -> DataEntry:
 
         if dataset is None:
             dataset = self
-        column = DataSink(
+        column = SinkColumn(
             name=f"{name}_license",
             datatype=PlainText,
             row_frequency=self.root_freq,
@@ -856,17 +908,21 @@ class FrameSet:
         )
         return column.match_entry(dataset.root)
 
-    def get_license_file(self, name, dataset=None) -> PlainText:
+    def get_license_file(
+        self, name: str, dataset: ty.Optional["FrameSet"] = None
+    ) -> PlainText:
         return PlainText(self._get_license_entry(name, dataset).item)
 
     def infer_ids(
         self, ids: ty.Dict[str, str], metadata: ty.Dict[str, ty.Dict[str, str]]
-    ):
+    ) -> ty.Dict[str, str]:
         return self.store.infer_ids(
             ids=ids, id_patterns=self.id_patterns, metadata=metadata
         )
 
-    def __bytes_repr__(self, cache):
+    def __bytes_repr__(
+        self, cache: ty.Dict[str, ty.Any]
+    ) -> ty.Generator[bytes, None, None]:
         """For Pydra input hashing"""
         yield f"{type(self).__module__}.{type(self).__name__}(".encode()
         yield self.id.encode()
@@ -888,3 +944,6 @@ class SplitDataset:
 
     source_dataset: FrameSet = attrs.field()
     sink_dataset: FrameSet = attrs.field()
+
+
+__all__ = ["FrameSet", "SplitDataset"]

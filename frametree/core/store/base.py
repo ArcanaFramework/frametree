@@ -11,6 +11,7 @@ from frametree.core.serialize import (
     fromdict,
 )
 import frametree
+from ..axes import Axes
 from fileformats.core import DataType
 from fileformats.text import Plain as PlainText
 from frametree.core.utils import (
@@ -27,6 +28,7 @@ from frametree.core.exceptions import (
 
 
 S = ty.TypeVar("S", bound="Store")
+DT = ty.TypeVar("DT", bound="DataType")
 
 logger = logging.getLogger("frametree")
 
@@ -43,13 +45,13 @@ class ConnectionManager(NestedContext):
     store: ty.Any = None
     session: ty.Any = attrs.field(default=None, init=False)
 
-    def __getattr__(self, attr_name):
+    def __getattr__(self, attr_name: str) -> ty.Any:
         return getattr(self.session, attr_name)
 
-    def enter(self):
+    def enter(self) -> None:
         self.session = self.store.connect()
 
-    def exit(self):
+    def exit(self) -> None:
         self.store.disconnect(self.session)
         self.session = None
 
@@ -78,7 +80,7 @@ class Store(metaclass=ABCMeta):
         factory=ConnectionManager, init=False, hash=False, repr=False, eq=False
     )
 
-    def __attrs_post_init__(self):
+    def __attrs_post_init__(self) -> None:
         self.connection.store = self
 
     CONFIG_NAME = "stores"
@@ -95,7 +97,7 @@ class Store(metaclass=ABCMeta):
 
     def save(
         self, name: ty.Optional[str] = None, config_path: ty.Optional[Path] = None
-    ):
+    ) -> None:
         """Saves the configuration of a Store in 'stores.yaml'
 
         Parameters
@@ -126,11 +128,13 @@ class Store(metaclass=ABCMeta):
             entries[dct.pop("name")] = dct
         self.save_configs(entries, config_path=config_path)
 
-    def asdict(self, **kwargs):
+    def asdict(self, **kwargs: ty.Any) -> ty.Dict[str, ty.Any]:
         return asdict(self, **kwargs)
 
     @classmethod
-    def load(cls, name: str, config_path: ty.Optional[Path] = None, **kwargs) -> Store:
+    def load(
+        cls, name: str, config_path: ty.Optional[Path] = None, **kwargs: ty.Any
+    ) -> Store:
         """Loads a Store from that has been saved in the configuration file.
         If no entry is saved under that name, then it searches for Store
         sub-classes with aliases matching `name` and checks whether they can
@@ -173,7 +177,7 @@ class Store(metaclass=ABCMeta):
         return store
 
     @classmethod
-    def remove(cls, name: str, config_path: ty.Optional[Path] = None):
+    def remove(cls, name: str, config_path: ty.Optional[Path] = None) -> None:
         """Removes the entry saved under 'name' in the config file
 
         Parameters
@@ -186,7 +190,12 @@ class Store(metaclass=ABCMeta):
         cls.save_configs(entries)
 
     def define_frameset(
-        self, id, axes=None, hierarchy=None, id_patterns=None, **kwargs
+        self,
+        id: str,
+        axes: ty.Optional[ty.Type[Axes]] = None,
+        hierarchy: ty.Optional[ty.List[ty.Union[str, Axes]]] = None,
+        id_patterns: ty.Optional[ty.Dict[str, str]] = None,
+        **kwargs: ty.Any,
     ) -> FrameSet:
         """
         Creates a FrameTree dataset definition for an existing data in the
@@ -240,7 +249,7 @@ class Store(metaclass=ABCMeta):
         )
         return dataset
 
-    def save_frameset(self, frameset: FrameSet, name: str = ""):
+    def save_frameset(self, frameset: FrameSet, name: str = "") -> None:
         """Save metadata in project definition file for future reference
 
         Parameters
@@ -261,7 +270,7 @@ class Store(metaclass=ABCMeta):
         with self.connection:
             self.save_frameset_definition(frameset.id, definition, name=save_name)
 
-    def load_frameset(self, id, name: str = "", **kwargs) -> FrameSet:
+    def load_frameset(self, id: str, name: str = "", **kwargs: ty.Any) -> FrameSet:
         """Load an existing dataset definition
 
         Parameters
@@ -291,7 +300,7 @@ class Store(metaclass=ABCMeta):
             raise KeyError(f"Did not find a dataset '{id}@{name}'")
         store_version = dct.pop(self.VERSION_KEY)
         self.check_store_version(store_version)
-        return fromdict(dct, id=id, name=name, store=self, **kwargs)
+        return fromdict(dct, id=id, name=name, store=self, **kwargs)  # type: ignore[no-any-return]
 
     def create_dataset(
         self,
@@ -301,7 +310,7 @@ class Store(metaclass=ABCMeta):
         axes: type,
         name: ty.Optional[str] = None,
         id_patterns: ty.Optional[ty.Dict[str, str]] = None,
-        **kwargs,
+        **kwargs: ty.Any,
     ) -> FrameSet:
         """Creates a new dataset with new rows to store data in
 
@@ -352,8 +361,8 @@ class Store(metaclass=ABCMeta):
         hierarchy: ty.Optional[ty.List[str]] = None,
         id_patterns: ty.Optional[ty.Dict[str, str]] = None,
         use_original_paths: bool = False,
-        **kwargs,
-    ):
+        **kwargs: ty.Any,
+    ) -> None:
         """Import a dataset from another store, transferring metadata and columns
         defined on the original dataset
 
@@ -442,7 +451,7 @@ class Store(metaclass=ABCMeta):
             imported.save(name="")
 
     @classmethod
-    def singletons(cls):
+    def singletons(cls) -> "Store":
         """Returns stores in a dictionary indexed by their aliases, for which there
         only needs to be a single instance"""
         try:
@@ -490,7 +499,7 @@ class Store(metaclass=ABCMeta):
     @classmethod
     def save_configs(
         cls, configs: ty.Dict[str, ty.Any], config_path: ty.Optional[Path] = None
-    ):
+    ) -> None:
         """_summary_
 
         Parameters
@@ -511,7 +520,7 @@ class Store(metaclass=ABCMeta):
         ids: ty.Dict[str, str],
         id_patterns: ty.Dict[str, str],
         metadata: ty.Optional[ty.Dict[str, ty.Dict[str, str]]] = None,
-    ):
+    ) -> ty.Dict[str, str]:
         """Infer IDs from those explicitly provided by using the inference patterns
         provided to the dataset definition.
 
@@ -628,7 +637,7 @@ class Store(metaclass=ABCMeta):
                 inferred_ids[freq] = inferred_id
         return inferred_ids
 
-    def get_site_license_file(self, name: str, **kwargs) -> PlainText:
+    def get_site_license_file(self, name: str, **kwargs: ty.Any) -> PlainText:
         """Access the site-wide license file
 
         Parameters
@@ -647,7 +656,7 @@ class Store(metaclass=ABCMeta):
         """
         return self.site_licenses_dataset(**kwargs).get_license_file(name)
 
-    def __bytes_repr__(self, cache):
+    def __bytes_repr__(self, cache: ty.Dict[str, ty.Any]) -> ty.Iterator[bytes]:
         """Bytes representation of store to be used in Pydra input hashing"""
         yield type(self).__module__.encode()
         yield type(self).__name__.encode()
@@ -657,7 +666,7 @@ class Store(metaclass=ABCMeta):
     ####################
 
     @abstractmethod
-    def populate_tree(self, tree: DataTree):
+    def populate_tree(self, tree: DataTree) -> None:
         """
         Populates the nodes of the data tree with those found in the dataset using
         the ``DataTree.add_leaf`` method for every "leaf" node of the dataset tree.
@@ -673,7 +682,7 @@ class Store(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def populate_row(self, row: DataRow):
+    def populate_row(self, row: DataRow) -> None:
         """
         Populate a row with all data entries found in the corresponding node in the data
         store (e.g. files within a directory, scans within an XNAT session) using the
@@ -695,7 +704,7 @@ class Store(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def get(self, entry: DataEntry, datatype: type) -> DataType:
+    def get(self, entry: DataEntry, datatype: ty.Type[DT]) -> DT:
         """
         Gets the data item corresponding to the given entry
 
@@ -713,7 +722,7 @@ class Store(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def put(self, item: DataType, entry: DataEntry) -> DataType:
+    def put(self, item: DT, entry: DataEntry) -> DT:
         """
         Updates the item in the data store corresponding to the given data entry
 
@@ -731,7 +740,9 @@ class Store(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def put_provenance(self, provenance: ty.Dict[str, ty.Any], entry: DataEntry):
+    def put_provenance(
+        self, provenance: ty.Dict[str, ty.Any], entry: DataEntry
+    ) -> None:
         """Stores provenance information for a given data item in the store
 
         Parameters
@@ -761,7 +772,7 @@ class Store(metaclass=ABCMeta):
     @abstractmethod
     def save_frameset_definition(
         self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
-    ):
+    ) -> None:
         """Save definition of dataset within the store
 
         Parameters
@@ -810,7 +821,7 @@ class Store(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def disconnect(self, session: ty.Any):
+    def disconnect(self, session: ty.Any) -> None:
         """
         If a connection session is required to the store manage it here
 
@@ -821,7 +832,7 @@ class Store(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def site_licenses_dataset(self):
+    def site_licenses_dataset(self) -> "FrameSet":
         """Can be overridden by subclasses to provide a dataset to hold site-wide licenses"""
 
     @abstractmethod
@@ -830,9 +841,9 @@ class Store(metaclass=ABCMeta):
         id: str,
         leaves: ty.List[ty.Tuple[str, ...]],
         hierarchy: ty.List[str],
-        axes: type,
-        **kwargs,
-    ):
+        axes: ty.Type[Axes],
+        **kwargs: ty.Any,
+    ) -> None:
         """Creates a new empty dataset within in the store. Used in test routines and
         importing/exporting datasets between stores
 
@@ -903,12 +914,13 @@ class Store(metaclass=ABCMeta):
         with self.connection:
             entry = self.create_entry(path, datatype, row)
             self.put(item, entry)
+        return entry
 
     ##################
     # Helper methods #
     ##################
 
-    def check_store_version(self, store_version: str):
+    def check_store_version(self, store_version: str) -> None:
         """Check whether version store used to save the dataset is compatible with the
         current version of the software. Can be overridden by store subclasses where
         appropriate

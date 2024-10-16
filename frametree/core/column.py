@@ -226,7 +226,7 @@ class DataColumn(metaclass=ABCMeta):
 
 
 @attrs.define(kw_only=True)
-class DataSource(DataColumn):
+class SourceColumn(DataColumn):
     """
     Specifies the criteria by which an item is selected from a data row to
     be a data source.
@@ -367,7 +367,7 @@ class DataSource(DataColumn):
 
 
 @attrs.define(kw_only=True)
-class DataSink(DataColumn):
+class SinkColumn(DataColumn):
     """
     A specification for a file set within a analysis to be derived from a
     processing pipeline.

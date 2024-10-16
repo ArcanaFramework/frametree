@@ -4,6 +4,7 @@ import typing as ty
 from collections import OrderedDict
 import logging
 from copy import copy, deepcopy
+from typing_extensions import Self
 import attrs.converters
 import pydra.mark
 from pydra.engine.core import Workflow
@@ -34,6 +35,8 @@ from .serialize import (
     ClassResolver,
     ObjectListConverter,
 )
+from .column import SinkColumn
+from .frameset.base import FrameSet
 
 
 logger = logging.getLogger("frametree")
@@ -65,7 +68,7 @@ class PipelineField:
     )
 
     @field.default
-    def field_default(self):
+    def field_default(self) -> str:
         return self.name
 
 
@@ -119,13 +122,13 @@ class Pipeline:
         metadata={"asdict": False}, default=None, eq=False, hash=False
     )
 
-    def __attrs_post_init__(self):
+    def __attrs_post_init__(self) -> None:
         for field in self.inputs + self.outputs:
             if field.datatype is None:
                 field.datatype = self.frameset[field.name].datatype
 
     @inputs.validator
-    def inputs_validator(self, _, inputs: ty.List[PipelineField]):
+    def inputs_validator(self, _: ty.Any, inputs: ty.List[PipelineField]) -> None:
         for inpt in inputs:
             if inpt.datatype is frametree.core.row.DataRow:  # special case
                 continue
@@ -154,7 +157,7 @@ class Pipeline:
                 )
 
     @outputs.validator
-    def outputs_validator(self, _, outputs: ty.List[PipelineField]):
+    def outputs_validator(self, _: ty.Any, outputs: ty.List[PipelineField]) -> None:
         for outpt in outputs:
             if self.frameset:
                 column = self.frameset[outpt.name]
@@ -186,13 +189,13 @@ class Pipeline:
                 )
 
     @property
-    def input_varnames(self):
+    def input_varnames(self) -> ty.List[str]:
         return [
             i.name for i in self.inputs
         ]  # [path2varname(i.name) for i in self.inputs]
 
     @property
-    def output_varnames(self):
+    def output_varnames(self) -> ty.List[str]:
         return [
             o.name for o in self.outputs
         ]  # [path2varname(o.name) for o in self.outputs]
@@ -201,7 +204,7 @@ class Pipeline:
     # self.wf.to_process.inputs.parameterisation = parameterisation
     # self.wf.per_node.source.inputs.parameterisation = parameterisation
 
-    def __call__(self, **kwargs):
+    def __call__(self, **kwargs: ty.Any) -> Workflow:
         """
         Create an "outer" workflow that interacts with the dataset to pull input
         data, process it and then push the derivatives back to the store.
@@ -400,28 +403,32 @@ class Pipeline:
     PROVENANCE_VERSION = "1.0"
     WORKFLOW_NAME = "processing"
 
-    def asdict(self, required_modules=None):
+    def asdict(
+        self, required_modules: ty.Optional[ty.Set[str]] = None
+    ) -> ty.Dict[str, ty.Any]:
         dct = asdict(self, omit=["workflow"], required_modules=required_modules)
         dct["workflow"] = pydra_asdict(self.workflow, required_modules=required_modules)
         return dct
 
     @classmethod
-    def fromdict(cls, dct, **kwargs):
+    def fromdict(cls, dct: ty.Dict[str, ty.Any], **kwargs: ty.Any) -> Self:
         return fromdict(dct, workflow=pydra_fromdict(dct["workflow"]), **kwargs)
 
     @classmethod
-    def stack(cls, *sinks):
+    def stack(
+        cls, *sinks: ty.Union[SinkColumn, str]
+    ) -> ty.List[ty.Tuple["Pipeline", ty.List[SinkColumn]]]:
         """Determines the pipelines stack, in order of execution,
         required to generate the specified sink columns.
 
         Parameters
         ----------
-        sinks : Iterable[DataSink or str]
+        sinks : Iterable[SinkColumn or str]
             the sink columns, or their names, that are to be generated
 
         Returns
         -------
-        ty.List[tuple[Pipeline, ty.List[DataSink]]]
+        ty.List[tuple[Pipeline, ty.List[SinkColumn]]]
             stack of pipelines required to produce the specified data sinks,
             along with the sinks each stage needs to produce.
 
@@ -434,7 +441,9 @@ class Pipeline:
         # Stack of pipelines to process in reverse order of required execution
         stack = OrderedDict()
 
-        def push_pipeline_on_stack(sink, downstream: ty.Tuple[Pipeline] = None):
+        def push_pipeline_on_stack(
+            sink: SinkColumn, downstream: ty.Optional[ty.Tuple[Pipeline]] = None
+        ) -> None:
             """
             Push a pipeline onto the stack of pipelines to be processed,
             detecting common upstream pipelines and resolving them to a single
@@ -442,7 +451,7 @@ class Pipeline:
 
             Parameters
             ----------
-            sink: DataSink
+            sink: SinkColumn
                 the sink to push its deriving pipeline for
             downstream : tuple[Pipeline]
                 The pipelines directly downstream of the pipeline to be added.
@@ -508,25 +517,27 @@ class Pipeline:
         return reversed(stack.values())
 
 
-def append_side_car_suffix(name, suffix):
+def append_side_car_suffix(name: str, suffix: str) -> str:
     """Creates a new combined field name out of a basename and a side car"""
     return f"{name}__o__{suffix}"
 
 
-def split_side_car_suffix(name):
+def split_side_car_suffix(name: str) -> ty.List[str]:
     """Splits the basename from a side car sufix (as combined by `append_side_car_suffix`"""
     return name.split("__o__")
 
 
-@pydra.mark.task
-@pydra.mark.annotate({"return": {"ids": ty.List[str], "cant_process": ty.List[str]}})
+@pydra.mark.task  # type: ignore[misc]
+@pydra.mark.annotate(
+    {"return": {"ids": ty.List[str], "cant_process": ty.List[str]}}
+)  # type: ignore[misc]
 def to_process(
     dataset: frametree.core.frameset.base.FrameSet,
     row_frequency: Axes,
     outputs: ty.List[PipelineField],
     requested_ids: ty.Union[ty.List[str], None],
     parameterisation: ty.Dict[str, ty.Any],
-):
+) -> ty.Tuple[ty.List[str], bool]:
     if requested_ids is None:
         requested_ids = dataset.row_ids(row_frequency)
     ids = []
@@ -551,8 +562,10 @@ def source_items(
     row_frequency: Axes,
     id: str,
     inputs: ty.List[PipelineField],
-    parameterisation: dict,
-):
+    parameterisation: ty.Dict[str, ty.Any],
+) -> ty.Tuple[
+    ty.Union["frametree.core.row.DataRow", DataType, ty.Dict[str, ty.Any]], ...
+]:
     """Selects the items from the dataset corresponding to the input
     sources and retrieves them from the store to a cache on
     the host
@@ -567,10 +580,15 @@ def source_items(
         the ID of the row to source from
     parameterisation : dict
         provenance information... can't remember why this was used here...
+
+    Returns
+    -------
+    tuple
+        the sourced data items
     """
     logger.debug("Sourcing %s", inputs)
-    provenance = copy(parameterisation)
-    sourced = []
+    parameterisation = copy(parameterisation)
+    sourced: ty.List[ty.Union["frametree.core.row.DataRow", DataType]] = []
     row = dataset.row(row_frequency, id)
     with dataset.store.connection:
         missing_inputs = {}
@@ -586,10 +604,16 @@ def source_items(
                 missing_inputs[inpt.name] = str(e)
         if missing_inputs:
             raise FrameTreeDataMatchError("\n\n" + "\n\n".join(missing_inputs.values()))
-    return tuple(sourced) + (provenance,)
+    return tuple(sourced) + (parameterisation,)
 
 
-def sink_items(dataset, row_frequency, id, provenance, **to_sink):
+def sink_items(
+    dataset: FrameSet,
+    row_frequency: Axes,
+    id: str,
+    provenance: ty.Dict[str, ty.Any],
+    **to_sink: ty.Any,
+) -> str:
     """Stores items generated by the pipeline back into the store
 
     Parameters
@@ -604,6 +628,11 @@ def sink_items(dataset, row_frequency, id, provenance, **to_sink):
         provenance information to be stored alongside the generated data
     **to_sink : dict[str, DataType]
         data items to be stored in the data store
+
+    Returns
+    -------
+    str
+        the ID of the row that was processed
     """
     logger.debug("Sinking %s", to_sink)
     row = dataset.row(row_frequency, id)

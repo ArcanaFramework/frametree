@@ -29,6 +29,8 @@ logger = logging.getLogger("frametree")
 # '~')
 special_dir_re = re.compile(r"(__.*__$|\..*|~.*)")
 
+DT = ty.TypeVar("DT", bound=DataType)
+
 
 @attrs.define
 class LocalStore(Store):
@@ -70,7 +72,7 @@ class LocalStore(Store):
     ####################
 
     @abstractmethod
-    def get_field(self, entry: DataEntry, datatype: type) -> Field:
+    def get_field(self, entry: DataEntry, datatype: type) -> Field[ty.Any, ty.Any]:
         """Retrieves a field from a data entry
 
         Parameters
@@ -121,7 +123,7 @@ class LocalStore(Store):
         """
 
     @abstractmethod
-    def put_field(self, field: Field, entry: DataEntry):
+    def put_field(self, field: Field[ty.Any, ty.Any], entry: DataEntry) -> None:
         """Stores a field into a data entry
 
         Parameters
@@ -192,7 +194,7 @@ class LocalStore(Store):
     @abstractmethod
     def put_fileset_provenance(
         self, provenance: ty.Dict[str, ty.Any], entry: DataEntry
-    ):
+    ) -> None:
         """Puts provenance associated with a file-set data entry into the store
 
         Parameters
@@ -221,7 +223,9 @@ class LocalStore(Store):
         """
 
     @abstractmethod
-    def put_field_provenance(self, provenance: ty.Dict[str, ty.Any], entry: DataEntry):
+    def put_field_provenance(
+        self, provenance: ty.Dict[str, ty.Any], entry: DataEntry
+    ) -> None:
         """Puts provenance associated with a field data entry into the store
 
         Parameters
@@ -236,10 +240,10 @@ class LocalStore(Store):
     # Abstractmethod implementations #
     ##################################
 
-    def connect(self):
+    def connect(self) -> None:
         return None
 
-    def disconnect(self, connection):
+    def disconnect(self, connection: ty.Any) -> None:
         pass
 
     def create_entry(self, path: str, datatype: type, row: DataRow) -> DataEntry:
@@ -249,13 +253,17 @@ class LocalStore(Store):
             uri = self.field_uri(path, datatype, row)
         return row.add_entry(path=path, datatype=datatype, uri=uri)
 
-    def save_frameset_definition(self, dataset_id, definition, name):
+    def save_frameset_definition(
+        self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
+    ) -> None:
         definition_path = self.definition_save_path(dataset_id, name)
         definition_path.parent.mkdir(exist_ok=True, parents=True)
         with open(definition_path, "w") as f:
             yaml.dump(definition, f)
 
-    def load_frameset_definition(self, dataset_id, name):
+    def load_frameset_definition(
+        self, dataset_id: str, name: str
+    ) -> ty.Dict[str, ty.Any]:
         fspath = self.definition_save_path(dataset_id, name)
         if fspath.exists():
             with open(fspath) as f:
@@ -264,7 +272,7 @@ class LocalStore(Store):
             definition = None
         return definition
 
-    def get(self, entry: DataEntry, datatype: type) -> DataType:
+    def get(self, entry: DataEntry, datatype: ty.Type[DT]) -> DT:
         if entry.datatype.is_fileset:
             item = self.get_fileset(entry, datatype)
         elif entry.datatype.is_field:
@@ -275,7 +283,7 @@ class LocalStore(Store):
             )
         return item
 
-    def put(self, item: DataType, entry: DataEntry):
+    def put(self, item: DT, entry: DataEntry) -> DT:
         if entry.datatype.is_fileset:
             cpy = self.put_fileset(item, entry)
         elif entry.datatype.is_field:
@@ -295,7 +303,9 @@ class LocalStore(Store):
             raise DatatypeUnsupportedByStoreError(entry.datatype, self)
         return provenance
 
-    def put_provenance(self, provenance: ty.Dict[str, ty.Any], entry: DataEntry):
+    def put_provenance(
+        self, provenance: ty.Dict[str, ty.Any], entry: DataEntry
+    ) -> None:
         if entry.datatype.is_fileset:
             self.put_fileset_provenance(provenance, entry)
         elif entry.datatype.is_field:
@@ -303,10 +313,10 @@ class LocalStore(Store):
         else:
             raise DatatypeUnsupportedByStoreError(entry.datatype, self)
 
-    def root_dir(self, row) -> Path:
+    def root_dir(self, row: DataRow) -> Path:
         return Path(row.frameset.id)
 
-    def site_licenses_dataset(self, **kwargs):
+    def site_licenses_dataset(self, **kwargs: ty.Any):
         """Provide a place to store hold site-wide licenses"""
         dataset_root = get_home_dir() / self.SITE_LICENSES_DIR
         if not dataset_root.exists():
@@ -323,7 +333,7 @@ class LocalStore(Store):
     # Other overrides #
     ###################
 
-    def define_frameset(self, id, *args, **kwargs):
+    def define_frameset(self, id: str, *args: ty.Any, **kwargs: ty.Any):
         if not Path(id).exists():
             raise FrameTreeUsageError(f"Path to dataset root '{id}'' does not exist")
         return super().define_frameset(id, *args, **kwargs)
@@ -332,7 +342,7 @@ class LocalStore(Store):
     # Helper methods #
     ##################
 
-    def update_json(self, fpath: Path, key, value):
+    def update_json(self, fpath: Path, key: str, value: ty.Any) -> None:
         """Updates a JSON file in a multi-process safe way"""
         # Open fields JSON, locking to prevent other processes
         # reading or writing
@@ -349,7 +359,7 @@ class LocalStore(Store):
             with open(fpath, "w") as f:
                 json.dump(dct, f, indent=4)
 
-    def read_from_json(self, fpath, key):
+    def read_from_json(self, fpath: Path, key: str) -> ty.Any:
         """
         Load fields JSON, locking to prevent read/write conflicts
         Would be better if only checked if locked to allow
@@ -374,7 +384,7 @@ class LocalStore(Store):
                 "{} does not exist in the local store {}".format(key, self)
             )
 
-    def definition_save_path(self, dataset_id, name):
+    def definition_save_path(self, dataset_id: str, name: str) -> Path:
         if not name:
             name = "_"
         return Path(dataset_id) / self.FRAMETREE_DIR / name / "definition.yaml"

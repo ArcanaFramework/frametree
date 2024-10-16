@@ -8,6 +8,7 @@ import time
 import yaml
 from fileformats.core import FileSet, Field
 from frametree.core.store import RemoteStore
+from frametree.core.frameset import FrameSet
 from frametree.core.row import DataRow
 from frametree.core.tree import DataTree
 from frametree.core.entry import DataEntry
@@ -36,7 +37,7 @@ class MockRemote(RemoteStore):
     """
 
     remote_dir: Path = attrs.field(converter=full_path)
-    mock_delay: int = 0
+    mock_delay: float = 0
     connected: bool = False
     "Mock delay used to simulate time it takes to download from remote"
 
@@ -51,7 +52,7 @@ class MockRemote(RemoteStore):
     # Store abstractmethods #
     #############################
 
-    def populate_tree(self, tree: DataTree):
+    def populate_tree(self, tree: DataTree) -> None:
         """
         Find all data rows for a dataset in the store and populate the
         FrameSet object using its `add_leaf` method.
@@ -73,7 +74,7 @@ class MockRemote(RemoteStore):
                 ids = self.get_ids_from_row_dirname(row_dir)
                 tree.add_leaf([ids[h] for h in tree.hierarchy])
 
-    def populate_row(self, row: DataRow):
+    def populate_row(self, row: DataRow) -> None:
         """
         Find all data items within a data row and populate the DataRow object
         with them using the `add_fileset` and `add_field` methods.
@@ -103,7 +104,7 @@ class MockRemote(RemoteStore):
 
     def save_frameset_definition(
         self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
-    ):
+    ) -> None:
         """Save definition of dataset within the store
 
         Parameters
@@ -148,15 +149,15 @@ class MockRemote(RemoteStore):
                 definition = yaml.load(f, Loader=yaml.Loader)
         else:
             definition = None
-        return definition
+        return definition  # type: ignore[no-any-return]
 
-    def connect(self):
+    def connect(self) -> None:
         """
         If a connection session is required to the store manage it here
         """
         self.connected = True
 
-    def disconnect(self, session):
+    def disconnect(self, session: ty.Any) -> None:
         """
         If a connection session is required to the store manage it here
         """
@@ -172,7 +173,9 @@ class MockRemote(RemoteStore):
             provenance = None
         return provenance
 
-    def put_provenance(self, provenance: ty.Dict[str, ty.Any], entry: DataEntry):
+    def put_provenance(
+        self, provenance: ty.Dict[str, ty.Any], entry: DataEntry
+    ) -> None:
         self._check_connected()
         prov_path = entry.uri.with_suffix(".json")
         with open(prov_path, "w") as f:
@@ -183,8 +186,9 @@ class MockRemote(RemoteStore):
         id: str,
         leaves: ty.List[ty.Tuple[str, ...]],
         hierarchy: ty.List[str],
-        **kwargs,
-    ):
+        axes: ty.Type[Axes],
+        **kwargs: ty.Any,
+    ) -> None:
         """reate test data within store with rows specified by row_ids
 
         Parameters
@@ -220,7 +224,7 @@ class MockRemote(RemoteStore):
         time.sleep(self.mock_delay)
         return data_path
 
-    def upload_files(self, cache_path: Path, entry: DataEntry):
+    def upload_files(self, cache_path: Path, entry: DataEntry) -> None:
         self._check_connected()
         entry_fspath = self.entry_fspath(entry)
         if entry_fspath.exists():
@@ -252,7 +256,7 @@ class MockRemote(RemoteStore):
             value = f.read()
         return value
 
-    def upload_value(self, value, entry: DataEntry):
+    def upload_value(self, value: ty.Any, entry: DataEntry) -> None:
         self._check_connected()
         with open(self.entry_fspath(entry) / self.FIELDS_FILE, "w") as f:
             f.write(str(value))
@@ -300,13 +304,13 @@ class MockRemote(RemoteStore):
     # Helper methods #
     ##################
 
-    def dataset_fspath(self, dataset):
+    def dataset_fspath(self, dataset: FrameSet) -> Path:
         dataset_id = (
             dataset.id if not isinstance(dataset, (str, bytes, Path)) else dataset
         )
         return self.remote_dir / dataset_id
 
-    def entry_fspath(self, entry):
+    def entry_fspath(self, entry: DataEntry) -> Path:
         return self.remote_dir / entry.uri
 
     def _create_entry(self, path: str, datatype: type, row: DataRow) -> DataEntry:
@@ -319,12 +323,12 @@ class MockRemote(RemoteStore):
         self.entry_fspath(entry).mkdir(parents=True)
         return entry
 
-    def definition_save_path(self, dataset_id, name):
+    def definition_save_path(self, dataset_id: str, name: str) -> Path:
         if not name:
             name = self.EMPTY_DATASET_NAME
         return self.dataset_fspath(dataset_id) / self.METADATA_DIR / (name + ".yml")
 
-    def get_row_path(self, row: DataRow):
+    def get_row_path(self, row: DataRow) -> Path:
         dataset_fspath = self.dataset_fspath(row.frameset)
         try:
             row_path = (
@@ -345,7 +349,7 @@ class MockRemote(RemoteStore):
     @classmethod
     def get_row_dirname_from_ids(
         cls, ids: ty.Dict[ty.Union[str, Axes], str], hierarchy: ty.List[str]
-    ):
+    ) -> str:
         # Ensure that ID keys are strings not Axes enums
         ids = {str(f): i for f, i in ids.items()}
         try:
@@ -355,12 +359,14 @@ class MockRemote(RemoteStore):
         return row_dirname
 
     @classmethod
-    def get_ids_from_row_dirname(cls, row_dir: Path):
+    def get_ids_from_row_dirname(cls, row_dir: Path) -> ty.Dict[str, str]:
         parts = row_dir.name.split(".")
         return dict(p.split("=") for p in parts)
 
     @classmethod
-    def iterdir(cls, dr, skip_suffixes=()):
+    def iterdir(
+        cls, dr: Path, skip_suffixes: ty.Tuple[str, ...] = ()
+    ) -> ty.Iterator[Path]:
         """Iterate a directory, skipping any hidden files (i.e. starting with '.'
         or any files ending in the provided suffixes)
 
@@ -386,7 +392,7 @@ class MockRemote(RemoteStore):
             )
         )
 
-    def _check_connected(self):
+    def _check_connected(self) -> None:
         if not self.connected:
             raise RuntimeError("Mock data store has not been connected")
 

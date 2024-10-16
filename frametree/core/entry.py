@@ -119,7 +119,7 @@ class DataEntry:
             item = self.datatype(item)
         self.row.frameset.store.put(self, item)
 
-    def get_item(self, datatype=None):
+    def get_item(self, datatype: ty.Optional[ty.Type[DataType]] = None) -> DataType:
         if datatype is None:
             datatype = self.datatype
         return self.row.frameset.store.get(self, datatype)

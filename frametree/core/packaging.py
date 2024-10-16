@@ -1,6 +1,6 @@
 from __future__ import annotations
-from typing import Sequence
 import json
+import typing as ty
 import importlib_metadata
 import pkgutil
 from importlib import import_module
@@ -72,7 +72,7 @@ def list_subclasses(package, base_class, subpkg=None):
     return subclasses
 
 
-def package_from_module(module: Sequence[str]):
+def package_from_module(module: Iterable[str]) -> ty.Any:
     """Resolves the installed package (e.g. from PyPI) that provides the given
     module.
 
@@ -177,7 +177,7 @@ def installed_module_paths(pkg: pkg_resources.DistInfoDistribution):
     return paths
 
 
-def pkg_versions(modules):
+def pkg_versions(modules: Iterable[str]) -> dict[str, str]:
     versions = {p.key: p.version for p in package_from_module(modules)}
     versions[PACKAGE_NAME] = __version__
     return versions
