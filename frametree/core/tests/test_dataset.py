@@ -38,7 +38,7 @@ def test_dataset_in_workflow_pickle(dataset: FrameSet, tmp_dir: Path):
     wf.pickle_task()
 
 
-@mark.task
+@python.define
 @mark.annotate({"a": int, "b": int, "dataset": FrameSet, "return": {"c": int}})
 def func(a, b, dataset):
     return a + b
