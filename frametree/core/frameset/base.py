@@ -9,7 +9,7 @@ import attrs
 import attrs.filters
 from attrs.converters import default_if_none
 from typing_extensions import Self
-from pydra import Workflow
+from pydra.compose import workflow
 from pydra.utils.hash import hash_single, bytes_repr_mapping_contents
 from fileformats.text import Plain as PlainText
 from frametree.core.exceptions import (
@@ -667,7 +667,7 @@ class FrameSet:
     def apply(
         self,
         name: str,
-        workflow: Workflow,
+        task: workflow.Task,
         inputs: ty.List[
             ty.Union[
                 "PipelineField",
@@ -738,7 +738,7 @@ class FrameSet:
             name=name,
             frameset=self,
             row_frequency=row_frequency,
-            workflow=workflow,
+            task=task,
             inputs=inputs,
             outputs=outputs,
             converter_args=converter_args,

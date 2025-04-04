@@ -2,7 +2,7 @@ import shutil
 from pathlib import Path
 import typing as ty
 import attrs
-from pydra.design import python, workflow
+from pydra.compose import python, workflow
 import fileformats.core
 from fileformats.generic import File
 import fileformats.text

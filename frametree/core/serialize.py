@@ -16,9 +16,12 @@ import logging
 import cloudpickle as cp
 import attrs
 from fileformats.core import from_mime, to_mime, DataType
-from pydra.engine.core import Workflow, LazyField, TaskBase
-from pydra.engine.task import FunctionTask
-from pydra.utils.typing import TypeParser
+import pydra.compose.base
+import pydra.compose.python
+import pydra.compose.workflow
+from pydra.engine.workflow import Workflow
+from pydra.utils.typing import TypeParser, is_lazy
+from pydra.engine.lazy import LazyField
 from frametree.core.exceptions import FrameTreeUsageError
 from .packaging import pkg_versions, package_from_module
 from .utils import add_exc_note
@@ -448,7 +451,9 @@ NOTHING_STR = "__PIPELINE_INPUT__"
 
 
 def pydra_asdict(
-    obj: TaskBase, required_modules: ty.Set[str], workflow: ty.Optional[Workflow] = None
+    obj: pydra.compose.base.Task,
+    required_modules: ty.Set[str],
+    workflow: ty.Optional[Workflow] = None,
 ) -> ty.Dict[str, ty.Any]:
     """Converts a Pydra Task/Workflow into a dictionary that can be serialised
 
@@ -480,7 +485,7 @@ def pydra_asdict(
         for outpt_name, lf in obj._connections:
             outputs[outpt_name] = {"task": lf.name, "field": lf.field}
     else:
-        if isinstance(obj, FunctionTask):
+        if isinstance(obj, pydra.compose.python.Task):
             func = cp.loads(obj.inputs._func)
             module = inspect.getmodule(func)
             dct["class"] = "<" + module.__name__ + ":" + func.__name__ + ">"
@@ -502,7 +507,7 @@ def pydra_asdict(
     for inpt_name in obj.input_names:
         if not inpt_name.startswith("_"):
             inpt_value = getattr(obj.inputs, inpt_name)
-            if isinstance(inpt_value, LazyField):
+            if is_lazy(inpt_value):
                 inputs[inpt_name] = {"field": inpt_value.field}
                 # If the lazy field comes from the workflow lazy in, we omit
                 # the "task" item
@@ -529,7 +534,7 @@ def pydra_fromdict(
     dct: ty.Dict[ty.Any, ty.Any],
     workflow: ty.Optional[Workflow] = None,
     **kwargs: ty.Any,
-) -> TaskBase:
+) -> pydra.compose.base.Task:
     """Recreates a Pydra Task/Workflow from a dictionary object created by
     `pydra_asdict`
 

@@ -21,7 +21,7 @@ def test_apply_cli(saved_dataset: FrameSet, concatenate_task, cli_runner):
     saved_dataset.add_sink("concatenated", TextFile)
     saved_dataset.apply(
         name="a_pipeline",
-        workflow=concatenate_task(name="workflow", duplicates=duplicates),
+        task=concatenate_task(name="workflow", duplicates=duplicates),
         inputs=[("file1", "in_file1"), ("file2", "in_file2")],
         outputs=[("concatenated", "out_file")],
     )

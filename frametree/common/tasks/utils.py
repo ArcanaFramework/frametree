@@ -1,8 +1,7 @@
 import typing as ty
 import json
-from pydra.design import python
-from pydra.engine.core import File
-from fileformats.core import FileSet
+from pydra.compose import python
+from fileformats.generic import FileSet, File
 
 
 def identity(**fields: ty.Any) -> ty.Tuple[ty.Any, ...]:

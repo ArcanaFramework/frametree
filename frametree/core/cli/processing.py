@@ -3,7 +3,7 @@ import logging
 import typing as ty
 import cloudpickle as cp
 import click
-from pydra.engine.core import TaskBase
+import pydra.compose.base
 from fileformats.core import from_mime
 from frametree.core.frameset.base import FrameSet
 from frametree.core.store import Store
@@ -238,7 +238,7 @@ def apply(
 ):
 
     frameset = FrameSet.load(address)
-    workflow = ClassResolver(TaskBase, alternative_types=[ty.Callable])(
+    workflow = ClassResolver(pydra.compose.base.Task, alternative_types=[ty.Callable])(
         workflow_location
     )(name="workflow", **{n: parse_value(v) for n, v in parameter})
 

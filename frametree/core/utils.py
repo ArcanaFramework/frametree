@@ -14,9 +14,7 @@ from collections.abc import Iterable
 from typing_extensions import Self
 from types import TracebackType
 import cloudpickle as cp
-from pydra.engine.core import Workflow, LazyField, TaskBase
-from pydra.engine.task import FunctionTask
-from pydra.engine.specs import BaseSpec, SpecInfo
+import pydra.compose.base
 from frametree.core.exceptions import FrameTreeUsageError, FrameTreeError
 
 
@@ -225,40 +223,6 @@ def label2path(label: str) -> str:
     return path
 
 
-def func_task(
-    func: ty.Callable[..., ty.Any],
-    in_fields: ty.List[ty.Tuple[str, ty.Type[ty.Any]]],
-    out_fields: ty.List[ty.Tuple[str, ty.Type[ty.Any]]],
-    **inputs: ty.Any,
-) -> FunctionTask:
-    """Syntactic sugar for creating a FunctionTask
-
-    Parameters
-    ----------
-    func : Callable
-        The function to wrap
-    input_fields : ty.List[ty.Tuple[str, type]]
-        The list of input fields to create for the task
-    output_fields : ty.List[ty.Tuple[str, type]]
-        The list of output fields to create for the task
-    **inputs
-        Inputs to set for the task
-
-    Returns
-    -------
-    pydra.FunctionTask
-        The wrapped task"""
-    func_name = func.__name__.capitalize()
-    return FunctionTask(
-        func,
-        input_spec=SpecInfo(name=f"{func_name}In", bases=(BaseSpec,), fields=in_fields),
-        output_spec=SpecInfo(
-            name=f"{func_name}Out", bases=(BaseSpec,), fields=out_fields
-        ),
-        **inputs,
-    )
-
-
 def set_loggers(
     loglevel: str, pydra_level: str = "warning", depend_level: str = "warning"
 ) -> None:
@@ -438,52 +402,6 @@ extract_import_re = re.compile(r"\s*(?:from|import)\s+([\w\.]+)")
 NOTHING_STR = "__PIPELINE_INPUT__"
 
 
-def pydra_eq(a: TaskBase, b: TaskBase) -> bool:
-    """Compares two Pydra Task/Workflows for equality
-
-    Parameters
-    ----------
-    a : pydra.engine.core.TaskBase
-        first object to compare
-    b : pydra.engine.core.TaskBase
-        second object to compare
-
-    Returns
-    -------
-    bool
-        whether the two objects are equal
-    """
-    if type(a) is not type(b):
-        return False
-    if a.name != b.name:
-        return False
-    if sorted(a.input_names) != sorted(b.input_names):
-        return False
-    if a.output_spec.fields != b.output_spec.fields:
-        return False
-    for inpt_name in a.input_names:
-        a_input = getattr(a.inputs, inpt_name)
-        b_input = getattr(b.inputs, inpt_name)
-        if isinstance(a_input, LazyField):
-            if a_input.field != b_input.field or a_input.name != b_input.name:
-                return False
-        elif a_input != b_input:
-            return False
-    if isinstance(a, Workflow):
-        a_node_names = [n.name for n in a.nodes]
-        b_node_names = [n.name for n in b.nodes]
-        if a_node_names != b_node_names:
-            return False
-        for node_name in a_node_names:
-            if not pydra_eq(getattr(a, node_name), getattr(b, node_name)):
-                return False
-    else:
-        if isinstance(a, FunctionTask):
-            if a.inputs._func != b.inputs._func:
-                return False
-    return True
-
-
 def show_workflow_errors(
     pipeline_cache_dir: Path, omit_nodes: ty.Collection[str] = ()
 ) -> str:
@@ -504,7 +422,7 @@ def show_workflow_errors(
     # PKL_FILES = ["_task.pklz", "_result.pklz", "_error.pklz"]
     out_str = ""
 
-    def load_contents(fpath: Path) -> ty.Optional[TaskBase]:
+    def load_contents(fpath: Path) -> ty.Optional[pydra.compose.base.Task]:
         contents = None
         if fpath.exists():
             with open(fpath, "rb") as f:
