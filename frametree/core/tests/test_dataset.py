@@ -1,6 +1,8 @@
 from pathlib import Path
 import cloudpickle as cp
 from pydra.compose import python, workflow
+from pydra.engine.job import Job
+from pydra.engine.submitter import Submitter
 from pydra.utils.hash import hash_object
 from frametree.core.frameset.base import FrameSet
 from frametree.core.serialize import asdict, fromdict
@@ -36,9 +38,13 @@ def test_dataset_in_workflow_pickle(dataset: FrameSet, tmp_dir: Path):
 
         return test_func.c
 
-    wf = Workflow(a=1)
+    job = Job(
+        task=Workflow(a=1),
+        submitter=Submitter(),
+        name="job",
+    )
 
-    wf.pickle_task()
+    job.pickle_task()
 
 
 @python.define(outputs=["c"])
