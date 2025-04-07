@@ -1,13 +1,16 @@
-import os
 import attrs
 import typing as ty
 from collections import OrderedDict
 import logging
-from copy import copy, deepcopy
+from copy import copy
 from typing_extensions import Self
 import attrs.converters
-import pydra.mark
-from pydra.engine.core import Workflow
+from fileformats.core import DataType
+from fileformats.core.exceptions import FormatConversionError
+from pydra.utils.typing import StateArray
+from pydra.utils import task_fields
+from pydra.compose.base import Task
+from pydra.compose import workflow, python
 from frametree.core.exceptions import (
     FrameTreeNameError,
     FrameTreeUsageError,
@@ -16,18 +19,14 @@ from frametree.core.exceptions import (
     FrameTreeOutputNotProducedException,
     FrameTreeDataMatchError,
 )
-from fileformats.core import DataType
-from fileformats.core.exceptions import FormatConversionError
 import frametree.core.frameset.base
 import frametree.core.row
-from .axes import Axes
-from .utils import (
-    func_task,
-    pydra_eq,
+from frametree.core.axes import Axes
+from frametree.core.utils import (
     path2varname,
     add_exc_note,
 )
-from .serialize import (
+from frametree.core.serialize import (
     asdict,
     fromdict,
     pydra_asdict,
@@ -35,8 +34,8 @@ from .serialize import (
     ClassResolver,
     ObjectListConverter,
 )
-from .column import SinkColumn
-from .frameset.base import FrameSet
+from frametree.core.column import SinkColumn
+from frametree.core.frameset.base import FrameSet
 
 
 logger = logging.getLogger("frametree")
@@ -78,7 +77,7 @@ logger = logging.getLogger("frametree")
 @attrs.define
 class Pipeline:
     """A thin wrapper around a Pydra workflow to link it to sources and sinks
-    within a dataset
+    within a frameset
 
     Parameters
     ----------
@@ -86,7 +85,7 @@ class Pipeline:
         the name of the pipeline, used to differentiate it from others
     row_frequency : Axes, optional
         The row_frequency of the pipeline, i.e. the row_frequency of the
-        derivatvies within the dataset, e.g. per-session, per-subject, etc,
+        derivatvies within the frameset, e.g. per-session, per-subject, etc,
         by default None
     workflow : Workflow
         The pydra workflow that performs the actual analysis
@@ -102,13 +101,13 @@ class Pipeline:
     converter_args : dict[str, dict]
         keyword arguments passed on to the converter to control how the
         conversion is performed.
-    dataset : FrameSet
-        the dataset the pipeline has been applied to
+    frameset : FrameSet
+        the frameset the pipeline has been applied to
     """
 
     name: str = attrs.field()
     row_frequency: Axes = attrs.field()
-    workflow: Workflow = attrs.field(eq=attrs.cmp_using(pydra_eq))
+    task: Task = attrs.field()
     inputs: ty.List[PipelineField] = attrs.field(
         converter=ObjectListConverter(PipelineField)
     )
@@ -137,7 +136,7 @@ class Pipeline:
                 # Check that a converter can be found if required
                 if inpt.datatype:
                     try:
-                        inpt.datatype.get_converter(column.datatype, name="dummy")
+                        inpt.datatype.get_converter(column.datatype)
                     except FormatConversionError as e:
                         msg = (
                             f"required to in conversion of '{inpt.name}' input "
@@ -149,11 +148,12 @@ class Pipeline:
                 raise ValueError(
                     f"Datatype must be explicitly set for {inpt.name} in unbound Pipeline"
                 )
-            if inpt.field not in self.workflow.input_names:
+            field_names = [f.name for f in task_fields(self.task)]
+            if inpt.field not in field_names:
                 raise FrameTreeNameError(
                     inpt.field,
                     f"{inpt.field} is not in the input spec of '{self.name}' "
-                    f"pipeline: " + "', '".join(self.workflow.input_names),
+                    f"pipeline: " + "', '".join(field_names),
                 )
 
     @outputs.validator
@@ -169,7 +169,7 @@ class Pipeline:
                 # Check that a converter can be found if required
                 if outpt.datatype:
                     try:
-                        column.datatype.get_converter(outpt.datatype, name="dummy")
+                        column.datatype.get_converter(outpt.datatype)
                     except FormatConversionError as e:
                         msg = (
                             f"required to in conversion of '{outpt.name}' output "
@@ -181,11 +181,12 @@ class Pipeline:
                 raise ValueError(
                     f"Datatype must be explicitly set for {outpt.name} in unbound Pipeline"
                 )
-            if outpt.field not in self.workflow.output_names:
+            field_names = [f.name for f in task_fields(self.task.Outputs)]
+            if outpt.field not in field_names:
                 raise FrameTreeNameError(
                     outpt.field,
                     f"{outpt.field} is not in the output spec of '{self.name}' "
-                    f"pipeline: " + "', '".join(self.workflow.output_names),
+                    f"pipeline: " + "', '".join(field_names),
                 )
 
     @property
@@ -204,9 +205,9 @@ class Pipeline:
     # self.wf.to_process.inputs.parameterisation = parameterisation
     # self.wf.per_node.source.inputs.parameterisation = parameterisation
 
-    def __call__(self, **kwargs: ty.Any) -> Workflow:
+    def __call__(self, ids: ty.List[str] = None) -> workflow.Task:
         """
-        Create an "outer" workflow that interacts with the dataset to pull input
+        Create an "outer" workflow that interacts with the frameset to pull input
         data, process it and then push the derivatives back to the store.
 
         Parameters
@@ -217,8 +218,8 @@ class Pipeline:
 
         Returns
         -------
-        pydra.Workflow
-            a Pydra workflow that iterates through the dataset, pulls data to the
+        pydra.compose.workflow.Task
+            a Pydra workflow that iterates through the frameset, pulls data to the
             processing node, executes the analysis workflow on each data row,
             then uploads the outputs back to the data store
 
@@ -228,177 +229,15 @@ class Pipeline:
             If the new pipeline will overwrite an existing pipeline connection
             with overwrite == False.
         """
-
-        # Create the outer workflow to link the analysis workflow with the
-        # data row iteration and store connection rows
-        wf = Workflow(name=self.name, input_spec=["ids"], **kwargs)
-
-        # Generate list of rows to process checking existing outputs
-        wf.add(
-            to_process(
-                dataset=self.frameset,
-                row_frequency=self.row_frequency,
-                outputs=self.outputs,
-                requested_ids=None,  # FIXME: Needs to be set dynamically
-                name="to_process",
-            )
+        return PipelineWorkflow(
+            task=self.task,
+            ids=ids,
+            frameset=self.frameset,
+            row_frequency=self.row_frequency,
+            inputs=self.inputs,
+            outputs=self.outputs,
+            converter_args=self.converter_args,
         )
-
-        # Create the workflow that will be split across all rows for the
-        # given data row_frequency
-        wf.add(
-            Workflow(name="per_row", input_spec=["id"]).split(
-                id=wf.to_process.lzout.ids
-            )
-        )
-
-        # Automatically output interface for source node to include sourced
-        # columns
-        source_out_dct = {}
-        for inpt in self.inputs:
-            # If the row frequency of the column is not a parent of the pipeline
-            # then the input will be a sequence of all the child rows
-            if inpt.datatype is frametree.core.row.DataRow:
-                dtype = frametree.core.row.DataRow
-            else:
-                dtype = self.frameset[inpt.name].datatype
-                # If the row frequency of the source column is higher than the frequency
-                # of the pipeline, then the related elements of the source column are
-                # collected into a list and passed to the pipeline
-                if not self.frameset[inpt.name].row_frequency.is_parent(
-                    self.row_frequency, if_match=True
-                ):
-                    dtype = ty.List[dtype]
-            source_out_dct[inpt.name] = dtype
-        source_out_dct["provenance_"] = ty.Dict[str, ty.Any]
-
-        wf.per_row.add(
-            func_task(
-                source_items,
-                in_fields=[
-                    ("dataset", frametree.core.frameset.base.FrameSet),
-                    ("row_frequency", Axes),
-                    ("id", str),
-                    ("inputs", ty.List[PipelineField]),
-                    ("parameterisation", ty.Dict[str, ty.Any]),
-                ],
-                out_fields=list(source_out_dct.items()),
-                name="source",
-                dataset=self.frameset,
-                row_frequency=self.row_frequency,
-                inputs=self.inputs,
-                id=wf.per_row.lzin.id,
-            )
-        )
-
-        # Set the inputs
-        sourced = {
-            i.name: getattr(wf.per_row.source.lzout, i.name) for i in self.inputs
-        }
-
-        # Do input datatype conversions if required
-        for inpt in self.inputs:
-            if inpt.datatype == frametree.core.row.DataRow:
-                continue
-            stored_format = self.frameset[inpt.name].datatype
-            converter = inpt.datatype.get_converter(
-                stored_format,
-                name=f"{inpt.name}_input_converter",
-                **self.converter_args.get(inpt.name, {}),
-            )
-            if converter is not None:  # None if no conversion required
-                logger.info(
-                    "Adding implicit conversion for input '%s' " "from %s to %s",
-                    inpt.name,
-                    stored_format.mime_like,
-                    inpt.datatype.mime_like,
-                )
-                converter.inputs.in_file = sourced.pop(inpt.name)
-                if issubclass(source_out_dct[inpt.name], ty.Sequence):
-                    # Iterate over all items in the sequence and convert them
-                    # separately
-                    converter.split("to_convert")
-                # Insert converter
-                wf.per_row.add(converter)
-                # Map converter output to input_interface
-                sourced[inpt.name] = converter.lzout.out_file
-
-        # Add the "inner" workflow of the pipeline that actually performs the
-        # analysis/processing
-        wf.per_row.add(deepcopy(self.workflow))
-        # Make connections to "inner" workflow
-        for inpt in self.inputs:
-            setattr(
-                getattr(wf.per_row, self.workflow.name).inputs,
-                inpt.field,
-                sourced[inpt.name],
-            )
-
-        # Set datatype converters where required
-        to_sink = {
-            o.name: getattr(getattr(wf.per_row, self.workflow.name).lzout, o.field)
-            for o in self.outputs
-        }
-
-        # Do output datatype conversions if required
-        for outpt in self.outputs:
-            stored_format = self.frameset[outpt.name].datatype
-            sink_name = path2varname(outpt.name)
-            converter = stored_format.get_converter(
-                outpt.datatype,
-                name=f"{sink_name}_output_converter",
-                **self.converter_args.get(outpt.name, {}),
-            )
-            if converter:
-                logger.info(
-                    "Adding implicit conversion for output '%s' " "from %s to %s",
-                    outpt.name,
-                    outpt.datatype.mime_like,
-                    stored_format.mime_like,
-                )
-                # Insert converter
-                converter.inputs.in_file = to_sink.pop(sink_name)
-                wf.per_row.add(converter)
-                # Map converter output to workflow output
-                to_sink[sink_name] = converter.lzout.out_file
-
-        # Can't use a decorated function as we need to allow for dynamic
-        # arguments
-        wf.per_row.add(
-            func_task(
-                sink_items,
-                in_fields=(
-                    [
-                        ("dataset", frametree.core.frameset.base.FrameSet),
-                        ("row_frequency", Axes),
-                        ("id", str),
-                        ("provenance", ty.Dict[str, ty.Any]),
-                    ]
-                    + [
-                        (s, ty.Union[DataType, str, bytes, os.PathLike])
-                        for s in to_sink
-                    ]
-                ),
-                out_fields=[("id", str)],
-                name="sink",
-                dataset=self.frameset,
-                row_frequency=self.row_frequency,
-                id=wf.per_row.lzin.id,
-                provenance=wf.per_row.source.lzout.provenance_,
-                **to_sink,
-            )
-        )
-
-        wf.per_row.set_output([("id", wf.per_row.sink.lzout.id)])
-
-        wf.set_output(
-            [
-                ("processed", wf.per_row.lzout.id),
-                ("couldnt_process", wf.to_process.lzout.cant_process),
-            ]
-        )
-
-        return wf
 
     PROVENANCE_VERSION = "1.0"
     WORKFLOW_NAME = "processing"
@@ -406,13 +245,13 @@ class Pipeline:
     def asdict(
         self, required_modules: ty.Optional[ty.Set[str]] = None
     ) -> ty.Dict[str, ty.Any]:
-        dct = asdict(self, omit=["workflow"], required_modules=required_modules)
-        dct["workflow"] = pydra_asdict(self.workflow, required_modules=required_modules)
+        dct = asdict(self, omit=["task"], required_modules=required_modules)
+        dct["task"] = pydra_asdict(self.task, required_modules=required_modules)
         return dct
 
     @classmethod
     def fromdict(cls, dct: ty.Dict[str, ty.Any], **kwargs: ty.Any) -> Self:
-        return fromdict(dct, workflow=pydra_fromdict(dct["workflow"]), **kwargs)
+        return fromdict(dct, task=pydra_fromdict(dct["task"]), **kwargs)
 
     @classmethod
     def stack(
@@ -527,102 +366,280 @@ def split_side_car_suffix(name: str) -> ty.List[str]:
     return name.split("__o__")
 
 
-@pydra.mark.task  # type: ignore[misc]
-@pydra.mark.annotate(
-    {"return": {"ids": ty.List[str], "cant_process": ty.List[str]}}
-)  # type: ignore[misc]
-def to_process(
-    dataset: frametree.core.frameset.base.FrameSet,
+@workflow.define(outputs=["processed", "cant_process"])
+def PipelineWorkflow(
+    task: Task,
+    frameset: FrameSet,
+    row_frequency: Axes,
+    inputs: ty.List[PipelineField],
+    outputs: ty.List[PipelineField],
+    converter_args: ty.Dict[str, dict],
+    ids: ty.Optional[ty.List[str]] = None,
+) -> ty.Tuple[ty.List[str], ty.List[str]]:
+    """Create the outer workflow to link the analysis workflow with the
+    data row iteration and store connection rows
+    """
+
+    # Generate list of rows to process checking existing outputs
+    to_process = workflow.add(
+        ToProcess(
+            frameset=frameset,
+            row_frequency=row_frequency,
+            outputs=outputs,
+            requested_ids=ids,
+        )
+    )
+
+    per_row = workflow.add(
+        PipelineRowWorkflow(
+            task=task,
+            frameset=frameset,
+            row_frequency=row_frequency,
+            inputs=inputs,
+            outputs=outputs,
+            converter_args=converter_args,
+        ).split(row_id=to_process.row_ids)
+    )
+
+    return per_row.row_id, to_process.cant_process
+
+
+@workflow.define(outputs=["row_id"])
+def PipelineRowWorkflow(
+    task: Task,
+    frameset: frametree.core.frameset.base.FrameSet,
+    row_frequency: Axes,
+    row_id: str,
+    inputs: ty.List[PipelineField],
+    outputs: ty.List[PipelineField],
+    converter_args: ty.Dict[str, dict],
+):
+
+    # Get the values from the frameset, caching remote files locally
+    source = workflow.add(
+        SourceItems(
+            frameset=frameset,
+            row_frequency=row_frequency,
+            row_id=row_id,
+            inputs=inputs,
+        )
+    )
+
+    source_types = {}
+    for inpt in inputs:
+        # If the row frequency of the column is not a parent of the pipeline
+        # then the input will be a sequence of all the child rows
+        dtype = frameset[inpt.name].datatype
+        # If the row frequency of the source column is higher than the frequency
+        # of the pipeline, then the related elements of the source column are
+        # collected into a list and passed to the pipeline
+        if inpt.datatype is not frametree.core.row.DataRow and not frameset[
+            inpt.name
+        ].row_frequency.is_parent(row_frequency, if_match=True):
+            dtype = StateArray[dtype]
+        source_types[inpt.name] = dtype
+
+    column_names = list(source_types)
+
+    # Dynamically access the inputs from the source dictionary
+    @python.define(outputs=source_types)
+    def SourceOutputs(
+        sources: ty.Dict[
+            str, ty.Union[frametree.core.row.DataRow, DataType, ty.List[DataType]]
+        ],
+        column_names: ty.List[str],
+    ):
+        return tuple(sources[c] for c in column_names)
+
+    source_outputs = workflow.add(
+        SourceOutputs(sources=source.items, column_names=column_names)
+    )
+
+    # Set the inputs
+    sourced = {i.name: getattr(source_outputs, i.name) for i in inputs}
+
+    # Do input datatype conversions if required
+    for inpt in inputs:
+        if inpt.datatype == frametree.core.row.DataRow:
+            continue
+        stored_format = frameset[inpt.name].datatype
+        converter = inpt.datatype.get_converter(stored_format)
+        if converter is not None:  # None if no conversion required
+            logger.info(
+                "Adding implicit conversion for input '%s' from %s to %s",
+                inpt.name,
+                stored_format.mime_like,
+                inpt.datatype.mime_like,
+            )
+            in_file = sourced.pop(inpt.name)
+            converter_task = converter.task(**converter_args.get(inpt.name, {}))
+            if ty.get_origin(source_types[inpt.name]) is StateArray:
+                # Iterate over all items in the sequence and convert them
+                # separately
+                converter_task.split(converter.in_file, **{converter.in_file: in_file})
+            else:
+                setattr(converter_task.inputs, converter.in_file, in_file)
+            # Insert converter
+            converter_outputs = workflow.add(
+                converter_task, name=f"{inpt.name}_input_converter"
+            )
+            # Map converter output to input_interface
+            sourced[inpt.name] = getattr(converter_outputs, converter.out_file)
+
+    # Copy the task of the pipeline that actually performs the analysis/processing and
+    # connections from the sourced/converted inputs
+    task_copy = copy(task)
+
+    for inpt in inputs:
+        setattr(
+            task_copy,
+            inpt.field,
+            sourced[inpt.name],
+        )
+
+    # Add the task to the workflow
+    task_outputs = workflow.add(task_copy, name="task")
+
+    # Set datatype converters where required
+    to_sink = {o.name: getattr(task_outputs, o.field) for o in outputs}
+
+    # Do output datatype conversions if required
+    for outpt in outputs:
+        stored_format = frameset[outpt.name].datatype
+        sink_name = path2varname(outpt.name)
+        converter = stored_format.get_converter(outpt.datatype)
+        if converter:
+            logger.info(
+                "Adding implicit conversion for output '%s' " "from %s to %s",
+                outpt.name,
+                outpt.datatype.mime_like,
+                stored_format.mime_like,
+            )
+            # Insert converter
+            task_kwargs = {converter.in_file: to_sink.pop(sink_name)}
+            task_kwargs.update(converter_args.get(outpt.name, {}))
+            converter_task = workflow.add(
+                converter.task(**task_kwargs), name=f"{sink_name}_output_converter"
+            )
+            # Map converter output to workflow output
+            to_sink[sink_name] = getattr(converter_task, converter.out_file)
+
+    # Dynamically collect the outputs into a dictionary
+    sink_types = {o.name: frameset[o.name].datatype for o in outputs}
+    column_names = list(sink_types)
+
+    @python.define(inputs=sink_types, outputs=["items"])
+    def SinkInputs(
+        column_names: ty.List[str],
+        **sinks: DataType,
+    ) -> ty.Dict[str, DataType]:
+        return {c: sinks[c] for c in column_names}
+
+    sink_inputs = workflow.add(SinkInputs(column_names=column_names, **to_sink))
+
+    # Can't use a decorated function as we need to allow for dynamic
+    # arguments
+
+    sink = workflow.add(
+        SinkItems(
+            frameset=frameset,
+            row_frequency=row_frequency,
+            row_id=row_id,
+            items=sink_inputs.items,
+        )
+    )
+    # we just need to return something that can be connected to downstream nodes
+    return sink.row_id
+
+
+@python.define(outputs=["row_ids", "cant_process"])
+def ToProcess(
+    frameset: frametree.core.frameset.base.FrameSet,
     row_frequency: Axes,
     outputs: ty.List[PipelineField],
     requested_ids: ty.Union[ty.List[str], None],
-    parameterisation: ty.Dict[str, ty.Any],
-) -> ty.Tuple[ty.List[str], bool]:
+) -> ty.Tuple[ty.List[str], ty.List[str]]:
     if requested_ids is None:
-        requested_ids = dataset.row_ids(row_frequency)
-    ids = []
+        requested_ids = frameset.row_ids(row_frequency)
+    row_ids = []
     cant_process = []
-    for row in dataset.rows(row_frequency, ids=requested_ids):
+    for row in frameset.rows(row_frequency, ids=requested_ids):
         # TODO: Should check provenance of existing rows to see if it matches
         empty = [row.cell(o.name).is_empty for o in outputs]
         if all(empty):
-            ids.append(row.id)
+            row_ids.append(row.id)
         elif any(empty):
             cant_process.append(row.id)
     logger.debug(
         "Found %s ids to process, and can't process %s due to partially present outputs",
-        ids,
+        row_ids,
         cant_process,
     )
-    return ids, cant_process
+    return row_ids, cant_process
 
 
-def source_items(
-    dataset: frametree.core.frameset.base.FrameSet,
+@python.define(outputs=["items"])
+def SourceItems(
+    frameset: frametree.core.frameset.base.FrameSet,
     row_frequency: Axes,
-    id: str,
+    row_id: str,
     inputs: ty.List[PipelineField],
-    parameterisation: ty.Dict[str, ty.Any],
-) -> ty.Tuple[
-    ty.Union["frametree.core.row.DataRow", DataType, ty.Dict[str, ty.Any]], ...
-]:
-    """Selects the items from the dataset corresponding to the input
+) -> ty.Dict[str, ty.Union["frametree.core.row.DataRow", DataType, ty.List[DataType]]]:
+    """Selects the items from the frameset corresponding to the input
     sources and retrieves them from the store to a cache on
     the host
 
     Parameters
     ----------
-    dataset : FrameSet
-        the dataset to source the data from
+    frameset : FrameSet
+        the frameset to source the data from
     row_frequency : Axes
         the frequency of the row to source the data from
-    id : str
+    row_id : str
         the ID of the row to source from
-    parameterisation : dict
-        provenance information... can't remember why this was used here...
 
     Returns
     -------
-    tuple
-        the sourced data items
+    dict[str, DataType | DataRow]
+        the sourced data items, or the whole row if the input
     """
     logger.debug("Sourcing %s", inputs)
-    parameterisation = copy(parameterisation)
-    sourced: ty.List[ty.Union["frametree.core.row.DataRow", DataType]] = []
-    row = dataset.row(row_frequency, id)
-    with dataset.store.connection:
-        missing_inputs = {}
+    sourced: ty.Dict[str, ty.Union["frametree.core.row.DataRow", DataType]] = {}
+    missing_inputs: ty.Dict[str, str] = {}
+    row = frameset.row(row_frequency, row_id)
+    with frameset.store.connection:
         for inpt in inputs:
             # If the required datatype is of type DataRow then provide the whole
             # row to the pipeline input
             if inpt.datatype == frametree.core.row.DataRow:
-                sourced.append(row)
+                sourced[inpt.name] = row
                 continue
             try:
-                sourced.append(row[inpt.name])
+                sourced[inpt.name] = row[inpt.name]
             except FrameTreeDataMatchError as e:
                 missing_inputs[inpt.name] = str(e)
-        if missing_inputs:
-            raise FrameTreeDataMatchError("\n\n" + "\n\n".join(missing_inputs.values()))
-    return tuple(sourced) + (parameterisation,)
+    if missing_inputs:
+        raise FrameTreeDataMatchError("\n\n" + "\n\n".join(missing_inputs.values()))
+    return sourced
 
 
-def sink_items(
-    dataset: FrameSet,
+@python.define(outputs=["row_id"])
+def SinkItems(
+    frameset: FrameSet,
     row_frequency: Axes,
-    id: str,
-    provenance: ty.Dict[str, ty.Any],
-    **to_sink: ty.Any,
+    row_id: str,
+    items: ty.Dict[str, ty.Any],
+    provenance: ty.Optional[ty.Dict[str, ty.Any]] = None,
 ) -> str:
     """Stores items generated by the pipeline back into the store
 
     Parameters
     ----------
-    dataset : FrameSet
-        the dataset to source the data from
+    frameset : FrameSet
+        the frameset to source the data from
     row_frequency : Axes
         the frequency of the row to source the data from
-    id : str
+    row_id : str
         the ID of the row to source from
     provenance : dict
         provenance information to be stored alongside the generated data
@@ -631,15 +648,17 @@ def sink_items(
 
     Returns
     -------
-    str
+    row_id: str
         the ID of the row that was processed
     """
-    logger.debug("Sinking %s", to_sink)
-    row = dataset.row(row_frequency, id)
-    with dataset.store.connection:
-        for outpt_name, output in to_sink.items():
+    if provenance is not None:
+        raise NotImplementedError("Provenance storage not implemented yet")
+    logger.debug("Sinking %s", items)
+    row = frameset.row(row_frequency, row_id)
+    with frameset.store.connection:
+        for outpt_name, output in items.items():
             row.cell(outpt_name).item = output
-    return id
+    return row_id
 
 
 # Provenance mismatch detection methods salvaged from data.provenance

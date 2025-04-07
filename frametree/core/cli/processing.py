@@ -3,7 +3,7 @@ import logging
 import typing as ty
 import cloudpickle as cp
 import click
-from pydra.engine.core import TaskBase
+import pydra.compose.base
 from fileformats.core import from_mime
 from frametree.core.frameset.base import FrameSet
 from frametree.core.store import Store
@@ -63,7 +63,7 @@ def derive(address, columns, work, plugin, loglevel):
 
     set_loggers(loglevel)
 
-    dataset.derive(*columns, cache_dir=pipeline_cache, plugin=plugin)
+    dataset.derive(*columns, cache_dir=pipeline_cache, worker=plugin)
 
     columns_str = "', '".join(columns)
     logger.info(f"Derived data for '{columns_str}' column(s) successfully")
@@ -238,9 +238,9 @@ def apply(
 ):
 
     frameset = FrameSet.load(address)
-    workflow = ClassResolver(TaskBase, alternative_types=[ty.Callable])(
+    workflow = ClassResolver(pydra.compose.base.Task, alternative_types=[ty.Callable])(
         workflow_location
-    )(name="workflow", **{n: parse_value(v) for n, v in parameter})
+    )(**{n: parse_value(v) for n, v in parameter})
 
     inputs = parse_col_option(input)
     outputs = parse_col_option(output)

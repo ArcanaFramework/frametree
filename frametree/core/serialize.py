@@ -13,12 +13,15 @@ from importlib import import_module
 from inspect import isclass, isfunction
 from pathlib import PurePath, Path
 import logging
-import cloudpickle as cp
 import attrs
 from fileformats.core import from_mime, to_mime, DataType
-from pydra.engine.core import Workflow, LazyField, TaskBase
-from pydra.engine.task import FunctionTask
-from pydra.utils.typing import TypeParser
+import pydra.compose.base
+import pydra.compose.python
+import pydra.compose.workflow
+from pydra.utils import task_fields
+from pydra.engine.workflow import Workflow
+from pydra.utils.typing import TypeParser, is_lazy
+from pydra.engine.lazy import LazyField
 from frametree.core.exceptions import FrameTreeUsageError
 from .packaging import pkg_versions, package_from_module
 from .utils import add_exc_note
@@ -237,7 +240,7 @@ class ClassResolver:
             klass = type(klass)  # Get the class rather than the object
         if isclass(klass) and issubclass(klass, DataType):
             return to_mime(klass, official=False)
-        module_name = klass.__module__
+        module_name = get_module_name(klass)
         if module_name == "builtins":
             return klass.__name__
         if strip_prefix and cls._get_subpkg(klass):
@@ -299,7 +302,9 @@ def asdict(
     """
 
     def filter(atr: attrs.Attribute[ty.Any], value: ty.Any) -> bool:
-        return atr.init and atr.metadata.get("asdict", True)
+        return (
+            atr.init and atr.metadata.get("asdict", True) and value is not attrs.NOTHING
+        )
 
     if required_modules is None:
         required_modules = set()
@@ -308,7 +313,7 @@ def asdict(
         include_versions = False
 
     def serialise_class(klass: ty.Type[ty.Any]) -> str:
-        required_modules.add(klass.__module__)
+        required_modules.add(get_module_name(klass))
         return "<" + ClassResolver.tostr(klass, strip_prefix=False) + ">"
 
     def value_asdict(value: ty.Any) -> ty.Dict[str, ty.Any]:
@@ -448,7 +453,9 @@ NOTHING_STR = "__PIPELINE_INPUT__"
 
 
 def pydra_asdict(
-    obj: TaskBase, required_modules: ty.Set[str], workflow: ty.Optional[Workflow] = None
+    obj: pydra.compose.base.Task,
+    required_modules: ty.Set[str],
+    workflow: ty.Optional[Workflow] = None,
 ) -> ty.Dict[str, ty.Any]:
     """Converts a Pydra Task/Workflow into a dictionary that can be serialised
 
@@ -468,7 +475,6 @@ def pydra_asdict(
         the dictionary containing the contents of the Pydra object
     """
     dct = {
-        "name": obj.name,
         "class": "<" + ClassResolver.tostr(obj, strip_prefix=False) + ">",
     }
     if isinstance(obj, Workflow):
@@ -480,11 +486,19 @@ def pydra_asdict(
         for outpt_name, lf in obj._connections:
             outputs[outpt_name] = {"task": lf.name, "field": lf.field}
     else:
-        if isinstance(obj, FunctionTask):
-            func = cp.loads(obj.inputs._func)
-            module = inspect.getmodule(func)
-            dct["class"] = "<" + module.__name__ + ":" + func.__name__ + ">"
-            required_modules.add(module.__name__)
+        if isinstance(obj, (pydra.compose.python.Task, pydra.compose.workflow.Task)):
+            klass = type(obj)
+            func = (
+                obj.function
+                if isinstance(obj, pydra.compose.python.Task)
+                else obj.constructor
+            )
+            if klass.__module__ == "types":
+                mod_name = func.__module__
+            else:
+                mod_name = klass.__module__
+            dct["class"] = "<" + mod_name + ":" + klass.__name__ + ">"
+            required_modules.add(mod_name)
             # inspect source for any import lines (should be present in function
             # not module)
             for line in inspect.getsourcelines(func)[0]:
@@ -492,26 +506,41 @@ def pydra_asdict(
                     required_modules.add(match.group(1))
             # TODO: check source for references to external modules that aren't
             #       imported within function
-        elif type(obj).__module__ != "pydra.engine.task":
+        else:
             pkg = package_from_module(type(obj).__module__)
             dct["package"] = pkg.key
             dct["version"] = pkg.version
         if hasattr(obj, "container"):
             dct["container"] = {"type": obj.container, "image": obj.image}
     dct["inputs"] = inputs = {}
-    for inpt_name in obj.input_names:
-        if not inpt_name.startswith("_"):
-            inpt_value = getattr(obj.inputs, inpt_name)
-            if isinstance(inpt_value, LazyField):
-                inputs[inpt_name] = {"field": inpt_value.field}
-                # If the lazy field comes from the workflow lazy in, we omit
-                # the "task" item
-                if workflow is None or inpt_value.name != workflow.name:
-                    inputs[inpt_name]["task"] = inpt_value.name
-            elif inpt_value == attrs.NOTHING:
-                inputs[inpt_name] = NOTHING_STR
-            else:
-                inputs[inpt_name] = inpt_value
+    for inpt in task_fields(obj):
+        if inpt.name.startswith("_"):
+            continue
+        inpt_value = getattr(obj, inpt.name)
+        if (
+            obj._task_type == "python"
+            and inpt.name == "function"
+            and inpt_value is inpt.default
+        ):
+            # Don't include the function in the serialised object
+            continue
+        if (
+            obj._task_type == "workflow"
+            and inpt.name == "constructor"
+            and inpt_value is inpt.default
+        ):
+            # Don't include the constructor in the serialised object
+            continue
+        if is_lazy(inpt_value):
+            inputs[inpt.name] = {"field": inpt_value.field}
+            # If the lazy field comes from the workflow lazy in, we omit
+            # the "task" item
+            if workflow is None or inpt_value.name != workflow.name:
+                inputs[inpt.name]["task"] = inpt_value.name
+        elif inpt_value == attrs.NOTHING:
+            inputs[inpt.name] = NOTHING_STR
+        else:
+            inputs[inpt.name] = inpt_value
     return dct
 
 
@@ -529,7 +558,7 @@ def pydra_fromdict(
     dct: ty.Dict[ty.Any, ty.Any],
     workflow: ty.Optional[Workflow] = None,
     **kwargs: ty.Any,
-) -> TaskBase:
+) -> pydra.compose.base.Task:
     """Recreates a Pydra Task/Workflow from a dictionary object created by
     `pydra_asdict`
 
@@ -572,7 +601,7 @@ def pydra_fromdict(
             ]
         )
     else:
-        obj = klass(name=dct["name"], **kwargs)
+        obj = klass(**kwargs)
     return obj
 
 
@@ -682,3 +711,22 @@ def parse_value(value: ty.Any) -> ty.Any:
     except (TypeError, json.decoder.JSONDecodeError):
         pass
     return value
+
+
+def get_module_name(klass: type) -> str:
+    """Gets the module in which the klass was defined, taking into account dynamically
+    created Pydra Task classes"""
+    if klass.__module__ == "types":
+        fields = task_fields(klass)
+        if "function" in fields:
+            mod_name = fields["function"].default.__module__
+        elif "constructor" in fields:
+            mod_name = fields["constructor"].default.__module__
+        else:
+            raise ValueError(
+                f"Cannot serialise {klass} as they module it was defined in isn't "
+                "recoverable"
+            )
+    else:
+        mod_name = klass.__module__
+    return mod_name

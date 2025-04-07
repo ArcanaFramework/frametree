@@ -1,6 +1,8 @@
 from pathlib import Path
 import cloudpickle as cp
-from pydra import mark, Workflow
+from pydra.compose import python, workflow
+from pydra.engine.job import Job
+from pydra.engine.submitter import Submitter
 from pydra.utils.hash import hash_object
 from frametree.core.frameset.base import FrameSet
 from frametree.core.serialize import asdict, fromdict
@@ -29,18 +31,24 @@ def test_dataset_in_workflow_pickle(dataset: FrameSet, tmp_dir: Path):
 
     # Create the outer workflow to link the analysis workflow with the
     # data row iteration and store connection rows
-    wf = Workflow(name="test", input_spec=["a"])
+    @workflow.define(outputs={"c": int})
+    def Workflow(a):
 
-    wf.add(func(a=wf.lzin.a, b=2, dataset=dataset, name="test_func"))
+        test_func = workflow.add(func(a=wf.lzin.a, b=2, dataset=dataset))
 
-    wf.set_output(("c", wf.test_func.lzout.c))
+        return test_func.c
 
-    wf.pickle_task()
+    job = Job(
+        task=Workflow(a=1),
+        submitter=Submitter(),
+        name="job",
+    )
+
+    job.pickle_task()
 
 
-@mark.task
-@mark.annotate({"a": int, "b": int, "dataset": FrameSet, "return": {"c": int}})
-def func(a, b, dataset):
+@python.define(outputs=["c"])
+def func(a: int, b: int, dataset: FrameSet) -> int:
     return a + b
 
 

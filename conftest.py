@@ -8,13 +8,13 @@ from tempfile import mkdtemp
 from unittest.mock import patch
 import pytest
 from click.testing import CliRunner
-from pydra.engine.task import TaskBase
+from pydra.compose.base import Task
 from frametree.core.frameset import FrameSet
 from frametree.core.store import Store
 from fileformats.text import Plain as PlainText
 from frametree.testing.tasks import (
-    concatenate,
-    concatenate_reverse,
+    Concatenate,
+    ConcatenateReverse,
     TEST_TASKS,
     BASIC_TASKS,
 )
@@ -49,7 +49,7 @@ PKG_DIR = Path(__file__).parent
 
 
 @pytest.fixture
-def work_dir() -> Path:
+def work_dir() -> Path:  # type: ignore[misc]
     # work_dir = Path.home() / '.frametree-tests'
     # work_dir.mkdir(exist_ok=True)
     # return work_dir
@@ -123,7 +123,7 @@ def pydra_task_details(request: pytest.FixtureRequest) -> ty.Tuple[str, ty.Any]:
 
 
 @pytest.fixture(params=BASIC_TASKS)
-def pydra_task(request: pytest.FixtureRequest) -> TaskBase:
+def pydra_task(request: pytest.FixtureRequest) -> Task:
     task, args, expected_out = TEST_TASKS[request.param]
     task.test_args = args  # stash args away in task object for future access
     return task
@@ -226,10 +226,12 @@ def saved_dataset(
     data_store: Store, simple_dataset_blueprint: TestDatasetBlueprint, work_dir: Path
 ) -> FrameSet:
     if isinstance(data_store, FileSystem):
-        dataset_id = work_dir / "saved-dataset"
+        dataset_id = str(work_dir / "saved-dataset")
     else:
         dataset_id = "saved_dataset"
-    return simple_dataset_blueprint.make_dataset(data_store, dataset_id, name="")
+    return simple_dataset_blueprint.make_dataset(
+        data_store, dataset_id, name=""
+    )  # type: ignore[no-any-return]
 
 
 @pytest.fixture
@@ -240,13 +242,11 @@ def tmp_dir() -> ty.Generator[Path, None, None]:
 
 
 @pytest.fixture(params=["forward", "reverse"])
-def concatenate_task(request: pytest.FixtureRequest) -> TaskBase:
+def ConcatenateTask(request: pytest.FixtureRequest) -> Task:
     if request.param == "forward":
-        task = concatenate
-        # FIXME: Can be removed after https://github.com/nipype/pydra/pull/533 is merged
-        task.__name__ = "concatenate"
+        task = Concatenate
     else:
-        task = concatenate_reverse
+        task = ConcatenateReverse
     return task
 
 

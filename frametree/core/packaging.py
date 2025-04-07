@@ -8,6 +8,7 @@ from inspect import isclass
 import pkg_resources
 from pathlib import Path
 from collections.abc import Iterable
+from pydra.utils.general import STDLIB_MODULES
 from frametree.core.exceptions import FrameTreeUsageError
 from frametree.core import __version__, PACKAGE_NAME
 
@@ -178,6 +179,7 @@ def installed_module_paths(pkg: pkg_resources.DistInfoDistribution):
 
 
 def pkg_versions(modules: Iterable[str]) -> dict[str, str]:
-    versions = {p.key: p.version for p in package_from_module(modules)}
+    nonstd = [m for m in modules if m.split(".")[0] not in STDLIB_MODULES]
+    versions = {p.key: p.version for p in package_from_module(nonstd)}
     versions[PACKAGE_NAME] = __version__
     return versions
