@@ -793,7 +793,7 @@ class FrameSet:
             # dilate the IDs that need to be run when summarising over different
             # data axes
             with self.tree:
-                pipeline(ids=ids, cache_dir=cache_dir)(**kwargs)
+                pipeline(ids=ids)(cache_root=cache_dir, **kwargs)
 
     def parse_frequency(self, freq: ty.Union[Axes, str, None]) -> Axes:
         """Parses the data row_frequency, converting from string if necessary and

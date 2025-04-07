@@ -63,7 +63,7 @@ def derive(address, columns, work, plugin, loglevel):
 
     set_loggers(loglevel)
 
-    dataset.derive(*columns, cache_dir=pipeline_cache, plugin=plugin)
+    dataset.derive(*columns, cache_dir=pipeline_cache, worker=plugin)
 
     columns_str = "', '".join(columns)
     logger.info(f"Derived data for '{columns_str}' column(s) successfully")
@@ -240,7 +240,7 @@ def apply(
     frameset = FrameSet.load(address)
     workflow = ClassResolver(pydra.compose.base.Task, alternative_types=[ty.Callable])(
         workflow_location
-    )(name="workflow", **{n: parse_value(v) for n, v in parameter})
+    )(**{n: parse_value(v) for n, v in parameter})
 
     inputs = parse_col_option(input)
     outputs = parse_col_option(output)

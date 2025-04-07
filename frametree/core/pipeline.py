@@ -2,11 +2,13 @@ import attrs
 import typing as ty
 from collections import OrderedDict
 import logging
+from copy import copy
 from typing_extensions import Self
 import attrs.converters
 from fileformats.core import DataType
 from fileformats.core.exceptions import FormatConversionError
 from pydra.utils.typing import StateArray
+from pydra.utils import task_fields
 from pydra.compose.base import Task
 from pydra.compose import workflow, python
 from frametree.core.exceptions import (
@@ -134,7 +136,7 @@ class Pipeline:
                 # Check that a converter can be found if required
                 if inpt.datatype:
                     try:
-                        inpt.datatype.get_converter(column.datatype, name="dummy")
+                        inpt.datatype.get_converter(column.datatype)
                     except FormatConversionError as e:
                         msg = (
                             f"required to in conversion of '{inpt.name}' input "
@@ -146,11 +148,12 @@ class Pipeline:
                 raise ValueError(
                     f"Datatype must be explicitly set for {inpt.name} in unbound Pipeline"
                 )
-            if inpt.field not in self.task.input_names:
+            field_names = [f.name for f in task_fields(self.task)]
+            if inpt.field not in field_names:
                 raise FrameTreeNameError(
                     inpt.field,
                     f"{inpt.field} is not in the input spec of '{self.name}' "
-                    f"pipeline: " + "', '".join(self.task.input_names),
+                    f"pipeline: " + "', '".join(field_names),
                 )
 
     @outputs.validator
@@ -166,7 +169,7 @@ class Pipeline:
                 # Check that a converter can be found if required
                 if outpt.datatype:
                     try:
-                        column.datatype.get_converter(outpt.datatype, name="dummy")
+                        column.datatype.get_converter(outpt.datatype)
                     except FormatConversionError as e:
                         msg = (
                             f"required to in conversion of '{outpt.name}' output "
@@ -178,11 +181,12 @@ class Pipeline:
                 raise ValueError(
                     f"Datatype must be explicitly set for {outpt.name} in unbound Pipeline"
                 )
-            if outpt.field not in self.task.output_names:
+            field_names = [f.name for f in task_fields(self.task.Outputs)]
+            if outpt.field not in field_names:
                 raise FrameTreeNameError(
                     outpt.field,
                     f"{outpt.field} is not in the output spec of '{self.name}' "
-                    f"pipeline: " + "', '".join(self.task.output_names),
+                    f"pipeline: " + "', '".join(field_names),
                 )
 
     @property
@@ -201,7 +205,7 @@ class Pipeline:
     # self.wf.to_process.inputs.parameterisation = parameterisation
     # self.wf.per_node.source.inputs.parameterisation = parameterisation
 
-    def __call__(self, **kwargs: ty.Any) -> workflow.Task:
+    def __call__(self, ids: ty.List[str] = None) -> workflow.Task:
         """
         Create an "outer" workflow that interacts with the frameset to pull input
         data, process it and then push the derivatives back to the store.
@@ -225,6 +229,15 @@ class Pipeline:
             If the new pipeline will overwrite an existing pipeline connection
             with overwrite == False.
         """
+        return PipelineWorkflow(
+            task=self.task,
+            ids=ids,
+            frameset=self.frameset,
+            row_frequency=self.row_frequency,
+            inputs=self.inputs,
+            outputs=self.outputs,
+            converter_args=self.converter_args,
+        )
 
     PROVENANCE_VERSION = "1.0"
     WORKFLOW_NAME = "processing"
@@ -232,13 +245,13 @@ class Pipeline:
     def asdict(
         self, required_modules: ty.Optional[ty.Set[str]] = None
     ) -> ty.Dict[str, ty.Any]:
-        dct = asdict(self, omit=["workflow"], required_modules=required_modules)
-        dct["workflow"] = pydra_asdict(self.task, required_modules=required_modules)
+        dct = asdict(self, omit=["task"], required_modules=required_modules)
+        dct["task"] = pydra_asdict(self.task, required_modules=required_modules)
         return dct
 
     @classmethod
     def fromdict(cls, dct: ty.Dict[str, ty.Any], **kwargs: ty.Any) -> Self:
-        return fromdict(dct, workflow=pydra_fromdict(dct["workflow"]), **kwargs)
+        return fromdict(dct, task=pydra_fromdict(dct["task"]), **kwargs)
 
     @classmethod
     def stack(
@@ -353,15 +366,15 @@ def split_side_car_suffix(name: str) -> ty.List[str]:
     return name.split("__o__")
 
 
-@workflow.define
+@workflow.define(outputs=["processed", "cant_process"])
 def PipelineWorkflow(
     task: Task,
-    ids: ty.List[str],
     frameset: FrameSet,
     row_frequency: Axes,
     inputs: ty.List[PipelineField],
     outputs: ty.List[PipelineField],
     converter_args: ty.Dict[str, dict],
+    ids: ty.Optional[ty.List[str]] = None,
 ) -> ty.Tuple[ty.List[str], ty.List[str]]:
     """Create the outer workflow to link the analysis workflow with the
     data row iteration and store connection rows
@@ -373,7 +386,7 @@ def PipelineWorkflow(
             frameset=frameset,
             row_frequency=row_frequency,
             outputs=outputs,
-            requested_ids=None,  # FIXME: Needs to be set dynamically
+            requested_ids=ids,
         )
     )
 
@@ -385,13 +398,13 @@ def PipelineWorkflow(
             inputs=inputs,
             outputs=outputs,
             converter_args=converter_args,
-        ).split(row_id=to_process.ids)
+        ).split(row_id=to_process.row_ids)
     )
 
     return per_row.row_id, to_process.cant_process
 
 
-@workflow.define(outputs=["processed", "couldnt_process"])
+@workflow.define(outputs=["row_id"])
 def PipelineRowWorkflow(
     task: Task,
     frameset: frametree.core.frameset.base.FrameSet,
@@ -426,6 +439,8 @@ def PipelineRowWorkflow(
             dtype = StateArray[dtype]
         source_types[inpt.name] = dtype
 
+    column_names = list(source_types)
+
     # Dynamically access the inputs from the source dictionary
     @python.define(outputs=source_types)
     def SourceOutputs(
@@ -437,7 +452,7 @@ def PipelineRowWorkflow(
         return tuple(sources[c] for c in column_names)
 
     source_outputs = workflow.add(
-        SourceOutputs(sources=source.outputs, column_names=list(source_types))
+        SourceOutputs(sources=source.items, column_names=column_names)
     )
 
     # Set the inputs
@@ -473,7 +488,7 @@ def PipelineRowWorkflow(
 
     # Add the "inner" workflow of the pipeline that actually performs the
     # analysis/processing
-    inner_task = workflow.add(task, name="task")
+    inner_task = workflow.add(copy(task), name="task")
 
     # Make connections to "inner" workflow
     for inpt in inputs:
@@ -509,6 +524,7 @@ def PipelineRowWorkflow(
 
     # Dynamically collect the outputs into a dictionary
     sink_types = {o.name: frameset[o.name].datatype for o in outputs}
+    column_names = list(sink_types)
 
     @python.define(inputs=sink_types, outputs=["items"])
     def SinkInputs(
@@ -517,7 +533,7 @@ def PipelineRowWorkflow(
     ) -> ty.Dict[str, DataType]:
         return {c: sinks[c] for c in column_names}
 
-    sink_inputs = workflow.add(SinkInputs(column_names=list(sink_types), **to_sink))
+    sink_inputs = workflow.add(SinkInputs(column_names=column_names, **to_sink))
 
     # Can't use a decorated function as we need to allow for dynamic
     # arguments
@@ -540,7 +556,6 @@ def ToProcess(
     row_frequency: Axes,
     outputs: ty.List[PipelineField],
     requested_ids: ty.Union[ty.List[str], None],
-    parameterisation: ty.Dict[str, ty.Any],
 ) -> ty.Tuple[ty.List[str], ty.List[str]]:
     if requested_ids is None:
         requested_ids = frameset.row_ids(row_frequency)
@@ -611,8 +626,8 @@ def SinkItems(
     frameset: FrameSet,
     row_frequency: Axes,
     row_id: str,
-    provenance: ty.Dict[str, ty.Any],
-    **to_sink: ty.Any,
+    items: ty.Dict[str, ty.Any],
+    provenance: ty.Optional[ty.Dict[str, ty.Any]] = None,
 ) -> str:
     """Stores items generated by the pipeline back into the store
 
@@ -634,10 +649,12 @@ def SinkItems(
     row_id: str
         the ID of the row that was processed
     """
-    logger.debug("Sinking %s", to_sink)
+    if provenance is not None:
+        raise NotImplementedError("Provenance storage not implemented yet")
+    logger.debug("Sinking %s", items)
     row = frameset.row(row_frequency, row_id)
     with frameset.store.connection:
-        for outpt_name, output in to_sink.items():
+        for outpt_name, output in items.items():
             row.cell(outpt_name).item = output
     return row_id
 

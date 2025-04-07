@@ -64,7 +64,7 @@ def AttrsFunc(a: A, b: B) -> C:
     return C(z=a.x * b.u + a.y * b.v)
 
 
-@python.define
+@python.define(outputs=["out_file"])
 def Concatenate(
     in_file1: File,
     in_file2: File,
@@ -99,7 +99,7 @@ def Concatenate(
     return out_file
 
 
-@python.define
+@python.define(outputs=["out_file"])
 def Reverse(in_file: File, out_file: ty.Optional[Path] = None) -> File:
     """Reverses the contents of a file and outputs it to another file
 
@@ -124,7 +124,7 @@ def Reverse(in_file: File, out_file: ty.Optional[Path] = None) -> File:
     return out_file
 
 
-@workflow.define
+@workflow.define(outputs=["out_file"])
 def ConcatenateReverse(in_file1: File, in_file2: File, duplicates: int) -> File:
     """A simple workflow that has the same signature as concatenate, but
     concatenates reversed contents of the input files instead
