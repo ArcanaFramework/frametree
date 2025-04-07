@@ -486,20 +486,22 @@ def PipelineRowWorkflow(
             # Map converter output to input_interface
             sourced[inpt.name] = getattr(converter_outputs, converter.out_file)
 
-    # Add the "inner" workflow of the pipeline that actually performs the
-    # analysis/processing
-    inner_task = workflow.add(copy(task), name="task")
+    # Copy the task of the pipeline that actually performs the analysis/processing and
+    # connections from the sourced/converted inputs
+    task_copy = copy(task)
 
-    # Make connections to "inner" workflow
     for inpt in inputs:
         setattr(
-            inner_task.inputs,
+            task_copy,
             inpt.field,
             sourced[inpt.name],
         )
 
+    # Add the task to the workflow
+    task_outputs = workflow.add(task_copy, name="task")
+
     # Set datatype converters where required
-    to_sink = {o.name: getattr(inner_task, o.field) for o in outputs}
+    to_sink = {o.name: getattr(task_outputs, o.field) for o in outputs}
 
     # Do output datatype conversions if required
     for outpt in outputs:
