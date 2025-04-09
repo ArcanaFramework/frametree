@@ -435,6 +435,11 @@ def PipelineRowWorkflow(
 
     source_types = {}
     for inpt in inputs:
+        if inpt.datatype is frametree.core.row.DataRow:
+            # If the input datatype is a DataRow then the source is the whole
+            # row
+            source_types[inpt.name] = frametree.core.row.DataRow
+            continue
         # If the row frequency of the column is not a parent of the pipeline
         # then the input will be a sequence of all the child rows
         dtype = frameset[inpt.name].datatype
@@ -457,7 +462,11 @@ def PipelineRowWorkflow(
         ],
         column_names: ty.List[str],
     ):
-        return tuple(sources[c] for c in column_names)
+        return (
+            tuple(sources[c] for c in column_names)
+            if len(column_names) > 1
+            else sources[column_names[0]]
+        )
 
     source_outputs = workflow.add(
         SourceOutputs(sources=source.items, column_names=column_names)
