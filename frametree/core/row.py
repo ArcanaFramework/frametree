@@ -202,23 +202,40 @@ class DataRow:
             except KeyError:
                 return self.frameset.column(spec.row_frequency)
 
+    def create_entry(self, path: str, datatype: ty.Type[DataType]) -> DataEntry:
+        """Creates a new data entry for the row, i.e. modifies the data in the store
+
+        Parameters
+        ----------
+        path : str
+            the path to the entry to be created within the node, e.g. 'resources/ml-summary.json'
+        datatype : type (subclass of fileformats.core.DataType)
+            the type of the data entry
+
+        Returns
+        -------
+        DataEntry
+            The newly created data entry
+        """
+        return self.frameset.store.create_entry(path=path, datatype=datatype, row=self)
+
     def add_entry(
         self,
         path: str,
-        datatype: type,
+        datatype: ty.Type[DataType],
         uri: str,
         item_metadata: ty.Optional[dict] = None,
         order: ty.Optional[int] = None,
         quality: DataQuality = DataQuality.usable,
         checksums: ty.Dict[str, str] = None,
     ):
-        """Adds an data entry to a row that has been found while scanning the row in the
-        repository.
+        """Adds an existing data entry to a row that has been found while scanning the
+        row in the repository.
 
         Parameters
         ----------
-        id : str
-            the ID of the entry within the node
+        path : str
+            the path to the entry to be created within the node, e.g. 'resources/ml-summary.json'
         datatype : type (subclass of DataType)
             the type of the data entry
         uri : str

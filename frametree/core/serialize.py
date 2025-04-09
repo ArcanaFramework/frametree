@@ -404,7 +404,7 @@ def fromdict(dct: ty.Dict[str, ty.Any], **kwargs: ty.Any) -> object:
             ty.Dict[str, ty.Any],
             str,
             ty.Sequence[ty.Dict[str, ty.Any]],
-        ]
+        ],
     ) -> ty.Any:
         resolved_value: ty.Any = value
         if isinstance(value, dict):
@@ -461,7 +461,7 @@ def pydra_asdict(
 
     Parameters
     ----------
-    obj : pydra.engine.core.TaskBase
+    obj : pydra.compose.base.Task
         the Pydra object to convert to a dictionary
     required_modules : set[str]
         a set of modules that are required to load the pydra object back
@@ -575,7 +575,7 @@ def pydra_fromdict(
 
     Returns
     -------
-    pydra.engine.core.TaskBase
+    pydra.compose.base.Task
         the recreated Pydra object
     """
     klass = ClassResolver()(dct["class"])
