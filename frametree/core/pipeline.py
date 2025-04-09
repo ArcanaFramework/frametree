@@ -134,7 +134,11 @@ class Pipeline:
             if self.frameset:
                 column = self.frameset[inpt.name]
                 # Check that a converter can be found if required
-                if inpt.datatype:
+                if (
+                    inpt.datatype
+                    and not issubclass(inpt.datatype, column.datatype)
+                    and not issubclass(column.datatype, inpt.datatype)
+                ):
                     try:
                         inpt.datatype.get_converter(column.datatype)
                     except FormatConversionError as e:
@@ -167,7 +171,11 @@ class Pipeline:
                         f"that of '{outpt.name}' output ('{str(self.row_frequency)}')"
                     )
                 # Check that a converter can be found if required
-                if outpt.datatype:
+                if (
+                    outpt.datatype
+                    and not issubclass(outpt.datatype, column.datatype)
+                    and not issubclass(column.datatype, outpt.datatype)
+                ):
                     try:
                         column.datatype.get_converter(outpt.datatype)
                     except FormatConversionError as e:
@@ -463,8 +471,12 @@ def PipelineRowWorkflow(
         if inpt.datatype == frametree.core.row.DataRow:
             continue
         stored_format = frameset[inpt.name].datatype
-        converter = inpt.datatype.get_converter(stored_format)
-        if converter is not None:  # None if no conversion required
+        if (
+            inpt.datatype
+            and not issubclass(inpt.datatype, stored_format)
+            and not issubclass(stored_format, inpt.datatype)
+        ):
+            converter = inpt.datatype.get_converter(stored_format)
             logger.info(
                 "Adding implicit conversion for input '%s' from %s to %s",
                 inpt.name,
@@ -472,13 +484,15 @@ def PipelineRowWorkflow(
                 inpt.datatype.mime_like,
             )
             in_file = sourced.pop(inpt.name)
-            converter_task = converter.task(**converter_args.get(inpt.name, {}))
+            converter_task = copy(converter.task)
+            for nm, val in converter_args.get(inpt.name, {}).items():
+                setattr(converter_task, nm, val)
             if ty.get_origin(source_types[inpt.name]) is StateArray:
                 # Iterate over all items in the sequence and convert them
                 # separately
                 converter_task.split(converter.in_file, **{converter.in_file: in_file})
             else:
-                setattr(converter_task.inputs, converter.in_file, in_file)
+                setattr(converter_task, converter.in_file, in_file)
             # Insert converter
             converter_outputs = workflow.add(
                 converter_task, name=f"{inpt.name}_input_converter"
@@ -507,8 +521,12 @@ def PipelineRowWorkflow(
     for outpt in outputs:
         stored_format = frameset[outpt.name].datatype
         sink_name = path2varname(outpt.name)
-        converter = stored_format.get_converter(outpt.datatype)
-        if converter:
+        if (
+            outpt.datatype
+            and not issubclass(outpt.datatype, stored_format)
+            and not issubclass(stored_format, outpt.datatype)
+        ):
+            converter = stored_format.get_converter(outpt.datatype)
             logger.info(
                 "Adding implicit conversion for output '%s' " "from %s to %s",
                 outpt.name,
@@ -518,8 +536,11 @@ def PipelineRowWorkflow(
             # Insert converter
             task_kwargs = {converter.in_file: to_sink.pop(sink_name)}
             task_kwargs.update(converter_args.get(outpt.name, {}))
+            converter_task = copy(converter.task)
+            for nm, val in task_kwargs.items():
+                setattr(converter_task, nm, val)
             converter_task = workflow.add(
-                converter.task(**task_kwargs), name=f"{sink_name}_output_converter"
+                converter_task, name=f"{sink_name}_output_converter"
             )
             # Map converter output to workflow output
             to_sink[sink_name] = getattr(converter_task, converter.out_file)
