@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import is_dataclass, fields as dataclass_fields
 from typing import Sequence
 import typing as ty
-from types import TracebackType
+from types import TracebackType, UnionType
 from enum import Enum
 import builtins
 from copy import copy
@@ -22,7 +22,10 @@ from pydra.utils import task_fields
 from pydra.engine.workflow import Workflow
 from pydra.utils.typing import TypeParser, is_lazy
 from pydra.engine.lazy import LazyField
-from frametree.core.exceptions import FrameTreeUsageError
+from frametree.core.exceptions import (
+    FrameTreeUsageError,
+    FrametreeCannotSerializeDynamicDefinitionError,
+)
 from .packaging import pkg_versions, package_from_module
 from .utils import add_exc_note
 from frametree.core import PACKAGE_NAME
@@ -168,6 +171,12 @@ class ClassResolver:
             return class_str  # Assume that it is already resolved
         if "/" in class_str:  # Assume mime-type/like string
             return from_mime(class_str)
+        if "|" in class_str:  # Assume union type
+            return UnionType(
+                tuple(
+                    cls.fromstr(t, subpkg=subpkg, pkg=pkg) for t in class_str.split("|")
+                )
+            )
         if class_str.startswith("<") and class_str.endswith(">"):
             class_str = class_str[1:-1]
         try:
@@ -236,10 +245,17 @@ class ClassResolver:
         """
         if isinstance(klass, str):
             return klass
+        if ty.get_origin(klass) is ty.Union or type(klass) is UnionType:
+            if ty.get_origin(klass):
+                args = ty.get_args(klass)
+            else:
+                args = klass.__args__
+            return "|".join(cls.tostr(t) for t in args)
         if not (isclass(klass) or isfunction(klass)):
             klass = type(klass)  # Get the class rather than the object
         if isclass(klass) and issubclass(klass, DataType):
             return to_mime(klass, official=False)
+
         module_name = get_module_name(klass)
         if module_name == "builtins":
             return klass.__name__
@@ -518,14 +534,14 @@ def pydra_asdict(
             continue
         inpt_value = getattr(obj, inpt.name)
         if (
-            obj._task_type == "python"
+            obj._task_type() == "python"
             and inpt.name == "function"
             and inpt_value is inpt.default
         ):
             # Don't include the function in the serialised object
             continue
         if (
-            obj._task_type == "workflow"
+            obj._task_type() == "workflow"
             and inpt.name == "constructor"
             and inpt_value is inpt.default
         ):
@@ -717,16 +733,20 @@ def get_module_name(klass: type) -> str:
     """Gets the module in which the klass was defined, taking into account dynamically
     created Pydra Task classes"""
     if klass.__module__ == "types":
-        fields = task_fields(klass)
-        if "function" in fields:
-            mod_name = fields["function"].default.__module__
-        elif "constructor" in fields:
-            mod_name = fields["constructor"].default.__module__
+        try:
+            executor_name = klass._executor_name
+        except AttributeError:
+            pass
         else:
-            raise ValueError(
-                f"Cannot serialise {klass} as they module it was defined in isn't "
-                "recoverable"
-            )
-    else:
-        mod_name = klass.__module__
-    return mod_name
+            executor = task_fields(klass)[executor_name].default
+            try:
+                module = executor.__module__
+            except AttributeError:
+                pass
+            else:
+                if module != "types":
+                    return module
+        raise FrametreeCannotSerializeDynamicDefinitionError(
+            f"Cannot serialise {klass} as it is a dynamically created class"
+        )
+    return klass.__module__

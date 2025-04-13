@@ -8,6 +8,16 @@ class FrameTreeException(Exception):
         self.args = (msg,) + self.args[1:]
 
 
+class FrametreeCannotSerializeDynamicDefinitionError(FrameTreeException):
+    """
+    Raised when a FrameTree object cannot be serialized
+    """
+
+    def __init__(self, msg: str):
+        super().__init__(msg)
+        self.msg = msg
+
+
 class FrameTreeError(FrameTreeException):
     pass
 
@@ -154,6 +164,7 @@ class FrameTreeFileFormatClashError(FrameTreeError):
 
 class FrameTreeConverterNotAvailableError(FrameTreeError):
     "The converter required to convert between formats is not"
+
     "available"
 
 
@@ -198,6 +209,7 @@ class FrameTreeWrongAxesError(FrameTreeError):
 
 class FrameTreeNoDirectXnatMountException(FrameTreeException):
     "Raised when attemptint to access a file-system mount for a row that hasn't been mounted directly"
+
     pass
 
 
