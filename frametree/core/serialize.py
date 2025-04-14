@@ -2,6 +2,8 @@ from __future__ import annotations
 from dataclasses import is_dataclass, fields as dataclass_fields
 from typing import Sequence
 import typing as ty
+import functools
+import operator
 from types import TracebackType, UnionType
 from enum import Enum
 import builtins
@@ -15,10 +17,12 @@ from pathlib import PurePath, Path
 import logging
 import attrs
 from fileformats.core import from_mime, to_mime, DataType
+import fileformats.field
 import pydra.compose.base
 import pydra.compose.python
 import pydra.compose.workflow
 from pydra.utils import task_fields
+from pydra.utils.typing import optional_type
 from pydra.engine.workflow import Workflow
 from pydra.utils.typing import TypeParser, is_lazy
 from pydra.engine.lazy import LazyField
@@ -129,6 +133,17 @@ class ClassResolver:
                     )
                 return classes[0]
         klass = self.fromstr(class_str, subpkg=True, pkg=self.package)
+        base_class = optional_type(self.base_class)
+        if (
+            inspect.isclass(base_class)
+            and inspect.isclass(klass)
+            and issubclass(base_class, DataType)
+            and not issubclass(klass, DataType)
+        ):
+            try:
+                klass = fileformats.field.Field.from_primitive(klass)
+            except TypeError:
+                pass
         self._check_type(klass)
         return klass
 
@@ -171,12 +186,14 @@ class ClassResolver:
             return class_str  # Assume that it is already resolved
         if "/" in class_str:  # Assume mime-type/like string
             return from_mime(class_str)
-        if "|" in class_str:  # Assume union type
-            return UnionType(
-                tuple(
-                    cls.fromstr(t, subpkg=subpkg, pkg=pkg) for t in class_str.split("|")
-                )
+        if (
+            "|" in class_str
+        ):  # Assume union type; option 3: use functools.reduce with operator.or_
+            union_args = tuple(
+                cls.fromstr(t.strip(), subpkg=subpkg, pkg=pkg)
+                for t in class_str.split("|")
             )
+            return functools.reduce(operator.or_, union_args)
         if class_str.startswith("<") and class_str.endswith(">"):
             class_str = class_str[1:-1]
         try:
@@ -250,7 +267,9 @@ class ClassResolver:
                 args = ty.get_args(klass)
             else:
                 args = klass.__args__
-            return "|".join(cls.tostr(t) for t in args)
+            return " | ".join(
+                cls.tostr(t) if t is not type(None) else "None" for t in args
+            )
         if not (isclass(klass) or isfunction(klass)):
             klass = type(klass)  # Get the class rather than the object
         if isclass(klass) and issubclass(klass, DataType):
