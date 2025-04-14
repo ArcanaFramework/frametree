@@ -463,9 +463,9 @@ def PipelineRowWorkflow(
         column_names: ty.List[str],
     ):
         return (
-            tuple(sources[c] for c in column_names)
-            if len(column_names) > 1
-            else sources[column_names[0]]
+            sources[column_names[0]]
+            if len(column_names) == 1
+            else tuple(sources[c] for c in column_names)
         )
 
     source_outputs = workflow.add(
