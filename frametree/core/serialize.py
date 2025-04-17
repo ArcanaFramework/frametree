@@ -2,7 +2,9 @@ from __future__ import annotations
 from dataclasses import is_dataclass, fields as dataclass_fields
 from typing import Sequence
 import typing as ty
-from types import TracebackType
+import functools
+import operator
+from types import TracebackType, UnionType
 from enum import Enum
 import builtins
 from copy import copy
@@ -15,14 +17,19 @@ from pathlib import PurePath, Path
 import logging
 import attrs
 from fileformats.core import from_mime, to_mime, DataType
+import fileformats.field
 import pydra.compose.base
 import pydra.compose.python
 import pydra.compose.workflow
 from pydra.utils import task_fields
+from pydra.utils.typing import optional_type
 from pydra.engine.workflow import Workflow
 from pydra.utils.typing import TypeParser, is_lazy
 from pydra.engine.lazy import LazyField
-from frametree.core.exceptions import FrameTreeUsageError
+from frametree.core.exceptions import (
+    FrameTreeUsageError,
+    FrametreeCannotSerializeDynamicDefinitionError,
+)
 from .packaging import pkg_versions, package_from_module
 from .utils import add_exc_note
 from frametree.core import PACKAGE_NAME
@@ -126,6 +133,17 @@ class ClassResolver:
                     )
                 return classes[0]
         klass = self.fromstr(class_str, subpkg=True, pkg=self.package)
+        base_class = optional_type(self.base_class)
+        if (
+            inspect.isclass(base_class)
+            and inspect.isclass(klass)
+            and issubclass(base_class, DataType)
+            and not issubclass(klass, DataType)
+        ):
+            try:
+                klass = fileformats.field.Field.from_primitive(klass)
+            except TypeError:
+                pass
         self._check_type(klass)
         return klass
 
@@ -168,6 +186,14 @@ class ClassResolver:
             return class_str  # Assume that it is already resolved
         if "/" in class_str:  # Assume mime-type/like string
             return from_mime(class_str)
+        if (
+            "|" in class_str
+        ):  # Assume union type; option 3: use functools.reduce with operator.or_
+            union_args = tuple(
+                cls.fromstr(t.strip(), subpkg=subpkg, pkg=pkg)
+                for t in class_str.split("|")
+            )
+            return functools.reduce(operator.or_, union_args)
         if class_str.startswith("<") and class_str.endswith(">"):
             class_str = class_str[1:-1]
         try:
@@ -236,10 +262,19 @@ class ClassResolver:
         """
         if isinstance(klass, str):
             return klass
+        if ty.get_origin(klass) is ty.Union or type(klass) is UnionType:
+            if ty.get_origin(klass):
+                args = ty.get_args(klass)
+            else:
+                args = klass.__args__
+            return " | ".join(
+                cls.tostr(t) if t is not type(None) else "None" for t in args
+            )
         if not (isclass(klass) or isfunction(klass)):
             klass = type(klass)  # Get the class rather than the object
         if isclass(klass) and issubclass(klass, DataType):
             return to_mime(klass, official=False)
+
         module_name = get_module_name(klass)
         if module_name == "builtins":
             return klass.__name__
@@ -404,7 +439,7 @@ def fromdict(dct: ty.Dict[str, ty.Any], **kwargs: ty.Any) -> object:
             ty.Dict[str, ty.Any],
             str,
             ty.Sequence[ty.Dict[str, ty.Any]],
-        ]
+        ],
     ) -> ty.Any:
         resolved_value: ty.Any = value
         if isinstance(value, dict):
@@ -461,7 +496,7 @@ def pydra_asdict(
 
     Parameters
     ----------
-    obj : pydra.engine.core.TaskBase
+    obj : pydra.compose.base.Task
         the Pydra object to convert to a dictionary
     required_modules : set[str]
         a set of modules that are required to load the pydra object back
@@ -518,14 +553,14 @@ def pydra_asdict(
             continue
         inpt_value = getattr(obj, inpt.name)
         if (
-            obj._task_type == "python"
+            obj._task_type() == "python"
             and inpt.name == "function"
             and inpt_value is inpt.default
         ):
             # Don't include the function in the serialised object
             continue
         if (
-            obj._task_type == "workflow"
+            obj._task_type() == "workflow"
             and inpt.name == "constructor"
             and inpt_value is inpt.default
         ):
@@ -575,7 +610,7 @@ def pydra_fromdict(
 
     Returns
     -------
-    pydra.engine.core.TaskBase
+    pydra.compose.base.Task
         the recreated Pydra object
     """
     klass = ClassResolver()(dct["class"])
@@ -717,16 +752,20 @@ def get_module_name(klass: type) -> str:
     """Gets the module in which the klass was defined, taking into account dynamically
     created Pydra Task classes"""
     if klass.__module__ == "types":
-        fields = task_fields(klass)
-        if "function" in fields:
-            mod_name = fields["function"].default.__module__
-        elif "constructor" in fields:
-            mod_name = fields["constructor"].default.__module__
+        try:
+            executor_name = klass._executor_name
+        except AttributeError:
+            pass
         else:
-            raise ValueError(
-                f"Cannot serialise {klass} as they module it was defined in isn't "
-                "recoverable"
-            )
-    else:
-        mod_name = klass.__module__
-    return mod_name
+            executor = task_fields(klass)[executor_name].default
+            try:
+                module = executor.__module__
+            except AttributeError:
+                pass
+            else:
+                if module != "types":
+                    return module
+        raise FrametreeCannotSerializeDynamicDefinitionError(
+            f"Cannot serialise {klass} as it is a dynamically created class"
+        )
+    return klass.__module__

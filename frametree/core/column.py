@@ -4,11 +4,13 @@ import re
 import typing as ty
 import logging
 import attrs
+import inspect
 from operator import attrgetter
 from attrs.converters import optional
 from fileformats.core import DataType
 from fileformats.core.exceptions import FormatMismatchError
 from pydra.utils.hash import hash_single
+from pydra.utils.typing import is_fileset_or_union
 from frametree.core.exceptions import FrameTreeDataMatchError
 from .salience import ColumnSalience
 from .quality import DataQuality
@@ -42,7 +44,9 @@ class DataColumn(metaclass=ABCMeta):
 
     @datatype.validator
     def datatype_validator(self, _, datatype):
-        if not issubclass(datatype, DataType):
+        if not is_fileset_or_union(datatype) and not (
+            inspect.isclass(datatype) and issubclass(datatype, DataType)
+        ):
             raise TypeError(f"Datatype ({datatype}) must be a subclass of {DataType}")
 
     def __iter__(self) -> ty.Iterable[DataType]:

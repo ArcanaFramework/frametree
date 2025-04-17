@@ -1,5 +1,6 @@
 from __future__ import annotations
 import typing as ty
+import os
 import attrs
 from fileformats.core import DataType
 from frametree.core.exceptions import FrameTreeDataMatchError, FrameTreeUsageError
@@ -109,7 +110,9 @@ class DataEntry:
         return self.get_item()
 
     @item.setter
-    def item(self, item):
+    def item(
+        self, item: ty.Union[DataType, os.PathLike, int, bool, float, str]
+    ) -> None:
         if isinstance(item, DataType):
             if not isinstance(item, self.datatype):
                 raise FrameTreeDataMatchError(
