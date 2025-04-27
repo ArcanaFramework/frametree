@@ -18,7 +18,7 @@ Extracted metrics can be exported to actual data frames for statistical analysis
 
 ## Documentation
 
-Detailed documentation on FrameTree can be found at [https://frametree.readthedocs.io](https://frametree.readthedocs.io)
+Detailed documentation on FrameTree can be found at [https://arcanaframework.github.io/frametree/](https://arcanaframework.github.io/frametree/)
 
 ## Quick Installation
 
