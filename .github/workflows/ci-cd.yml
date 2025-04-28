@@ -42,19 +42,19 @@ jobs:
     - name: Disable etelemetry
       run:  echo "NO_ET=TRUE" >> $GITHUB_ENV
     - name: Set up Python ${{ matrix.python-version }} on ${{ matrix.os }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Update build tools
-      run: python3 -m pip install --break-system-packages --upgrade pip
+    - name: Setup virtual environment
+      run: python3 -m venv $HOME/venv
     - name: Install Package
-      run: python3 -m pip install --break-system-packages -e .[test]
+      run: $HOME/venv/bin/python -m pip install -e .[test]
     - name: Install development Pydra
-      run: python3 -m pip install --break-system-packages git+https://github.com/nipype/pydra.git@develop
+      run: $HOME/venv/bin/python -m pip install git+https://github.com/nipype/pydra.git@develop
     - name: Change out of root directory
       run: cd docs
     - name: Pytest
-      run: pytest -vvs --cov frametree --cov-config .coveragerc --cov-report xml .
+      run: $HOME/venv/bin/pytest -vvs --cov frametree --cov-config .coveragerc --cov-report xml .
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
@@ -76,7 +76,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.12'
+        python-version: '3.x'
     - name: Install build tools
       run: python3 -m pip install --break-system-packages build twine
     - name: Build source and wheel distributions
