@@ -16,7 +16,7 @@ dependencies = [
     "fileformats >=0.8.5",
     "fileformats-extras >=0.2.0",
     "importlib-metadata>=1.4",
-    "pydra>=0.23.0a0",
+    "pydra>=1.0a1",
     "PyYAML>=6.0",
     "setuptools",
 ]

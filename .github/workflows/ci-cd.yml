@@ -49,8 +49,6 @@ jobs:
       run: python3 -m venv $HOME/venv
     - name: Install Package
       run: $HOME/venv/bin/python -m pip install -e .[test]
-    - name: Install development Pydra
-      run: $HOME/venv/bin/python -m pip install git+https://github.com/nipype/pydra.git@develop
     - name: Change out of root directory
       run: cd docs
     - name: Pytest
