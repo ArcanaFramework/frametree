@@ -21,7 +21,7 @@ import fileformats.field
 import pydra.compose.base
 import pydra.compose.python
 import pydra.compose.workflow
-from pydra.utils import task_fields
+from pydra.utils import get_fields
 from pydra.utils.typing import optional_type
 from pydra.engine.workflow import Workflow
 from pydra.utils.typing import TypeParser, is_lazy
@@ -548,7 +548,7 @@ def pydra_asdict(
         if hasattr(obj, "container"):
             dct["container"] = {"type": obj.container, "image": obj.image}
     dct["inputs"] = inputs = {}
-    for inpt in task_fields(obj):
+    for inpt in get_fields(obj):
         if inpt.name.startswith("_"):
             continue
         inpt_value = getattr(obj, inpt.name)
@@ -757,7 +757,7 @@ def get_module_name(klass: type) -> str:
         except AttributeError:
             pass
         else:
-            executor = task_fields(klass)[executor_name].default
+            executor = get_fields(klass)[executor_name].default
             try:
                 module = executor.__module__
             except AttributeError:

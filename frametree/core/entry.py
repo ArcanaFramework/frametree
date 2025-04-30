@@ -120,7 +120,7 @@ class DataEntry:
                 )
         else:
             item = self.datatype(item)
-        self.row.frameset.store.put(self, item)
+        self.row.frameset.store.put(item, self)
 
     def get_item(self, datatype: ty.Optional[ty.Type[DataType]] = None) -> DataType:
         if datatype is None:

@@ -8,7 +8,7 @@ import attrs.converters
 from fileformats.core import DataType
 from fileformats.core.exceptions import FormatConversionError
 from pydra.utils.typing import StateArray
-from pydra.utils import task_fields
+from pydra.utils import get_fields
 from pydra.compose.base import Task
 from pydra.compose import workflow, python
 from frametree.core.exceptions import (
@@ -152,7 +152,7 @@ class Pipeline:
                 raise ValueError(
                     f"Datatype must be explicitly set for {inpt.name} in unbound Pipeline"
                 )
-            field_names = [f.name for f in task_fields(self.task)]
+            field_names = [f.name for f in get_fields(self.task)]
             if inpt.field not in field_names:
                 raise FrameTreeNameError(
                     inpt.field,
@@ -189,7 +189,7 @@ class Pipeline:
                 raise ValueError(
                     f"Datatype must be explicitly set for {outpt.name} in unbound Pipeline"
                 )
-            field_names = [f.name for f in task_fields(self.task.Outputs)]
+            field_names = [f.name for f in get_fields(self.task.Outputs)]
             if outpt.field not in field_names:
                 raise FrameTreeNameError(
                     outpt.field,
