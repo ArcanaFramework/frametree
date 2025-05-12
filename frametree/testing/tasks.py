@@ -4,7 +4,7 @@ import typing as ty
 import attrs
 from pydra.compose import python, workflow
 import fileformats.core
-from fileformats.generic import File
+from fileformats.text import TextFile
 import fileformats.text
 from frametree.core.row import DataRow
 
@@ -66,11 +66,10 @@ def AttrsFunc(a: A, b: B) -> C:
 
 @python.define(outputs=["out_file"])
 def Concatenate(
-    in_file1: File,
-    in_file2: File,
-    out_file: ty.Optional[Path] = None,
+    in_file1: TextFile,
+    in_file2: TextFile,
     duplicates: int = 1,
-) -> File:
+) -> TextFile:
     """Concatenates the contents of two files and writes them to a third
 
     Parameters
@@ -79,16 +78,13 @@ def Concatenate(
         A text file
     in_file2 : Path
         Another text file
-    out_file : Path
-       The path to write the output file to
 
     Returns
     -------
     out_file: Path
         A text file made by concatenating the two inputs
     """
-    if out_file is None:
-        out_file = Path("out_file.txt").absolute()
+    out_file = Path("out_file.txt").absolute()
     contents = []
     for _ in range(duplicates):
         for fname in (in_file1, in_file2):
@@ -100,23 +96,20 @@ def Concatenate(
 
 
 @python.define(outputs=["out_file"])
-def Reverse(in_file: File, out_file: ty.Optional[Path] = None) -> File:
+def Reverse(in_file: TextFile) -> TextFile:
     """Reverses the contents of a file and outputs it to another file
 
     Parameters
     ----------
-    in_file : Path
+    in_file : TextFile
         A text file
-    out_file : Path
-       The path to write the output file to
 
     Returns
     -------
     out_file: Path
         A text file with reversed contents to the original
     """
-    if out_file is None:
-        out_file = Path("out_file.txt").absolute()
+    out_file = Path("out_file.txt").absolute()
     with open(in_file) as f:
         contents = f.read()
     with open(out_file, "w") as f:
@@ -125,7 +118,9 @@ def Reverse(in_file: File, out_file: ty.Optional[Path] = None) -> File:
 
 
 @workflow.define(outputs=["out_file"])
-def ConcatenateReverse(in_file1: File, in_file2: File, duplicates: int) -> File:
+def ConcatenateReverse(
+    in_file1: TextFile, in_file2: TextFile, duplicates: int
+) -> TextFile:
     """A simple workflow that has the same signature as concatenate, but
     concatenates reversed contents of the input files instead
 
@@ -139,7 +134,7 @@ def ConcatenateReverse(in_file1: File, in_file2: File, duplicates: int) -> File:
 
     Returns
     -------
-    out_file: File
+    out_file: TextFile
         The file made by concatenating the reversed contents of the two inputs
     """
 
@@ -175,22 +170,17 @@ def Plus10ToFilenumbers(filenumber_row: DataRow) -> None:
 
 
 @python.define
-def IdentityFile(in_file: File) -> File:
-    return in_file
-
-
-@python.define
 def Identity(in_: ty.Any) -> ty.Any:
     return in_
 
 
 @python.define
 def MultiplyContents(
-    in_file: File,
+    in_file: TextFile,
     multiplier: ty.Union[int, float],
     out_file: ty.Optional[Path] = None,
     dtype: type = float,
-) -> File:
+) -> TextFile:
     """Multiplies the contents of the file, assuming that it contains numeric
     values on separate lines
 
@@ -218,11 +208,11 @@ def MultiplyContents(
     with open(out_file, "w") as f:
         f.write("\n".join(multiplied))
 
-    return File(out_file)
+    return TextFile(out_file)
 
 
 @python.define
-def ContentsAreNumeric(in_file: File) -> bool:
+def ContentsAreNumeric(in_file: TextFile) -> bool:
     """Checks the contents of a file to see whether each line can be cast to a numeric
     value
 
@@ -247,9 +237,9 @@ def ContentsAreNumeric(in_file: File) -> bool:
 
 @python.define
 def CheckLicense(
-    expected_license_path: File,
-    expected_license_contents: File,
-) -> File:
+    expected_license_path: TextFile,
+    expected_license_contents: TextFile,
+) -> TextFile:
     """Checks the `expected_license_path` to see if there is a file with the same contents
     as that of `expected_license_contents`
 

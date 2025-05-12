@@ -5,6 +5,7 @@ from abc import abstractmethod, ABCMeta
 from pathlib import Path
 import attrs
 import typing as ty
+from pprint import pformat
 import yaml
 from frametree.core.serialize import (
     asdict,
@@ -268,7 +269,13 @@ class Store(metaclass=ABCMeta):
         if name is None:
             name = frameset.name
         with self.connection:
-            self.save_frameset_definition(frameset.id, definition, name=save_name)
+            try:
+                self.save_frameset_definition(frameset.id, definition, name=save_name)
+            except Exception as e:
+                e.add_note(
+                    f"Attempting to save frameset definition:\n{pformat(definition)}"
+                )
+                raise e
 
     def load_frameset(self, id: str, name: str = "", **kwargs: ty.Any) -> FrameSet:
         """Load an existing dataset definition

@@ -269,7 +269,7 @@ class MockRemote(RemoteStore):
     def create_field_entry(self, path: str, datatype: type, row: DataRow) -> DataEntry:
         return self._create_entry(path=path, datatype=datatype, row=row)
 
-    def get_checksums(self, uri: str) -> ty.Dict[str, str]:
+    def get_checksums(self, uri: str) -> ty.Optional[ty.Dict[str, str]]:
         """
         Downloads the checksum digests associated with the files in the file-set.
         These are saved with the downloaded files in the cache and used to

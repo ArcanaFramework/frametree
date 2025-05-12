@@ -22,7 +22,7 @@ import pydra.compose.base
 import pydra.compose.python
 import pydra.compose.workflow
 from pydra.utils import get_fields
-from pydra.utils.typing import optional_type
+from pydra.utils.typing import optional_type, is_fileset_or_union
 from pydra.engine.workflow import Workflow
 from pydra.utils.typing import TypeParser, is_lazy
 from pydra.engine.lazy import LazyField
@@ -352,7 +352,9 @@ def asdict(
         return "<" + ClassResolver.tostr(klass, strip_prefix=False) + ">"
 
     def value_asdict(value: ty.Any) -> ty.Dict[str, ty.Any]:
-        if isclass(value):
+        if is_fileset_or_union(value):
+            value = to_mime(value, official=False)
+        elif isclass(value):
             value = serialise_class(value)
         elif hasattr(value, "asdict"):
             value = value.asdict(required_modules=required_modules)
