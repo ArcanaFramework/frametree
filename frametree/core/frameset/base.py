@@ -302,7 +302,17 @@ class FrameSet:
                     f"are not part of the {self.axes} data space"
                 )
 
-    def save(self, name: str = "") -> None:
+    def save(self, name: str | None = None) -> None:
+        """Save the frameset to the store
+
+        Parameters
+        ----------
+        name : str, optional
+            The name of the dataset to save in the store. If not provided
+            the name of the dataset is used.
+        """
+        if name is None:
+            name = self.name if self.name else ""
         self.store.save_frameset(self, name=name)
 
     @classmethod

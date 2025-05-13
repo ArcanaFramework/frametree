@@ -228,7 +228,7 @@ class RemoteStore(Store):
         """
 
     @abstractmethod
-    def get_checksums(self, uri: str) -> ty.Dict[str, str]:
+    def get_checksums(self, uri: str) -> ty.Optional[ty.Dict[str, str]]:
         """
         Downloads the checksum digests associated with the files in the file-set.
         These are saved with the downloaded files in the cache and used to
@@ -475,18 +475,23 @@ class RemoteStore(Store):
             # we download the ones it calculated and check they match with the ones we
             # calculate.
             checksums = self.get_checksums(entry.uri)
-            calculated_checksums = self.calculate_checksums(cached)
-            if checksums != calculated_checksums:
-                raise FrameTreeError(
-                    f"Checksums for uploaded file-set at {entry} don't match that of the "
-                    "original files:\n\n"
-                    + dict_diff(
-                        calculated_checksums,
-                        checksums,
-                        label1="original",
-                        label2="remote",
+            if checksums is not None:
+                calculated_checksums = self.calculate_checksums(cached)
+                if checksums is not None and checksums != calculated_checksums:
+                    raise FrameTreeError(
+                        f"Checksums for uploaded file-set at {entry} don't match that "
+                        "of the original files:\n\n"
+                        + dict_diff(
+                            calculated_checksums,
+                            checksums,
+                            label1="original",
+                            label2="remote",
+                        )
+                        + "\n\nfull original checksums:\n\n"
+                        + json.dumps(calculated_checksums, indent=2)
+                        + "\n\nfull remote checksums:\n\n"
+                        + json.dumps(checksums, indent=2)
                     )
-                )
         # Save checksums, to avoid having to redownload if they haven't been altered
         # on XNAT
         with open(

@@ -7,7 +7,7 @@ import attrs
 import inspect
 from operator import attrgetter
 from attrs.converters import optional
-from fileformats.core import DataType
+from fileformats.core import DataType, Field, from_mime
 from fileformats.core.exceptions import FormatMismatchError
 from pydra.utils.hash import hash_single
 from pydra.utils.typing import is_fileset_or_union
@@ -26,11 +26,46 @@ if ty.TYPE_CHECKING:  # pragma: no cover
 logger = logging.getLogger("frametree")
 
 
+def datatype_converter(datatype: ty.Union[type, str]) -> ty.Type[DataType]:
+    """Convert a datatype to a DataType subclass if it is not already one
+
+    Parameters
+    ----------
+    datatype : type or str
+        The type, or MIME-like string, to convert into a fileformat.core.DataType
+
+    Returns
+    -------
+    ty.Type[DataType]
+        The converted datatype
+
+    Raises
+    ------
+    TypeError
+        If the datatype is not a subclass of DataType or a primitive type"""
+    if ty.get_origin(datatype) is ty.Union:
+        return ty.Union.__getitem__(
+            tuple(datatype_converter(a) for a in ty.get_args(datatype))
+        )
+    if inspect.isclass(datatype) and issubclass(datatype, DataType):
+        return datatype
+    elif isinstance(datatype, str) and "/" in datatype:
+        return from_mime(datatype)
+    else:
+        try:
+            return Field.from_primitive(datatype)
+        except TypeError:
+            raise TypeError(
+                f"Datatype ({datatype}) must be a subclass of {DataType}, or "
+                "a primitive type of a Field datatype (i.e. int, str, float, list, etc...)"
+            )
+
+
 @attrs.define(kw_only=True)
 class DataColumn(metaclass=ABCMeta):
 
     name: str
-    datatype: type = attrs.field()
+    datatype: ty.Type[DataType] = attrs.field(converter=datatype_converter)
     row_frequency: Axes = attrs.field(validator=attrs.validators.instance_of(Axes))
     path: ty.Optional[str] = None
     frameset: FrameSet = attrs.field(
@@ -171,7 +206,10 @@ class DataColumn(metaclass=ABCMeta):
         "that matched the datatype '{self.datatype.mime_like}'"
         if self.datatype is entry.datatype:
             return True
-        if not issubclass(self.datatype, entry.datatype):
+        if not is_fileset_or_union and (
+            not inspect.isclass(self.datatype)
+            or not issubclass(self.datatype, entry.datatype)
+        ):
             return self._log_mismatch(
                 entry,
                 "required datatype '{}' is not a " "sub-type of '{}'",
