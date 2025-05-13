@@ -108,7 +108,11 @@ class Axes(Enum):
     def is_basis(self):
         return len(self._nonzero_bits()) == 1
 
-    def __eq__(self, other):
+    def __eq__(self, other: ty.Any) -> bool:
+        if isinstance(other, str):
+            other = type(self)[other]
+        elif not isinstance(other, type(self)):
+            return False
         return self.value == other.value
 
     def __lt__(self, other):
