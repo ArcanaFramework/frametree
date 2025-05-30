@@ -761,12 +761,14 @@ def get_module_name(klass: type) -> str:
         else:
             executor = get_fields(klass)[executor_name].default
             try:
-                module = executor.__module__
+                module_name = executor.__module__
             except AttributeError:
                 pass
             else:
-                if module != "types":
-                    return module
+                if module_name != "types":
+                    module = import_module(module_name)
+                    if getattr(module, klass.__name__) is klass:
+                        return module_name
         raise FrametreeCannotSerializeDynamicDefinitionError(
             f"Cannot serialise {klass} as it is a dynamically created class"
         )
