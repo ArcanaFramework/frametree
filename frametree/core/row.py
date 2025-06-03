@@ -6,6 +6,11 @@ from frametree.core.exceptions import (
     FrameTreeWrongFrequencyError,
 )
 from fileformats.core import DataType
+from pydra.utils.hash import (
+    register_serializer,
+    Cache,
+    bytes_repr_mapping_contents,
+)
 from .quality import DataQuality
 from .axes import Axes
 from .cell import DataCell
@@ -275,3 +280,13 @@ class DataRow:
             )
         self._entries_dict[path] = entry
         return entry
+
+
+@register_serializer(DataRow)
+def bytes_repr_data_row(row: DataRow, cache: Cache) -> ty.Iterator[bytes]:
+    yield "frametree.core.row.DataRow:(".encode()
+    yield b"frameset.id="
+    yield row.frameset.id.encode()
+    yield b", ids="
+    yield from bytes_repr_mapping_contents(row.ids, cache)
+    yield b")"
