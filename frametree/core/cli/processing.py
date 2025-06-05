@@ -37,9 +37,9 @@ COLUMNS are the names of the sink columns to derive""",
     ),
 )
 @click.option(
-    "--plugin",
+    "--worker",
     default="cf",
-    help=("The Pydra plugin with which to process the workflow"),
+    help=("The Pydra worker with which to process the workflow"),
 )
 @click.option(
     "--loglevel",
@@ -47,7 +47,7 @@ COLUMNS are the names of the sink columns to derive""",
     default="info",
     help=("The level of detail logging information is presented"),
 )
-def derive(address, columns, work, plugin, loglevel):
+def derive(address, columns, work, worker, loglevel):
 
     logging.basicConfig(level=getattr(logging, loglevel.upper()))
 
@@ -63,7 +63,7 @@ def derive(address, columns, work, plugin, loglevel):
 
     set_loggers(loglevel)
 
-    dataset.derive(*columns, cache_dir=pipeline_cache, worker=plugin)
+    dataset.derive(*columns, cache_dir=pipeline_cache, worker=worker)
 
     columns_str = "', '".join(columns)
     logger.info(f"Derived data for '{columns_str}' column(s) successfully")
