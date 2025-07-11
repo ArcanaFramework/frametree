@@ -7,4 +7,4 @@ __authors__ = [("Thomas G. Close", "tom.g.close@gmail.com")]
 
 from .frameset import FrameSet  # noqa: E402
 
-__all__ = ["FrameSet"]
+__all__ = ["FrameSet", "__version__", "PACKAGE_NAME", "CODE_URL", "__authors__"]
