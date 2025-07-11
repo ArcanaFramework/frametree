@@ -1,11 +1,10 @@
 from __future__ import annotations
 import json
 import typing as ty
-import importlib_metadata
+import importlib.metadata
 import pkgutil
 from importlib import import_module
 from inspect import isclass
-import pkg_resources
 from pathlib import Path
 from collections.abc import Iterable
 from pydra.utils.general import STDLIB_MODULES
@@ -13,24 +12,10 @@ from frametree.core.exceptions import FrameTreeUsageError
 from frametree.core import __version__, PACKAGE_NAME
 
 
-def submodules(package, subpkg=None):
-    """Iterates all modules within the given package
-
-    Parameters
-    ----------
-    package : module
-        the package to iterate over
-    subpkg : str, optional
-        the sub-package (of the sub-packages) to return instead of the first level down.
-        e.g. package=frametree, subpkg=data -> frametree.common, frametree.xnat, etc...
-    skip : list[str], optional
-        submodules to skip
-
-    Yields
-    ------
-    module
-        all modules within the package
-    """
+def submodules(
+    package: ty.Any, subpkg: str | None = None
+) -> ty.Generator[ty.Any, None, None]:
+    """Iterates all modules within the given package"""
     for mod_info in pkgutil.iter_modules(
         package.__path__, prefix=package.__package__ + "."
     ):
@@ -45,26 +30,11 @@ def submodules(package, subpkg=None):
             yield import_module(mod_info.name)
 
 
-def list_subclasses(package, base_class, subpkg=None):
-    """List all available subclasses of a base class in modules within the given
-    package
-
-    Parameters
-    ----------
-    package : module
-        the package to list the subclasses within
-    base_class : type
-        the base class
-    subpkg : str, optional
-        the sub-package (of the sub-packages) to return instead of the first level down.
-        e.g. package=frametree, subpkg=data -> frametree.common, frametree.xnat, etc...
-
-    Returns
-    -------
-    list
-        all subclasses of the base-class found with the package
-    """
-    subclasses = []
+def list_subclasses(
+    package: ty.Any, base_class: type, subpkg: str | None = None
+) -> list[type]:
+    """List all available subclasses of a base class in modules within the given package"""
+    subclasses: list[type] = []
     for module in submodules(package, subpkg=subpkg):
         for obj_name in dir(module):
             obj = getattr(module, obj_name)
@@ -73,25 +43,11 @@ def list_subclasses(package, base_class, subpkg=None):
     return subclasses
 
 
-def package_from_module(module: Iterable[str]) -> ty.Any:
-    """Resolves the installed package (e.g. from PyPI) that provides the given
-    module.
-
-    Parameters
-    ----------
-    module: str or module or Sequence[str or module]
-        a module or its import path string to retrieve the package for. Can be
-        provided as a list of modules/strings, in which case a list of packages
-        are returned
-
-    Returns
-    -------
-    PackageInfo or ty.List[PackageInfo]
-        the package info object corresponding to the module. If `module`
-        parameter is a list of modules/strings then a set of packages are
-        returned
-    """
-    module_paths = set()
+def package_from_module(
+    module: str | ty.Any | Iterable[str | ty.Any],
+) -> importlib.metadata.Distribution | tuple[importlib.metadata.Distribution, ...]:
+    """Resolves the installed package (e.g. from PyPI) that provides the given module."""
+    module_paths: set[str] = set()
     if isinstance(module, Iterable) and not isinstance(module, str):
         modules = module
         as_tuple = True
@@ -103,25 +59,25 @@ def package_from_module(module: Iterable[str]) -> ty.Any:
             module_path = module.__name__
         except AttributeError:
             module_path = module
-        module_paths.add(importlib_metadata.PackagePath(module_path.replace(".", "/")))
-    packages = set()
-    for pkg in pkg_resources.working_set:
-        if editable_dir := get_editable_dir(pkg):
+        module_paths.add(module_path.replace(".", "/"))
+    packages: set[importlib.metadata.Distribution] = set()
+    for dist in importlib.metadata.distributions():
+        if editable_dir := get_editable_dir(dist):
 
-            def is_in_pkg(module_path):
+            def is_in_pkg(module_path: str) -> bool:
                 pth = editable_dir.joinpath(module_path)
                 return pth.with_suffix(".py").exists() or (pth / "__init__.py").exists()
 
         else:
-            installed_paths = installed_module_paths(pkg)
+            installed_paths = installed_module_paths(dist)
 
-            def is_in_pkg(module_path):
+            def is_in_pkg(module_path: str) -> bool:
                 return module_path in installed_paths
 
         if in_pkg := set(m for m in module_paths if is_in_pkg(m)):
-            packages.add(pkg)
+            packages.add(dist)
             module_paths -= in_pkg
-            if not module_paths:  # If there are no more modules to find pkgs for break
+            if not module_paths:
                 break
     if module_paths:
         paths_str = "', '".join(str(p) for p in module_paths)
@@ -129,57 +85,46 @@ def package_from_module(module: Iterable[str]) -> ty.Any:
     return tuple(packages) if as_tuple else next(iter(packages))
 
 
-def get_editable_dir(pkg: pkg_resources.DistInfoDistribution):
-    """Returns the path to the editable dir to a package if it exists
-
-    Parameters
-    ----------
-    pkg : pkg_resources.DistInfoDistribution
-        the package to get the editable directory for
-
-    Returns
-    ------
-    Path or None
-        the path to the editable file or None if the package isn't installed in editable mode
-    """
-    if pkg.egg_info is None:
+def get_editable_dir(dist: importlib.metadata.Distribution) -> Path | None:
+    """Returns the path to the editable dir to a package if it exists"""
+    if not hasattr(dist, "locate_file"):
         return None
-    direct_url_path = Path(pkg.egg_info) / "direct_url.json"
-    if not direct_url_path.exists():
-        return None
-    with open(direct_url_path) as f:
-        url_spec = json.load(f)
-    url = url_spec["url"]
-    if "dir_info" not in url_spec or not url_spec["dir_info"].get("editable"):
-        return None
-    assert url.startswith("file://")
-    return Path(url[len("file://") :])
-
-
-def installed_module_paths(pkg: pkg_resources.DistInfoDistribution):
-    """Returns the list of modules that are part of an installed package
-
-    Parameters
-    ----------
-    pkg
-        the package to list the installed modules
-    """
     try:
-        paths = importlib_metadata.files(pkg.key)
-    except importlib_metadata.PackageNotFoundError:
+        dist_info_dir = dist.locate_file("")
+        direct_url_path = Path(dist_info_dir) / "direct_url.json"
+        if not direct_url_path.exists():
+            return None
+        with open(direct_url_path) as f:
+            url_spec = json.load(f)
+        url: str = url_spec["url"]
+        if "dir_info" not in url_spec or not url_spec["dir_info"].get("editable"):
+            return None
+        assert url.startswith("file://")
+        return Path(url[len("file://") :])
+    except Exception:
+        return None
+
+
+def installed_module_paths(dist: importlib.metadata.Distribution) -> set[str]:
+    """Returns the list of modules that are part of an installed package"""
+    try:
+        paths = importlib.metadata.files(dist.metadata["Name"])
+    except (importlib.metadata.PackageNotFoundError, KeyError, AttributeError):
         paths = []
     if paths is None:
         paths = []
-    paths = set(
-        p.parent if p.name == "__init__.py" else p.with_suffix("")
+    result: set[str] = set(
+        str(p.parent) if p.name == "__init__.py" else str(p.with_suffix(""))
         for p in paths
         if p.suffix == ".py"
     )
-    return paths
+    return result
 
 
 def pkg_versions(modules: Iterable[str]) -> dict[str, str]:
     nonstd = [m for m in modules if m.split(".")[0] not in STDLIB_MODULES]
-    versions = {p.key: p.version for p in package_from_module(nonstd)}
+    versions: dict[str, str] = {
+        d.metadata["Name"]: d.version for d in package_from_module(nonstd)
+    }
     versions[PACKAGE_NAME] = __version__
     return versions
