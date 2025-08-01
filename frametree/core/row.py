@@ -91,7 +91,7 @@ class DataRow:
         DataType
             The item matching the provided name specified by the column name
         """
-        return self.cell(column_name).item
+        return self.cell(column_name, allow_empty=False).item
 
     def __setitem__(self, column_name: str, value: DataType):
         self.cell(column_name).item = value
