@@ -309,7 +309,7 @@ class SourceColumn(DataColumn):
     quality_threshold: DataQuality = attrs.field(
         default=None, converter=optional(lambda q: DataQuality[str(q)])
     )
-    order: int = attrs.field(
+    order: int | None = attrs.field(
         default=None, converter=lambda x: int(x) if x is not None else None
     )
     required_metadata: ty.Dict[str, ty.Any] = attrs.field(default=None)
@@ -439,10 +439,8 @@ class SinkColumn(DataColumn):
         for the sink
     """
 
-    path = attrs.field(
-        validator=attrs.validators.instance_of(str)
-    )  # i.e. make mandatory
-    salience: ColumnSalience = attrs.field(
+    path: str = attrs.field(validator=attrs.validators.instance_of(str))
+    salience: ColumnSalience | None = attrs.field(
         default=ColumnSalience.supplementary,
         converter=lambda s: ColumnSalience[str(s)] if s is not None else None,
     )
@@ -450,11 +448,11 @@ class SinkColumn(DataColumn):
 
     is_sink = True
 
-    @path.default
+    @path.default  # pyright: ignore[reportAttributeAccessIssue]
     def path_default(self):
         return f"{self.name}@{self.frameset.name}"
 
-    def derive(self, ids: ty.List[str] = None):
+    def derive(self, ids: ty.List[str] | None = None):
         self.frameset.derive(self.name, ids=ids)
 
     def criteria(self):
