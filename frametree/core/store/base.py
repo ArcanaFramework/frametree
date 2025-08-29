@@ -877,7 +877,13 @@ class Store(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def create_entry(self, path: str, datatype: type, row: DataRow) -> DataEntry:
+    def create_entry(
+        self,
+        path: str,
+        datatype: type,
+        row: DataRow,
+        order_key: int | str | None = None,
+    ) -> DataEntry:
         """Creates an "entry" in the store to hold a new data item
 
         Parameters
@@ -888,6 +894,9 @@ class Store(metaclass=ABCMeta):
             the datatype of the entry
         row : DataRow
             the row (tree node) to create the entry in
+        order_key : int | str, optional
+            a key used to order the entry within the row, can be used to disambiguate
+            entries with the same path
 
         Returns
         -------

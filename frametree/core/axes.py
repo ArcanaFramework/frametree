@@ -62,7 +62,7 @@ class Axes(Enum):
         return max(cls)
 
     @classmethod
-    def bases(cls):
+    def bases(cls) -> list["Axes"]:
         return cls.leaf().span()
 
     @classproperty

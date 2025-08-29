@@ -245,8 +245,8 @@ class DataColumn(metaclass=ABCMeta):
         out_str = ""
         for match in sorted(matches, key=attrgetter("path")):
             out_str += "\n    "
-            if match.order:
-                out_str += match.order + ": "
+            if match.order_key:
+                out_str += match.order_key + ": "
             out_str += match.path
             out_str += f" ({match.quality})"
         return out_str

@@ -1,6 +1,7 @@
 from __future__ import annotations
 import typing as ty
 import attrs
+import natsort
 from frametree.core.exceptions import (
     FrameTreeNameError,
     FrameTreeWrongFrequencyError,
@@ -43,38 +44,40 @@ class DataRow:
         appropriate, by default None
     """
 
-    ids: ty.Dict[Axes, str] = attrs.field()
+    ids: dict[Axes, str] = attrs.field()
     frameset: FrameSet = attrs.field(repr=False)
-    frequency: str = attrs.field()
-    tree_path: ty.List[str] = None
-    uri: ty.Optional[str] = None
-    metadata: ty.Optional[dict] = None
+    frequency: Axes = attrs.field()
+    tree_path: list[str] | None = None
+    uri: str | None = None
+    metadata: dict[str, ty.Any] | None = None
 
     # Automatically populated fields
-    children: ty.Dict[Axes, ty.Dict[ty.Union[str, ty.Tuple[str]], str]] = attrs.field(
+    children: dict[Axes, dict[str | tuple[str], str]] = attrs.field(
         factory=dict, repr=False, init=False
     )
-    _entries_dict: ty.Dict[str, DataEntry] = attrs.field(
+    _entries_dict: dict[tuple[str, int | str | None], DataEntry] | None = attrs.field(
         default=None, init=False, repr=False
     )
-    _cells: ty.Dict[str, DataCell] = attrs.field(factory=dict, init=False, repr=False)
+    _cells: dict[str, DataCell] = attrs.field(factory=dict, init=False, repr=False)
 
-    @frameset.validator
-    def dataset_validator(self, _, dataset):
+    @frameset.validator  # pyright: ignore[reportAttributeAccessIssue]
+    def dataset_validator(
+        self, _: attrs.Attribute[FrameSet], dataset: "FrameSet"
+    ) -> None:
         from .frameset import FrameSet
 
         if not isinstance(dataset, FrameSet):
             raise ValueError(f"provided dataset {dataset} is not of type {FrameSet}")
 
-    @frequency.validator
-    def frequency_validator(self, _, frequency):
+    @frequency.validator  # pyright: ignore[reportAttributeAccessIssue]
+    def frequency_validator(self, _: attrs.Attribute[Axes], frequency: Axes) -> None:
         if frequency not in self.frameset.axes:
             raise ValueError(
                 f"'{frequency}' frequency is not in the data space of the dataset, "
                 f"{self.frameset.axes}"
             )
 
-    def __attrs_post_init__(self):
+    def __attrs_post_init__(self) -> None:
         if isinstance(self.frequency, str):
             self.frequency = self.frameset.axes[self.frequency]
 
@@ -93,11 +96,11 @@ class DataRow:
         """
         return self.cell(column_name, allow_empty=False).item
 
-    def __setitem__(self, column_name: str, value: DataType):
+    def __setitem__(self, column_name: str, value: DataType) -> DataRow:
         self.cell(column_name).item = value
         return self
 
-    def cell(self, column_name: str, allow_empty: ty.Optional[bool] = None) -> DataCell:
+    def cell(self, column_name: str, allow_empty: bool | None = None) -> DataCell:
         try:
             cell = self._cells[column_name]
         except KeyError:
@@ -116,7 +119,7 @@ class DataRow:
                 + "')",
             ) from e
         if column.row_frequency != self.frequency:
-            return FrameTreeWrongFrequencyError(
+            raise FrameTreeWrongFrequencyError(
                 column_name,
                 f"'column_name' ({column_name}) is of {column.row_frequency} "
                 f"frequency and therefore not in rows of {self.frequency}"
@@ -126,7 +129,7 @@ class DataRow:
         self._cells[column_name] = cell
         return cell
 
-    def cells(self, allow_empty: ty.Optional[bool] = None) -> ty.Iterable[DataCell]:
+    def cells(self, allow_empty: bool | None = None) -> ty.Iterable[DataCell]:
         for column_name in self.frameset.columns:
             yield self.cell(column_name, allow_empty=allow_empty)
 
@@ -134,51 +137,92 @@ class DataRow:
     def entries(self) -> ty.Iterable[DataEntry]:
         return self.entries_dict.values()
 
-    def entry(self, id: str) -> DataEntry:
-        return self.entries_dict[id]
+    def entry(
+        self, name: str, order: int | None = None, key: int | str | None = None
+    ) -> DataEntry:
+        """Access an entry from the row
+
+        Parameters
+        ----------
+        name : str
+            The name of the entry
+        order : int | None
+            The order of the entry, when there are multiple entries with the same name
+        key : int | str | None
+            The key used to sort the entries of the row
+
+        Return
+        ------
+        DataEntry
+            The entry matching the provided name, and order or key
+        """
+        if order is not None and key is not None:
+            raise ValueError(
+                f"Only one of 'order' or 'key' can be provided to DataRow.entry() ({self})"
+            )
+        try:
+            return self.entries_dict[(name, key)]
+        except KeyError:
+            keys = natsort.natsorted(k[1] for k in self.entries_dict if k[0] == name)
+            if not keys:
+                raise KeyError(f"No entries within {self} with name '{name}'")
+            if order is not None:
+                try:
+                    key = keys[order]
+                except IndexError:
+                    raise KeyError(
+                        f"Not enough entries within {self} with name '{name}' to select {order}th entry (keys: {keys})"
+                    )
+            elif len(keys) == 1:
+                key = keys[0]
+            else:
+                raise KeyError()
+            return self.entries_dict[(name, key)]
 
     @property
-    def entries_dict(self):
+    def entries_dict(self) -> dict[tuple[str, int | str | None], DataEntry]:
         if self._entries_dict is None:
             self._entries_dict = {}
             self.frameset.store.populate_row(self)
         return self._entries_dict
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{type(self).__name__}(id={self.id}, frequency={self.frequency})"
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self.ids[self.frequency]
 
     @property
-    def ids_tuple(self):
-        return tuple(self.ids[a] for a in self.frameset.axes.axes())
+    def ids_tuple(self) -> tuple[str, ...]:
+        return tuple(self.ids[a] for a in self.frameset.axes.bases())
 
     @property
-    def label(self):
+    def label(self) -> str:
+        if self.tree_path is None or not self.tree_path:
+            raise AttributeError("tree_path is not set or empty")
         return self.tree_path[-1]
 
-    def frequency_id(self, frequency: ty.Union[str, Axes]):
+    def frequency_id(self, frequency: ty.Union[str, Axes]) -> str:
         return self.ids[self.frameset.axes[str(frequency)]]
 
-    def __iter__(self):
+    def __iter__(self) -> ty.Iterator[str]:
         return iter(self.keys())
 
-    def keys(self):
+    def keys(self) -> ty.Generator[str, None, None]:
         return (n for n, _ in self.items())
 
-    def values(self):
+    def values(self) -> ty.Generator[DataType, None, None]:
         return (i for _, i in self.items())
 
-    def items(self):
+    def items(self) -> ty.Iterable[tuple[str, DataType]]:
         return (
             (c.name, self[c.name])
             for c in self.frameset.columns.values()
             if c.row_frequency == self.frequency
         )
 
-    def column_items(self, column_name):
+    def column_items(self, column_name: str) -> list[DataType]:
         """Gets the item for the current row if item's frequency matches
         otherwise gets all the items that are related to the current row (
         i.e. are in child rows)
@@ -203,11 +247,19 @@ class DataRow:
             # rows) or the whole dataset
             spec = self.frameset.columns[column_name]
             try:
-                return self.children[spec.row_frequency].values()
+                # Assume children values are DataEntry, return their .item
+                return [
+                    entry.item for entry in self.children[spec.row_frequency].values()
+                ]
             except KeyError:
-                return self.frameset.column(spec.row_frequency)
+                # If frameset.column does not exist, raise a clear error
+                raise AttributeError(
+                    f"frameset has no attribute 'column' for frequency {spec.row_frequency}"
+                )
 
-    def create_entry(self, path: str, datatype: ty.Type[DataType]) -> DataEntry:
+    def create_entry(
+        self, path: str, datatype: type[DataType], order_key: int | str | None = None
+    ) -> DataEntry:
         """Creates a new data entry for the row, i.e. modifies the data in the store
 
         Parameters
@@ -216,24 +268,29 @@ class DataRow:
             the path to the entry to be created within the node, e.g. 'resources/ml-summary.json'
         datatype : type (subclass of fileformats.core.DataType)
             the type of the data entry
+        order_key : str or int, optional
+            the order of the entry within the row, can be used to disambiguate
+            entries with the same path
 
         Returns
         -------
         DataEntry
             The newly created data entry
         """
-        return self.frameset.store.create_entry(path=path, datatype=datatype, row=self)
+        return self.frameset.store.create_entry(
+            path=path, datatype=datatype, row=self, order_key=order_key
+        )
 
     def add_entry(
         self,
         path: str,
-        datatype: ty.Type[DataType],
+        datatype: type[DataType],
         uri: str,
-        item_metadata: ty.Optional[dict] = None,
-        order: ty.Optional[int] = None,
+        item_metadata: dict[str, ty.Any] | None = None,
+        order_key: int | str | None = None,
         quality: DataQuality = DataQuality.usable,
-        checksums: ty.Dict[str, str] = None,
-    ):
+        checksums: dict[str, str | dict[str, ty.Any]] | None = None,
+    ) -> DataEntry:
         """Adds an existing data entry to a row that has been found while scanning the
         row in the repository.
 
@@ -258,31 +315,32 @@ class DataRow:
         provenance : dict, optional
             the provenance associated with the derivation of the entry by FrameTree
             (only applicable to derivatives not source data)
-        checksums : dict[str, str], optional
+        checksums : dict[str, str | dict[str, Any]], optional
             checksums for all of the files in the data entry
         """
         if self._entries_dict is None:
             self._entries_dict = {}
+        # Cast checksums to expected type if needed
         entry = DataEntry(
             path=path,
             datatype=datatype,
             row=self,
             uri=uri,
             item_metadata=item_metadata,
-            order=order,
+            order_key=order_key,
             quality=quality,
-            checksums=checksums,
+            checksums=checksums if checksums is not None else {},
         )
-        if path in self._entries_dict:
+        if (path, order_key) in self._entries_dict:
             raise KeyError(
                 f"Attempting to add multiple entries with the same path, '{path}', to "
-                f"{self}, {self._entries_dict[path]} and {entry}"
+                f"{self}, {self._entries_dict[(path, order_key)]} and {entry}"
             )
-        self._entries_dict[path] = entry
+        self._entries_dict[(path, order_key)] = entry
         return entry
 
 
-@register_serializer(DataRow)
+@register_serializer(DataRow)  # type: ignore[misc]
 def bytes_repr_data_row(row: DataRow, cache: Cache) -> ty.Iterator[bytes]:
     yield "frametree.core.row.DataRow:(".encode()
     yield b"frameset.id="

@@ -521,7 +521,7 @@ class FrameSet:
         self,
         frequency: ty.Union[Axes, str, None] = None,
         id: ty.Union[str, ty.Tuple[str, ...]] = attrs.NOTHING,
-        **id_kwargs: ty.Any,
+        **id_kwargs: str,
     ) -> DataRow:
         """Returns the row associated with the given frequency and ids dict
 
@@ -531,7 +531,7 @@ class FrameSet:
             The frequency of the row
         id : str or Tuple[str], optional
             The ID of the row to
-        **id_kwargs : Dict[str, str]
+        **id_kwargs : str
             Alternatively to providing `id`, ID corresponding to the row to
             return passed as kwargs
 

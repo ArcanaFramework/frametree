@@ -139,7 +139,7 @@ class RemoteStore(Store):
         """
 
     @abstractmethod
-    def upload_files(self, input_dir: Path, entry: DataEntry):
+    def upload_files(self, input_dir: Path, entry: DataEntry) -> None:
         """Upload all files contained within `input_dir` to the specified entry in the
         data store
 
@@ -153,7 +153,11 @@ class RemoteStore(Store):
 
     @abstractmethod
     def create_fileset_entry(
-        self, path: str, datatype: type, row: DataRow
+        self,
+        path: str,
+        datatype: ty.Type[FileSet],
+        row: DataRow,
+        order_key: int | str | None = None,
     ) -> DataEntry:
         """
         Creates a new resource entry to store a fileset
@@ -196,7 +200,7 @@ class RemoteStore(Store):
         self,
         value: ty.Union[float, int, str, ty.List[float], ty.List[int], ty.List[str]],
         entry: DataEntry,
-    ):
+    ) -> None:
         """Store the value for a field in the XNAT repository
 
         Parameters
@@ -208,7 +212,13 @@ class RemoteStore(Store):
         """
 
     @abstractmethod
-    def create_field_entry(self, path: str, datatype: type, row: DataRow) -> DataEntry:
+    def create_field_entry(
+        self,
+        path: str,
+        datatype: type,
+        row: DataRow,
+        order_key: int | str | None = None,
+    ) -> DataEntry:
         """
         Creates a new resource entry to store a field
 
@@ -303,12 +313,22 @@ class RemoteStore(Store):
                 raise DatatypeUnsupportedByStoreError(entry.datatype, self)
         return item
 
-    def create_entry(self, path: str, datatype: type, row: DataRow) -> DataEntry:
+    def create_entry(
+        self,
+        path: str,
+        datatype: ty.Type[DataType],
+        row: DataRow,
+        order_key: int | str | None = None,
+    ) -> DataEntry:
         with self.connection:
             if datatype.is_fileset:
-                entry = self.create_fileset_entry(path, datatype, row)
+                entry = self.create_fileset_entry(
+                    path=path, datatype=datatype, row=row, order_key=order_key
+                )
             elif datatype.is_field:
-                entry = self.create_field_entry(path, datatype, row)
+                entry = self.create_field_entry(
+                    path=path, datatype=datatype, row=row, order_key=order_key
+                )
             else:
                 raise DatatypeUnsupportedByStoreError(entry.datatype, self)
         return entry
