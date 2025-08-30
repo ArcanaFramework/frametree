@@ -149,13 +149,13 @@ class FrameSet:
         for pipeline in self.pipelines.values():
             pipeline.frameset = self
 
-    @store.default
+    @store.default  # pyright: ignore[reportAttributeAccessIssue]
     def store_default(self) -> datastore.Store:
-        from frametree.common import FileSystem
+        from frametree.file_system import FileSystem
 
         return FileSystem()
 
-    @axes.default
+    @axes.default  # pyright: ignore[reportAttributeAccessIssue]
     def axes_default(self) -> ty.Type[Axes]:
         try:
             return self.store.DEFAULT_AXES  # type: ignore[attr-defined, no-any-return]
@@ -164,7 +164,7 @@ class FrameSet:
                 f"FrameSets in {type(self.store)} need to explicitly set their axes"
             )
 
-    @hierarchy.default
+    @hierarchy.default  # pyright: ignore[reportAttributeAccessIssue]
     def hierarchy_default(self) -> ty.List[str]:
         try:
             return self.store.DEFAULT_HIERARCHY  # type: ignore[attr-defined, no-any-return]
@@ -173,7 +173,7 @@ class FrameSet:
                 f"FrameSets in {type(self.store)} need to explicitly set their hierarchy"
             )
 
-    @name.validator
+    @name.validator  # pyright: ignore[reportAttributeAccessIssue]
     def name_validator(self, _: ty.Any, name: str) -> None:
         if name and not name.isidentifier():
             raise FrameTreeUsageError(
@@ -187,7 +187,7 @@ class FrameSet:
                 "in place of the empty dataset name in situations where '' can't be used"
             )
 
-    @columns.validator
+    @columns.validator  # pyright: ignore[reportAttributeAccessIssue]
     def columns_validator(self, _: ty.Any, columns: ty.Dict[str, DataColumn]) -> None:
         wrong_freq = [
             m for m in columns.values() if not isinstance(m.row_frequency, self.axes)
@@ -198,7 +198,7 @@ class FrameSet:
                 f"that of dataset {self.axes}"
             )
 
-    @include.validator
+    @include.validator  # pyright: ignore[reportAttributeAccessIssue]
     def include_validator(
         self, _: ty.Any, include: ty.Dict[str, ty.Union[str, ty.List[str]]]
     ) -> None:
@@ -212,7 +212,7 @@ class FrameSet:
             )
         self._validate_criteria(include, "inclusion")
 
-    @exclude.validator
+    @exclude.validator  # pyright: ignore[reportAttributeAccessIssue]
     def exclude_validator(
         self, _: ty.Any, exclude: ty.Dict[str, ty.Union[str, ty.List[str]]]
     ) -> None:
@@ -245,7 +245,7 @@ class FrameSet:
                         "regular expression"
                     )
 
-    @hierarchy.validator
+    @hierarchy.validator  # pyright: ignore[reportAttributeAccessIssue]
     def hierarchy_validator(self, _: ty.Any, hierarchy: ty.List[str]) -> None:
         not_valid = [f for f in hierarchy if str(f) not in self.axes.__members__]
         if not_valid:
@@ -285,7 +285,7 @@ class FrameSet:
         #     for m in missing_axes:
         #         ids[m] = None
 
-    @id_patterns.validator
+    @id_patterns.validator  # pyright: ignore[reportAttributeAccessIssue]
     def id_patterns_validator(self, _: ty.Any, id_patterns: ty.List[str]) -> None:
         non_valid_keys = [f for f in id_patterns if f not in self.axes.__members__]
         if non_valid_keys:
@@ -521,7 +521,7 @@ class FrameSet:
         self,
         frequency: ty.Union[Axes, str, None] = None,
         id: ty.Union[str, ty.Tuple[str, ...]] = attrs.NOTHING,
-        **id_kwargs: ty.Any,
+        **id_kwargs: str,
     ) -> DataRow:
         """Returns the row associated with the given frequency and ids dict
 
@@ -531,7 +531,7 @@ class FrameSet:
             The frequency of the row
         id : str or Tuple[str], optional
             The ID of the row to
-        **id_kwargs : Dict[str, str]
+        **id_kwargs : str
             Alternatively to providing `id`, ID corresponding to the row to
             return passed as kwargs
 

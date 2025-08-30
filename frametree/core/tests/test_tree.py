@@ -4,7 +4,8 @@ import pytest
 import typing as ty
 from fileformats.text import TextFile
 from frametree.core.exceptions import FrameTreeUsageError
-from frametree.common import FileSystem, Clinical
+from frametree.file_system import FileSystem
+from frametree.axes.clinical import Clinical
 from frametree.testing.blueprint import TestDatasetBlueprint, FileSetEntryBlueprint
 from frametree.testing.axes import TestAxes
 

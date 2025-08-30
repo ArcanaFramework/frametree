@@ -4,7 +4,7 @@ Public API
 Available Backends
 ~~~~~~~~~~~~~~~~~~
 
-.. autoclass:: frametree.common.FileSystem
+.. autoclass:: frametree.file_system.FileSystem
 
 .. autoclass:: frametree.bids.Bids
 
@@ -16,9 +16,9 @@ Available Backends
 Available Axes
 ~~~~~~~~~~~~~~
 
-.. autoclass:: frametree.common.Samples
+.. autoclass:: frametree.axes.samples.Samples
 
-.. autoclass:: frametree.common.Clinical
+.. autoclass:: frametree.axes.clinical.Clinical
 
 
 Markers

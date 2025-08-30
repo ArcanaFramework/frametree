@@ -25,7 +25,7 @@ from frametree.testing.blueprint import (
     GOOD_DATASETS,
 )
 from frametree.testing import TestAxes, MockRemote, AlternateMockRemote
-from frametree.common import FileSystem
+from frametree.file_system import FileSystem
 
 # from pydra import set_input_validator
 
@@ -186,7 +186,7 @@ def delayed_mock_remote(
         user="admin",
         password="admin",
         remote_dir=remote_dir,
-        mock_delay=0.01,
+        mock_delay=0.1,
     )
     store_name = "delayed_mock_remote"
     store.save(store_name)
@@ -258,17 +258,11 @@ def command_spec() -> ty.Dict[str, ty.Any]:
             "first_file": {
                 "datatype": "text/text-file",
                 "field": "in_file1",
-                "column_defaults": {
-                    "row_frequency": "common:Samples[sample]",
-                },
                 "help": "the first file to pass as an input",
             },
             "second_file": {
                 "datatype": "text/text-file",
                 "field": "in_file2",
-                "column_defaults": {
-                    "row_frequency": "common:Samples[sample]",
-                },
                 "help": "the second file to pass as an input",
             },
         },
@@ -288,5 +282,5 @@ def command_spec() -> ty.Dict[str, ty.Any]:
                 "help": "a parameter",
             }
         },
-        "row_frequency": "common:Samples[sample]",
+        "operates_on": "samples/sample",
     }

@@ -243,15 +243,21 @@ class LocalStore(Store):
     def connect(self) -> None:
         return None
 
-    def disconnect(self, connection: ty.Any) -> None:
+    def disconnect(self, session: ty.Any) -> None:
         pass
 
-    def create_entry(self, path: str, datatype: type, row: DataRow) -> DataEntry:
+    def create_entry(
+        self,
+        path: str,
+        datatype: type,
+        row: DataRow,
+        order_key: int | str | None = None,
+    ) -> DataEntry:
         if issubclass(datatype, FileSet):
             uri = self.fileset_uri(path, datatype, row)
         else:
             uri = self.field_uri(path, datatype, row)
-        return row.add_entry(path=path, datatype=datatype, uri=uri)
+        return row.add_entry(path=path, datatype=datatype, uri=uri, order_key=order_key)
 
     def save_frameset_definition(
         self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
@@ -324,7 +330,7 @@ class LocalStore(Store):
         try:
             dataset = self.load_frameset(dataset_root)
         except KeyError:
-            from frametree.common import Samples
+            from frametree.axes.samples import Samples
 
             dataset = self.define_frameset(dataset_root, axes=Samples)
         return dataset

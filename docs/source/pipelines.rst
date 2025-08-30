@@ -11,7 +11,7 @@ analysis.
 
 FrameTree uses the Pydra_ dataflow engine under the hood, and Pydra_ tasks or workflows
 can be "applied" to a dataset, where they will be wrapped by a pipeline. However, shell
-commands can be wrapped using the generic :func:`frametree.common.shell`` task. Pipelines
+commands can be wrapped using the generic :func:`pydra.compose.shell`` task. Pipelines
 can be applied to the dataset when it is created, and then run incrementally as the
 data is acquired, ensuring the same parameters are used consistently. Additional management
 features that FrameTree pipelines provide are
@@ -131,7 +131,7 @@ Alternatively via the Python API:
 
       from myworkflows import vbm_template
       from fileformats import common, medimage
-      from frametree.common import Clinical
+      from frametree.axes.clinical import Clinical
 
       frameset = FrameSet.load('bids///data/openneuro/ds00014')
 

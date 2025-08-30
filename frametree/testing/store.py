@@ -96,11 +96,23 @@ class MockRemote(RemoteStore):
                 datatype = (
                     Field if path / self.FIELDS_FILE in path.iterdir() else FileSet
                 )
-                row.add_entry(
-                    path=path.name,
-                    datatype=datatype,
-                    uri=full_path(path).relative_to(self.remote_dir),
-                )
+                uri = full_path(path).relative_to(self.remote_dir)
+                if order_keys := [
+                    p.name[9:] for p in path.iterdir() if p.name.startswith("__order__")
+                ]:
+                    for order_key in order_keys:
+                        row.add_entry(
+                            path=path.name,
+                            datatype=datatype,
+                            uri=uri / f"__order__{order_key}",
+                            order_key=order_key,
+                        )
+                else:
+                    row.add_entry(
+                        path=path.name,
+                        datatype=datatype,
+                        uri=uri,
+                    )
 
     def save_frameset_definition(
         self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
@@ -262,12 +274,26 @@ class MockRemote(RemoteStore):
             f.write(str(value))
 
     def create_fileset_entry(
-        self, path: str, datatype: type, row: DataRow
+        self,
+        path: str,
+        datatype: type,
+        row: DataRow,
+        order_key: int | str | None = None,
     ) -> DataEntry:
-        return self._create_entry(path=path, datatype=datatype, row=row)
+        return self._create_entry(
+            path=path, datatype=datatype, row=row, order_key=order_key
+        )
 
-    def create_field_entry(self, path: str, datatype: type, row: DataRow) -> DataEntry:
-        return self._create_entry(path=path, datatype=datatype, row=row)
+    def create_field_entry(
+        self,
+        path: str,
+        datatype: type,
+        row: DataRow,
+        order_key: int | str | None = None,
+    ) -> DataEntry:
+        return self._create_entry(
+            path=path, datatype=datatype, row=row, order_key=order_key
+        )
 
     def get_checksums(self, uri: str) -> ty.Optional[ty.Dict[str, str]]:
         """
@@ -304,21 +330,31 @@ class MockRemote(RemoteStore):
     # Helper methods #
     ##################
 
-    def dataset_fspath(self, dataset: FrameSet) -> Path:
-        dataset_id = (
-            dataset.id if not isinstance(dataset, (str, bytes, Path)) else dataset
-        )
+    def dataset_fspath(self, dataset: FrameSet | str | bytes | Path) -> Path:
+        dataset_id = dataset.id if isinstance(dataset, FrameSet) else dataset
+        if isinstance(dataset_id, bytes):
+            dataset_id = dataset_id.decode("utf-8")
         return self.remote_dir / dataset_id
 
     def entry_fspath(self, entry: DataEntry) -> Path:
         return self.remote_dir / entry.uri
 
-    def _create_entry(self, path: str, datatype: type, row: DataRow) -> DataEntry:
+    def _create_entry(
+        self,
+        path: str,
+        datatype: type,
+        row: DataRow,
+        order_key: int | str | None = None,
+    ) -> DataEntry:
         self._check_connected()
+        uri = self.get_row_path(row) / path
+        if order_key is not None:
+            uri /= f"__order__{order_key}"
         entry = row.add_entry(
             path=path,
             datatype=datatype,
-            uri=self.get_row_path(row) / path,
+            uri=uri,
+            order_key=order_key,
         )
         self.entry_fspath(entry).mkdir(parents=True)
         return entry

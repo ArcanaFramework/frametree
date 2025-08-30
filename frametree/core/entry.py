@@ -10,22 +10,28 @@ if ty.TYPE_CHECKING:  # pragma: no cover
     from .row import DataRow
 
 
+def loaded_converter(
+    loaded: ty.Mapping[str, ty.Any] | ty.Sequence[tuple[str, ty.Any]] | None,
+) -> dict[str, ty.Any]:
+    if loaded is None:
+        return {}
+    return dict(loaded)
+
+
 @attrs.define
 class ItemMetadata:
     """Metadata that is either manually set at initialisation of the DataEntry (if
     easily extracted from the data store), or lazily loaded from the entry's item if the
     entry datatype"""
 
-    loaded: dict = attrs.field(
-        default=None, converter=lambda x: dict(x) if x is not None else {}
-    )
+    loaded: dict[str, ty.Any] = attrs.field(default=None, converter=loaded_converter)
     _entry: DataEntry = attrs.field(default=None, init=False, repr=False)
     _has_been_loaded: bool = attrs.field(default=False, init=False, repr=False)
 
-    def __iter__(self):
+    def __iter__(self) -> ty.Iterator[str]:
         raise NotImplementedError
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> ty.Any:
         try:
             return self.loaded[key]
         except KeyError:
@@ -33,9 +39,14 @@ class ItemMetadata:
                 self.load()
         return self.loaded[key]
 
-    def load(self, overwrite=False):
+    def load(self, overwrite: bool = False) -> None:
         assert self._entry is not None
-        item_metadata = self._entry.item.metadata
+        # Try to get metadata from the item if it has a metadata attribute
+        try:
+            item_metadata = getattr(self._entry.item, "metadata", {})
+        except AttributeError:
+            item_metadata = {}
+
         if not overwrite:
             mismatching = [
                 k
@@ -72,8 +83,8 @@ class DataEntry:
         metadata associated with the data item itself (e.g. pulled from a file header).
         Can be supplied either when the entry is initialised (i.e. from previously extracted
         fields stored within the data store), or read from the item itself.
-    order : int, optional
-        the order in which the entry appears in the node (where applicable)
+    order_key : int | str, optional
+        the key used to order entries within the row appears in the node (where applicable)
     provenance : dict, optional
         the provenance associated with the derivation of the entry by FrameTree
         (only applicable to derivatives not source data)
@@ -82,28 +93,27 @@ class DataEntry:
     """
 
     path: str = attrs.field()
-    datatype: type
+    datatype: type[DataType]
     row: DataRow
     uri: str
     item_metadata: ItemMetadata = attrs.field(
         default=None, converter=ItemMetadata, repr=False, kw_only=True
     )
-    order: ty.Optional[int] = None
+    order_key: int | str | None = None
     quality: DataQuality = DataQuality.usable
-    checksums: ty.Dict[str, ty.Union[str, dict]] = attrs.field(
+    checksums: dict[str, str | dict[str, ty.Any]] = attrs.field(
         default=None, repr=False, eq=False
     )
+    provenance: dict[str, ty.Any] | None = attrs.field(default=None, repr=False)
 
-    @path.validator
-    def path_validator(self, _, path: str):
-        path, dataset_name = self.split_dataset_name_from_path(path)
+    def __attrs_post_init__(self) -> None:
+        self.item_metadata._entry = self
+        # Validate path
+        path, dataset_name = self.split_dataset_name_from_path(self.path)
         if dataset_name and not dataset_name.isidentifier():
             raise FrameTreeUsageError(
-                f"Path '{path}' has an invalid dataset_name '{dataset_name}')"
+                f"Path '{self.path}' has an invalid dataset_name '{dataset_name}')"
             )
-
-    def __attrs_post_init__(self):
-        self.item_metadata._entry = self
 
     @property
     def item(self) -> DataType:
@@ -111,7 +121,7 @@ class DataEntry:
 
     @item.setter
     def item(
-        self, item: ty.Union[DataType, os.PathLike, int, bool, float, str]
+        self, item: DataType | os.PathLike[str] | int | bool | float | str
     ) -> None:
         if isinstance(item, DataType):
             if not isinstance(item, self.datatype):
@@ -119,35 +129,35 @@ class DataEntry:
                     f"Cannot put {item} into {self.datatype} entry of {self.row}"
                 )
         else:
-            item = self.datatype(item)
+            item = self.datatype(item)  # type: ignore
         self.row.frameset.store.put(item, self)
 
-    def get_item(self, datatype: ty.Optional[ty.Type[DataType]] = None) -> DataType:
+    def get_item(self, datatype: type[DataType] | None = None) -> DataType:
         if datatype is None:
             datatype = self.datatype
         return self.row.frameset.store.get(self, datatype)
 
     @property
-    def recorded_checksums(self):
+    def recorded_checksums(self) -> dict[str, ty.Any] | None:
         if self.provenance is None:
             return None
         else:
-            return self.provenance.outputs[self.path]
+            return self.provenance.get("outputs", {}).get(self.path)  # type: ignore
 
     @property
-    def is_derivative(self):
+    def is_derivative(self) -> bool:
         return self.path_is_derivative(self.path)
 
     @property
-    def base_path(self):
+    def base_path(self) -> str:
         return self.split_dataset_name_from_path(self.path)[0]
 
     @property
-    def dataset_name(self):
+    def dataset_name(self) -> str | None:
         return self.split_dataset_name_from_path(self.path)[1]
 
     @classmethod
-    def split_dataset_name_from_path(cls, path):
+    def split_dataset_name_from_path(cls, path: str) -> tuple[str, str | None]:
         parts = path.split("@")
         if len(parts) == 1:
             dataset_name = None
@@ -160,5 +170,5 @@ class DataEntry:
         return path, dataset_name
 
     @classmethod
-    def path_is_derivative(cls, path):
+    def path_is_derivative(cls, path: str) -> bool:
         return cls.split_dataset_name_from_path(path)[1] is not None

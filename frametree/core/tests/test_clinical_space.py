@@ -1,4 +1,4 @@
-from frametree.common import Clinical
+from frametree.axes.clinical import Clinical
 
 
 def test_is_parent():

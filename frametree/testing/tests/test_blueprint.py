@@ -8,7 +8,8 @@
 # from frametree.core.utils.misc import add_exc_note
 from pathlib import Path
 import pytest
-from frametree.common import FileSystem, Clinical
+from frametree.file_system import FileSystem
+from frametree.axes.clinical import Clinical
 from frametree.testing.blueprint import TEST_DATASET_BLUEPRINTS
 
 

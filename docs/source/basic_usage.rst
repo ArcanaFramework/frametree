@@ -71,7 +71,7 @@ Alternatively via Python API:
         # Import frametree module
         from pydra.tasks.fsl.preprocess.bet import BET
         from frametree.core import FrameSet
-        from frametree.common import Clinical
+        from frametree.axes.clinical import Clinical
         from fileformats.medimage import DicomSeries, NiftiGz
 
         # Define a frameset stored within a file-system directory '/data/my-dataset'

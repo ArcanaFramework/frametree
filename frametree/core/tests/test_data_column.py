@@ -4,7 +4,7 @@ from functools import reduce
 from fileformats.core import FileSet
 from fileformats.text import TextFile
 from fileformats.field import Text, Boolean
-from frametree.common import FileSystem
+from frametree.file_system import FileSystem
 from frametree.testing.blueprint import (
     TestDatasetBlueprint,
     TestAxes,

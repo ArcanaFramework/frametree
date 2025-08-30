@@ -1,4 +1,6 @@
+from importlib import import_module
 import typing as ty
+from typing import Iterator, List, Type, cast
 import re
 from enum import Enum
 from frametree.core.serialize import ClassResolver
@@ -54,22 +56,22 @@ class Axes(Enum):
         dataset = 0b000
     """
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
     @classmethod
-    def leaf(cls):
-        return max(cls)
+    def leaf(cls) -> "Axes":
+        return cast("Axes", max(cls))
 
     @classmethod
-    def bases(cls):
+    def bases(cls) -> List["Axes"]:
         return cls.leaf().span()
 
     @classproperty
-    def ndim(self):
+    def ndim(self) -> int:
         return len(self.bases())
 
-    def span(self):
+    def span(self) -> List["Axes"]:
         """Returns the basis dimensions in the data tree that the given
         enum-member projects into.
 
@@ -89,7 +91,7 @@ class Axes(Enum):
         cls = type(self)
         return [cls(b) for b in sorted(self.nonzero_bits(), reverse=True)]
 
-    def nonzero_bits(self):
+    def nonzero_bits(self) -> List[int]:
         v = self.value
         nonzero = []
         while v:
@@ -98,63 +100,63 @@ class Axes(Enum):
             v = w
         return nonzero
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[bool]:
         "Iterate over bit string"
-        bit = (max(type(self)).value + 1) >> 1
+        bit = (cast("Axes", max(type(self))).value + 1) >> 1
         while bit > 0:
             yield bool(self.value & bit)
             bit >>= 1
 
-    def is_basis(self):
-        return len(self._nonzero_bits()) == 1
+    def is_basis(self) -> bool:
+        return len(self.nonzero_bits()) == 1
 
     def __eq__(self, other: ty.Any) -> bool:
         if isinstance(other, str):
             other = type(self)[other]
         elif not isinstance(other, type(self)):
             return False
-        return self.value == other.value
+        return self.value == other.value  # type: ignore[no-any-return]
 
-    def __lt__(self, other):
-        return self.value < other.value
+    def __lt__(self, other: "Axes") -> bool:
+        return self.value < other.value  # type: ignore[no-any-return]
 
-    def __le__(self, other):
-        return self.value <= other.value
+    def __le__(self, other: "Axes") -> bool:
+        return self.value <= other.value  # type: ignore[no-any-return]
 
-    def __xor__(self, other):
+    def __xor__(self, other: "Axes") -> "Axes":
         return type(self)(self.value ^ other.value)
 
-    def __and__(self, other):
+    def __and__(self, other: "Axes") -> "Axes":
         return type(self)(self.value & other.value)
 
-    def __or__(self, other):
+    def __or__(self, other: "Axes") -> "Axes":
         return type(self)(self.value | other.value)
 
-    def __invert__(self):
+    def __invert__(self) -> "Axes":
         return type(self)(~self.value)
 
-    def __hash__(self):
-        return self.value
+    def __hash__(self) -> int:
+        return self.value  # type: ignore[no-any-return]
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self.value)
 
-    def bin(self):
+    def bin(self) -> str:
         return bin(self.value)
 
     @classmethod
-    def union(cls, freqs: ty.Sequence[Enum]):
+    def union(cls, freqs: ty.Sequence["Axes"]) -> "Axes":
         "Returns the union between data frequency values"
         union = cls(0)
         for f in freqs:
-            union |= f if isinstance(f, cls) else cls[f]
+            union |= f if isinstance(f, cls) else cls[str(f)]
         return union
 
     @classmethod
-    def default(cls):
-        return max(cls)
+    def default(cls) -> "Axes":
+        return cast("Axes", max(cls))
 
-    def is_parent(self, child, if_match=False):
+    def is_parent(self, child: "Axes", if_match: bool = False) -> bool:
         """Checks to see whether the current frequency is a "parent" of the
         other data frequency, i.e. all the base row_frequency of self appear in
         the "child".
@@ -173,22 +175,45 @@ class Axes(Enum):
         """
         return ((self & child) == self) and (child != self or if_match)
 
-    def tostr(self):
-        return f"{ClassResolver.tostr(self, strip_prefix=False)}[{str(self)}]"
+    def tostr(self) -> str:
+        mod_parts = type(self).__module__.split(".")
+        if len(mod_parts) >= 3 and mod_parts[:2] == ["frametree", "axes"]:
+            return f"{mod_parts[2]}/{self.name}"
+        else:
+            return f"{ClassResolver.tostr(type(self), strip_prefix=False)}[{str(self)}]"
 
     @classmethod
-    def fromstr(cls, s):
-        match = re.match(r"(.*)\[([^\]]+)\]", s)
-        if match is None:
-            raise ValueError(
-                f"'{s}' is not a string of the format <data-space-enum>[<value>]"
-            )
-        class_loc, val = match.groups()
-        space = ClassResolver(cls)(class_loc)
-        return space[val] if not isinstance(space, str) else s
+    def fromstr(cls, s: str) -> "Axes | str":
+        if "/" in s:
+            ns, val = s.split("/")
+            try:
+                mod = import_module(f"frametree.axes.{ns}")
+            except ModuleNotFoundError as e:
+                raise ValueError(
+                    f"Unknown axes namespace '{ns}', try installing 'frametree-axes-{ns}' from PyPI if it exists"
+                ) from e
+            try:
+                axes = getattr(mod, "Axes")
+            except AttributeError as e:
+                raise ValueError(
+                    f"No default 'Axes' class in axes namespace '{ns}'"
+                ) from e
+            try:
+                return getattr(axes, val)  # type: ignore[no-any-return]
+            except AttributeError as e:
+                raise ValueError(
+                    f"Unknown axes value '{val}' in namespace '{ns}'"
+                ) from e
+        elif match := re.match(r"(.*)\[([^\]]+)\]", s):
+            class_loc, val = match.groups()
+            space: Type["Axes"] = ClassResolver(cls)(class_loc)
+            return space[val] if not isinstance(space, str) else s
+        raise ValueError(
+            f"'{s}' is not a string of the format <axes-namespace>/<value> or <module>:<axes-class>[<value>]"
+        )
 
     @classproperty
-    def SUBPACKAGE(cls):
+    def SUBPACKAGE(cls) -> str:
         """Cannot be a regular class attribute because then Axes won't be able to
         be extended"""
         return "data"

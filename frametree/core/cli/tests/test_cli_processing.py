@@ -86,7 +86,7 @@ def test_derive_cli(saved_dataset, ConcatenateTask, cli_runner):
     assert result.exit_code == 0, show_cli_trace(result)
     # Add source column to saved dataset
     result = cli_runner(
-        derive, [saved_dataset.locator, "concatenated", "--plugin", "debug"]
+        derive, [saved_dataset.locator, "concatenated", "--worker", "debug"]
     )
     assert result.exit_code == 0, show_cli_trace(result)
     sink = saved_dataset.add_sink("concatenated", TextFile)

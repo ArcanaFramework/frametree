@@ -16,7 +16,7 @@ from fileformats.generic import Directory
 from frametree.core.utils import show_cli_trace
 from frametree.testing.blueprint import TEST_DATASET_BLUEPRINTS
 from frametree.testing import MockRemote
-from frametree.common import FileSystem
+from frametree.file_system import FileSystem
 
 
 ARBITRARY_INTS_A = [234221, 93380, 43271, 137483, 30009, 214205, 363526]

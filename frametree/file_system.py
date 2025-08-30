@@ -8,12 +8,14 @@ import json
 import attrs
 from fileformats.core import FileSet, Field
 from frametree.core.exceptions import FrameTreeUsageError
-from frametree.core.frameset.base import DataTree
+from frametree.core.tree import DataTree
 from frametree.core.axes import Axes
 from frametree.core.row import DataRow
 from frametree.core.entry import DataEntry
 from frametree.core.store import LocalStore
 from frametree.core.utils import full_path
+
+__all__ = ["FileSystem"]
 
 
 logger = logging.getLogger("frametree")

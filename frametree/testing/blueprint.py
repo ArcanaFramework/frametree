@@ -11,7 +11,7 @@ import decimal
 from copy import deepcopy
 import zipfile
 import attrs
-from fileformats.core import FileSet, Field
+from fileformats.core import FileSet, Field, DataType
 from fileformats.generic import Directory
 from fileformats.text import TextFile
 from fileformats.application import Zip, Json
@@ -25,6 +25,7 @@ from fileformats.testing import (
     YourFormat,
     Xyz,
 )
+from frametree.core import FrameSet
 from frametree.core.row import DataRow
 from frametree.core.axes import Axes
 from frametree.core.utils import path2varname, set_cwd
@@ -41,21 +42,24 @@ class EntryBlueprint(metaclass=ABCMeta):
     path: str
     datatype: type = attrs.field()
     row_frequency: ty.Optional[str] = None
-    ids: ty.Optional[
-        ty.List[str]
-    ] = None  # the list of row IDs to create the blueprint in
+    ids: ty.Optional[ty.List[str]] = (
+        None  # the list of row IDs to create the blueprint in
+    )
+    order_key: int | str | None = None
     alternative_datatypes: ty.List[type] = attrs.field(factory=list)
 
     @datatype.validator
-    def datatype_validator(self, _, datatype):
+    def datatype_validator(
+        self, _: attrs.Attribute[ty.Type[DataType]], datatype: ty.Type[DataType]
+    ) -> None:
         if datatype is None:
             raise ValueError("datatype cannot be None")
 
     @abstractmethod
-    def make_item(self, **kwargs):
+    def make_item(self, **kwargs: ty.Any) -> None:
         pass
 
-    def make_entry(self, row: DataRow, **kwargs):
+    def make_entry(self, row: DataRow, **kwargs: ty.Any) -> None:
         if self.ids and row.id not in self.ids:
             return
         item = self.make_item(**kwargs)
@@ -64,6 +68,7 @@ class EntryBlueprint(metaclass=ABCMeta):
             path=self.path,
             datatype=self.datatype,
             row=row,
+            order_key=self.order_key,
         )
         logger.debug("Putting %s at %s", item, entry)
         row.frameset.store.put(item, entry)
@@ -195,8 +200,8 @@ class TestDatasetBlueprint:
         name: ty.Optional[str] = None,
         source_data: ty.Optional[Path] = None,
         metadata: ty.Optional[ty.Dict[str, ty.Any]] = None,
-        **kwargs,
-    ):
+        **kwargs: ty.Any,
+    ) -> FrameSet:
         """For use in tests, this method creates a test dataset from the provided
         blueprint
 
@@ -346,8 +351,8 @@ class TestDatasetBlueprint:
     def make_entries(
         self,
         row: DataRow,
-        **kwargs,
-    ):
+        **kwargs: ty.Any,
+    ) -> None:
         """Creates the actual data in the store, from the provided blueprint, which
         can be used to run test routines against
 
@@ -367,7 +372,7 @@ class TestDatasetBlueprint:
             entry_bp.make_entry(row, **kwargs)
 
     @property
-    def all_ids(self):
+    def all_ids(self) -> ty.Generator[ty.Tuple[str, ...], None, None]:
         """Iterate all leaves of the data tree specified by the test blueprint and yield
         ID tuples corresponding to the IDs of each leaf node"""
         for id_tple in itertools.product(*(list(range(d)) for d in self.dim_lengths)):
