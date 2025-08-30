@@ -13,7 +13,7 @@ from frametree.core.frameset.base import FrameSet
 from frametree.core.store import Store
 from frametree.core.entry import DataEntry
 from frametree.core.serialize import asdict
-from frametree.common import FileSystem
+from frametree.file_system import FileSystem
 from frametree.testing.blueprint import (
     TestDatasetBlueprint,
     FileSetEntryBlueprint as FileBP,

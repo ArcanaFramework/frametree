@@ -22,7 +22,7 @@ def submodules(package, subpkg=None):
         the package to iterate over
     subpkg : str, optional
         the sub-package (of the sub-packages) to return instead of the first level down.
-        e.g. package=frametree, subpkg=data -> frametree.common, frametree.xnat, etc...
+        e.g. package=frametree, subpkg=data -> frametree.file_system, frametree.xnat, etc...
     skip : list[str], optional
         submodules to skip
 
@@ -57,7 +57,7 @@ def list_subclasses(package, base_class, subpkg=None):
         the base class
     subpkg : str, optional
         the sub-package (of the sub-packages) to return instead of the first level down.
-        e.g. package=frametree, subpkg=data -> frametree.common, frametree.xnat, etc...
+        e.g. package=frametree, subpkg=data -> frametree.file_system, frametree.xnat, etc...
 
     Returns
     -------

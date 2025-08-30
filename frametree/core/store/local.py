@@ -330,7 +330,7 @@ class LocalStore(Store):
         try:
             dataset = self.load_frameset(dataset_root)
         except KeyError:
-            from frametree.common import Samples
+            from frametree.axes.samples import Samples
 
             dataset = self.define_frameset(dataset_root, axes=Samples)
         return dataset

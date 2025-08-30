@@ -373,7 +373,7 @@ class RemoteStore(Store):
                 axes = store.DEFAULT_AXES
                 hierarchy = store.DEFAULT_HIERRACHY
             except AttributeError:
-                from frametree.common.axes import Samples
+                from frametree.axes.samples import Samples
 
                 axes = Samples
                 hierarchy = [Samples.sample]  # just create a dummy one

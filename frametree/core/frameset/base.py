@@ -151,7 +151,7 @@ class FrameSet:
 
     @store.default  # pyright: ignore[reportAttributeAccessIssue]
     def store_default(self) -> datastore.Store:
-        from frametree.common import FileSystem
+        from frametree.file_system import FileSystem
 
         return FileSystem()
 

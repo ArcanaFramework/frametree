@@ -385,7 +385,8 @@ Alternatively via the Python API:
 
     .. code-block:: python
 
-        from frametree.common import Clinical, FileSystem
+        from frametree.axes.clinical import Clinical
+        from frametree.file_system import FileSystem
 
         fs_frameset = FileSystem().define_frameset(
             id='/data/imaging/my-project',
