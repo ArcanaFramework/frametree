@@ -186,7 +186,7 @@ def delayed_mock_remote(
         user="admin",
         password="admin",
         remote_dir=remote_dir,
-        mock_delay=0.01,
+        mock_delay=0.1,
     )
     store_name = "delayed_mock_remote"
     store.save(store_name)
