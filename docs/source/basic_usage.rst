@@ -71,12 +71,12 @@ Alternatively via Python API:
         # Import frametree module
         from pydra.tasks.fsl.preprocess.bet import BET
         from frametree.core import FrameSet
-        from frametree.axes.clinical import Clinical
+        from frametree.axes.medimage import MedImage
         from fileformats.medimage import DicomSeries, NiftiGz
 
         # Define a frameset stored within a file-system directory '/data/my-dataset'
         # with a 2-layer directory structure: top level subject IDs, bottom level visit IDs
-        frames = FrameSet('/data/my-dataset', axes=Clinical, hierarchy=['subject', 'visit'])
+        frames = FrameSet('/data/my-dataset', axes=MedImage, hierarchy=['subject', 'visit'])
 
         # Add source column to select a single T1-weighted image in each session subdirectory
         frames.add_source('T1w', '.*mprage.*', datatype=DicomSeries, is_regex=True)

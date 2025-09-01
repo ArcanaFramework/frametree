@@ -33,11 +33,11 @@ can be arbitrarily specified. dimensions"""
 @click.argument("hierarchy", nargs=-1)
 @click.option(
     "--axes",
-    default="common:Clinical",
+    default="common:MedImage",
     type=str,
     help=(
         "The enum that specifies the axes of the FrameTree. "
-        "Defaults to `Clinical`, which "
+        "Defaults to `MedImage`, which "
         "consists of the typical dataset>group>subject>session "
         "data tree used in medimage trials/studies"
     ),
@@ -143,7 +143,7 @@ field array (ty.List[int|float|str|bool]) or
     help=(
         "The row-frequency that items appear in the dataset (e.g. per "
         "'session', 'subject', 'visit', 'group', 'dataset' for "
-        "common:Clinical data dimensions"
+        "common:MedImage data dimensions"
     ),
     show_default="highest",
 )
@@ -245,7 +245,7 @@ datatype
     help=(
         "The row-frequency that items appear in the dataset (e.g. per "
         "'session', 'subject', 'visit', 'group', 'dataset' for "
-        "Clinical data dimensions"
+        "MedImage data dimensions"
     ),
     show_default="highest",
 )

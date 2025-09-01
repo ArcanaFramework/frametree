@@ -9,14 +9,14 @@
 from pathlib import Path
 import pytest
 from frametree.file_system import FileSystem
-from frametree.axes.clinical import Clinical
+from frametree.axes.medimage import MedImage
 from frametree.testing.blueprint import TEST_DATASET_BLUEPRINTS
 
 
 @pytest.mark.parametrize("blueprint_name", TEST_DATASET_BLUEPRINTS)
 def test_blueprint_translation(blueprint_name: str, work_dir: Path):
     blueprint = TEST_DATASET_BLUEPRINTS[blueprint_name]
-    translated = blueprint.translate_to(Clinical)
+    translated = blueprint.translate_to(MedImage)
     translated.make_dataset(store=FileSystem(), dataset_id=work_dir / "blueprint")
 
 

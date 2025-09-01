@@ -129,7 +129,7 @@ metrics can exist along any orientation of the grid.
 .. TODO: another 3D frameset plot
 
 These axes are defined in Frametree by :class:`.Axes` enums. For clinical research/trials
-the :class:`.medimage.Clinical` axes is defined as such
+the :class:`.medimage.MedImage` axes is defined as such
 
 **Bases**
 
@@ -385,7 +385,7 @@ Alternatively via the Python API:
 
     .. code-block:: python
 
-        from frametree.axes.clinical import Clinical
+        from frametree.axes.medimage import MedImage
         from frametree.file_system import FileSystem
 
         fs_frameset = FileSystem().define_frameset(
@@ -393,7 +393,7 @@ Alternatively via the Python API:
             # Define the hierarchy of the dataset in which imaging session
             # sub-directories are separated into directories via their study group
             # (i.e. test & control)
-            axes=Clinical,
+            axes=MedImage,
             hierarchy=['group', 'session'])
 
 For datasets where the fundamental hierarchy of the storage system is fixed

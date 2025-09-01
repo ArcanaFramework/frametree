@@ -711,7 +711,7 @@ class FrameSet:
         row_frequency : str, optional
             the frequency of the data rows the pipeline will be executed over, i.e.
             will it be run once per-session, per-subject or per whole dataset,
-            by default the highest row frequency (e.g. per-session for Clinical)
+            by default the highest row frequency (e.g. per-session for MedImage)
         overwrite : bool, optional
             overwrite connections to previously connected sinks, by default False
         converter_args : dict[str, dict]

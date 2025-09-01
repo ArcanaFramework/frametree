@@ -75,7 +75,7 @@ class Axes(Enum):
         """Returns the basis dimensions in the data tree that the given
         enum-member projects into.
 
-        For example in `Clinical` data trees, the following frequencies can
+        For example in `MedImage` data trees, the following frequencies can
         be decomposed into the following basis dims:
 
             dataset -> []

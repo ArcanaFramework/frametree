@@ -5,7 +5,7 @@ import typing as ty
 from fileformats.text import TextFile
 from frametree.core.exceptions import FrameTreeUsageError
 from frametree.file_system import FileSystem
-from frametree.axes.clinical import Clinical
+from frametree.axes.medimage import MedImage
 from frametree.testing.blueprint import TestDatasetBlueprint, FileSetEntryBlueprint
 from frametree.testing.axes import TestAxes
 
@@ -232,7 +232,7 @@ TEST_AUTO_IDS = {
     ),
     "member": (
         TestDatasetBlueprint(  # dataset name
-            axes=Clinical,
+            axes=MedImage,
             hierarchy=["group", "subject", "visit"],
             dim_lengths=[2, 2, 2],
             entries=[

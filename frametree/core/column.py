@@ -281,7 +281,7 @@ class SourceColumn(DataColumn):
         the data type of items in the column
     row_frequency : Axes
         the frequency of the "rows" (data nodes) within the dataset tree, e.g. for the
-        ``Clinical`` data spce the row frequency can be per 'session', 'subject',
+        ``MedImage`` data spce the row frequency can be per 'session', 'subject',
         'visit', 'group', 'dataset', et...
     dataset: FrameSet
         the dataset the column belongs to
@@ -422,7 +422,7 @@ class SinkColumn(DataColumn):
         the data type of items in the column
     row_frequency : Axes
         the frequency of the "rows" (data nodes) within the dataset tree, e.g. for the
-        ``Clinical`` data spce the row frequency can be per 'session', 'subject',
+        ``MedImage`` data spce the row frequency can be per 'session', 'subject',
         'visit', 'group', 'dataset', et...
     dataset: FrameSet
         the dataset the column belongs to
