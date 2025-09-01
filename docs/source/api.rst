@@ -18,7 +18,7 @@ Available Axes
 
 .. autoclass:: frametree.axes.samples.Samples
 
-.. autoclass:: frametree.axes.clinical.Clinical
+.. autoclass:: frametree.axes.medimage.MedImage
 
 
 Markers

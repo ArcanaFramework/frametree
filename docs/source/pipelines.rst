@@ -95,7 +95,7 @@ can all add the sources and sinks in one step
 
 
 By default, pipelines will iterate all "leaf rows" of the data tree (e.g. ``session``
-for datasets in the :class:`.Clinical` space). However, pipelines can be run
+for datasets in the :class:`.MedImage` space). However, pipelines can be run
 at any row row_frequency of the dataset (see :ref:`axes`), e.g. per subject,
 per visit, or on the dataset as a whole (to create single templates/statistics).
 
@@ -131,7 +131,7 @@ Alternatively via the Python API:
 
       from myworkflows import vbm_template
       from fileformats import common, medimage
-      from frametree.axes.clinical import Clinical
+      from frametree.axes.medimage import MedImage
 
       frameset = FrameSet.load('bids///data/openneuro/ds00014')
 

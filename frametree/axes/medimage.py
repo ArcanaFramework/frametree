@@ -1,7 +1,7 @@
 from frametree.core.axes import Axes as BaseAxes
 
 
-class Clinical(BaseAxes):
+class MedImage(BaseAxes):
     """
     An enum used to specify the hierarchy of data trees and the "frequencies" of items
     within dataset typical of medimage research, i.e. subjects split into groups scanned
@@ -31,4 +31,4 @@ class Clinical(BaseAxes):
 
 
 # Set default axes for namespace
-Axes = Clinical
+Axes = MedImage

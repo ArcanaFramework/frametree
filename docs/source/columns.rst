@@ -66,7 +66,7 @@ Alternatively via the Python API:
 
     .. code-block:: python
 
-        from frametree.axes.clinical import Clinical
+        from frametree.axes.medimage import MedImage
         from fileformats.medimage import DicomSeries, NiftiGz
 
         xnat_dataset.add_source(

@@ -128,12 +128,12 @@ class DataTree(NestedContext):
             # (the order of # the bits in the Axes class should be arranged to
             # account for this default behaviour).
             #
-            # For example, given a hierarchy of ['subject', 'session'] in the `Clinical`
+            # For example, given a hierarchy of ['subject', 'session'] in the `MedImage`
             # data space, no groups are assumed to be present by default (i.e. if not
             # specified by the `id_patterns` attr of the dataset), and the `member`
             # ID is assumed to be equivalent to the `subject` ID, since `member`
             # correspdonds to the least significant bit in the value of the subject in
-            # the `Clinical` data space enum.
+            # the `MedImage` data space enum.
             #
             # Conversely, the visit can't be assumed to be equal to the `session`
             # ID, since the session ID could be expected to also contain both the `member` and
