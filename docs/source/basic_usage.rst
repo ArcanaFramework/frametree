@@ -40,7 +40,7 @@ line interface
 
     $ # Define a frameset stored within a file-system directory '/data/my-dataset'
     $ # with a 2-layer directory structure: top level subject IDs, bottom level visit IDs
-    $ frametree define /data/my-dataset subject visit --axes common/clinical
+    $ frametree define /data/my-dataset subject visit --axes medimage
 
     $ # Add source column to select a single T1-weighted image in each session subdirectory
     $ frametree add-source /data/my-dataset T1w medimage/dicom-series --regex '.*mprage.*'

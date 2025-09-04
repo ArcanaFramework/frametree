@@ -248,39 +248,3 @@ def ConcatenateTask(request: pytest.FixtureRequest) -> Task:
     else:
         task = ConcatenateReverse
     return task
-
-
-@pytest.fixture(scope="session")
-def command_spec() -> ty.Dict[str, ty.Any]:
-    return {
-        "task": "frametree.testing.tasks:concatenate",
-        "inputs": {
-            "first_file": {
-                "datatype": "text/text-file",
-                "field": "in_file1",
-                "help": "the first file to pass as an input",
-            },
-            "second_file": {
-                "datatype": "text/text-file",
-                "field": "in_file2",
-                "help": "the second file to pass as an input",
-            },
-        },
-        "outputs": {
-            "concatenated": {
-                "datatype": "text/text-file",
-                "field": "out_file",
-                "help": "an output file",
-            }
-        },
-        "parameters": {
-            "duplicates": {
-                "field": "duplicates",
-                "default": 2,
-                "datatype": "field/integer",
-                "required": True,
-                "help": "a parameter",
-            }
-        },
-        "operates_on": "samples/sample",
-    }
