@@ -287,6 +287,8 @@ class Store(metaclass=ABCMeta):
         name : str, optional
             name of the dataset definition, which distinguishes it from alternative
             definitions on the same data, by default None
+        **kwargs:
+            Additional keyword arguments to pass to the FrameSet constructor
 
         Returns
         -------

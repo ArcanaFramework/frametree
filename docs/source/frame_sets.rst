@@ -13,7 +13,7 @@ subject year of birth, weather station altitude) or derived metrics (e.g.
 average grey matter thickness, dew point) are considered to form the the columns of
 the frames in the set.
 
-In the case of clinical imaging research studies/trials, imaging sessions
+In the case of medical imaging research studies/trials, imaging sessions
 are classified by the subject who was scanned and, if applicable, the longitudinal
 timepoint. The subjects themselves are often classified by different study groups
 (e.g. test or control group). Therefore, we factor imaging session classifications into
@@ -459,7 +459,7 @@ a dataset.
 
     $ frametree define '/data/imaging/my-project@manually_qcd' \
       subject session \
-      --axes common/clinical \
+      --axes medimage \
       --exclude member 03,11,27
 
 
@@ -472,7 +472,7 @@ frequencies.
 
     $ frametree define '/data/imaging/my-project@manually_qcd' \
       subject session \
-      --axes common/clinical \
+      --axes medimage \
       --exclude member 03,11,27 \
       --include visit 1,2
 
@@ -486,11 +486,11 @@ training and subjects 80-100 for testing you would use
     $ # Partition the dataset into training and test framesets
     $ frametree define '/data/imaging/my-project@training' \
       group subject \
-      --axes common/clinical \
+      --axes medimage \
       --include member 1:81
     $ frametree define '/data/imaging/my-project@test' \
       group subject \
-      --axes common/clinical \
+      --axes medimage \
       --include member 81:101
 
 Alternatively, via Python API:
