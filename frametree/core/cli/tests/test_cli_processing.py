@@ -29,7 +29,7 @@ def test_apply_cli(saved_dataset: FrameSet, ConcatenateTask, cli_runner):
     result = cli_runner(
         apply,
         [
-            saved_dataset.locator,
+            saved_dataset.address,
             "a_pipeline",
             "frametree.testing.tasks:" + ConcatenateTask.__name__,
             "--source",
@@ -50,7 +50,7 @@ def test_apply_cli(saved_dataset: FrameSet, ConcatenateTask, cli_runner):
         ],
     )
     assert result.exit_code == 0, show_cli_trace(result)
-    loaded_dataset = FrameSet.load(saved_dataset.locator)
+    loaded_dataset = FrameSet.load(saved_dataset.address)
     assert saved_dataset.pipelines == loaded_dataset.pipelines
 
 
@@ -63,7 +63,7 @@ def test_derive_cli(saved_dataset, ConcatenateTask, cli_runner):
     result = cli_runner(
         apply,
         [
-            saved_dataset.locator,
+            saved_dataset.address,
             "a_pipeline",
             "frametree.testing.tasks:" + ConcatenateTask.__name__,
             "--source",
@@ -86,7 +86,7 @@ def test_derive_cli(saved_dataset, ConcatenateTask, cli_runner):
     assert result.exit_code == 0, show_cli_trace(result)
     # Add source column to saved dataset
     result = cli_runner(
-        derive, [saved_dataset.locator, "concatenated", "--worker", "debug"]
+        derive, [saved_dataset.address, "concatenated", "--worker", "debug"]
     )
     assert result.exit_code == 0, show_cli_trace(result)
     sink = saved_dataset.add_sink("concatenated", TextFile)
