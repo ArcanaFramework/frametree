@@ -419,7 +419,7 @@ class FrameSet:
 
     @property
     def locator(self) -> str:
-        warn("'FrameSet.locator' is deprecated use, 'address' instead'")
+        warn("'FrameSet.address' is deprecated use, 'address' instead'")
         return self.address
 
     def add_source(

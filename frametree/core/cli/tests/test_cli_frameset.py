@@ -48,7 +48,7 @@ def test_add_column_cli(saved_dataset: FrameSet, cli_runner):
     result = cli_runner(
         add_source,
         [
-            saved_dataset.locator,
+            saved_dataset.address,
             "a_source",
             "text/text-file",
             "--path",
@@ -74,7 +74,7 @@ def test_add_column_cli(saved_dataset: FrameSet, cli_runner):
     result = cli_runner(
         add_sink,
         [
-            saved_dataset.locator,
+            saved_dataset.address,
             "a_sink",
             "text/text-file",
             "--path",
@@ -88,7 +88,7 @@ def test_add_column_cli(saved_dataset: FrameSet, cli_runner):
     assert result.exit_code == 0, show_cli_trace(result)
     # Reload the saved dataset and check the parameters were saved/loaded
     # correctly
-    loaded_dataset = FrameSet.load(saved_dataset.locator)
+    loaded_dataset = FrameSet.load(saved_dataset.address)
     assert saved_dataset.columns == loaded_dataset.columns
 
 
@@ -101,7 +101,7 @@ def test_add_missing_items_cli(saved_dataset: FrameSet, cli_runner):
 def test_define_cli(dataset: FrameSet, cli_runner):
     blueprint = dataset.__annotations__["blueprint"]
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
-    path = dataset.locator
+    path = dataset.address
     # Start generating the arguments for the CLI
     args = list(blueprint.hierarchy)
     # Generate "arbitrary" values for included and excluded from dim length
@@ -163,7 +163,7 @@ def test_export_import_roundtrip(cli_runner, work_dir: Path, frametree_home):
     result = cli_runner(
         export,
         [
-            original.locator,
+            original.address,
             "file_system",
             local_dataset_id,
         ],
@@ -173,7 +173,7 @@ def test_export_import_roundtrip(cli_runner, work_dir: Path, frametree_home):
     result = cli_runner(
         export,
         [
-            local_dataset.locator,
+            local_dataset.address,
             "my_mock_remote",
             "reimported",
         ],
