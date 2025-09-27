@@ -1,16 +1,16 @@
 from __future__ import annotations
+
 import logging
-import typing as ty
 import re
+import typing as ty
 from collections import defaultdict
+
 import attrs
-import attrs.filters
-from frametree.core.utils import NestedContext
+
 from frametree.core.axes import Axes
-from frametree.core.exceptions import (
-    FrameTreeNameError,
-    FrameTreeConstructionError,
-)
+from frametree.core.exceptions import FrameTreeConstructionError, FrameTreeNameError
+from frametree.core.utils import NestedContext
+
 from .row import DataRow
 
 if ty.TYPE_CHECKING:  # pragma: no cover
@@ -50,7 +50,9 @@ class DataTree(NestedContext):
         return self.frameset.hierarchy
 
     def add_leaf(
-        self, tree_path, metadata: ty.Dict[str, ty.Dict[str, str]] = None
+        self,
+        tree_path: list[str],
+        metadata: ty.Dict[str, ty.Dict[str, str]] | None = None,
     ) -> ty.Tuple[DataRow, ty.List[str]]:
         """Creates a new row at a the path down the tree of the dataset as
         well as all "parent" rows upstream in the data tree
@@ -82,6 +84,12 @@ class DataTree(NestedContext):
             raised if one of the groups specified in the ID inference reg-ex
             doesn't match a valid row_frequency in the data dimensions
         """
+
+        logger.debug(
+            "Adding leaf to data tree at path %s to '%s' frameset",
+            tree_path,
+            self.dataset_id,
+        )
 
         def matches_criteria(
             label: str, freq_str: str, criteria: ty.Dict[str, ty.Union[list, str]]
@@ -227,9 +235,6 @@ class DataTree(NestedContext):
             If inserting a multiple IDs of the same class within the tree if
             one of their ids is None
         """
-        # logger.debug(
-        #     "Found %s row in %s dataset: %s", row_frequency, self.dataset_id, ids
-        # )
         row_frequency = self.frameset.parse_frequency(row_frequency)
         row = DataRow(ids=ids, frequency=row_frequency, frameset=self.frameset)
         # Create new data row
