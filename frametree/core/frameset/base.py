@@ -47,10 +47,23 @@ def include_exclude_converter(
 ) -> dict[str, list[str]]:
     if ids_dct is None:
         return {}
-    return {
-        str(freq): sorted(set(ids)) if isinstance(ids, list) else [ids]
-        for freq, ids in ids_dct.items()
-    }
+    ids = {}
+    for freq, ids_ in ids_dct.items():
+        freq_str = str(freq)
+        if isinstance(ids_, str):
+            if ":" not in ids_:
+                ids_ = [ids_]
+            ids[freq_str] = ids_
+        elif isinstance(ids_, set):
+            ids[freq_str] = sorted(ids_)
+        elif isinstance(ids_, list):
+            ids[freq_str] = sorted(set(ids_))
+        else:
+            raise TypeError(
+                f"Unrecognised type for IDs for frequency '{freq}' in include/exclude "
+                f"dictionary provided to dataset, {type(ids_)}"
+            )
+    return ids
 
 
 @attrs.define
