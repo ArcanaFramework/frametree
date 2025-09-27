@@ -1,17 +1,20 @@
 from __future__ import annotations
+
 import logging
 import re
+import shutil
 import typing as ty
 from pathlib import Path
-import shutil
 from warnings import warn
+
 import attrs
 import attrs.filters
 from attrs.converters import default_if_none
-from typing_extensions import Self
-from pydra.compose import workflow
-from pydra.utils.hash import hash_single, bytes_repr_mapping_contents
 from fileformats.text import Plain as PlainText
+from pydra.compose import workflow
+from pydra.utils.hash import bytes_repr_mapping_contents, hash_single
+from typing_extensions import Self
+
 from frametree.core.exceptions import (
     FrameTreeDataMatchError,
     FrameTreeLicenseNotFoundError,
@@ -20,13 +23,13 @@ from frametree.core.exceptions import (
     FrameTreeWrongAxesError,
 )
 from frametree.core.licence import License
+
+from .. import store as datastore
+from ..axes import Axes
 from ..column import DataColumn, SinkColumn, SourceColumn
 from ..row import DataRow
-from .. import store as datastore
 from ..tree import DataTree
-from ..axes import Axes
 from .metadata import Metadata, metadata_converter
-
 
 if ty.TYPE_CHECKING:  # pragma: no cover
     from frametree.core.entry import DataEntry
@@ -37,6 +40,28 @@ logger = logging.getLogger("frametree")
 
 def hierarchy_converter(hierarchy: ty.List[ty.Union[str, Axes]]) -> ty.List[str]:
     return [str(f) for f in hierarchy]
+
+
+def include_exclude_converter(
+    ids_dct: dict[str, str | set[str]] | None,
+) -> dict[str, list[str]]:
+    if ids_dct is None:
+        return {}
+    ids = {}
+    for freq, ids_ in ids_dct.items():
+        freq_str = str(freq)
+        if isinstance(ids_, str):
+            ids[freq_str] = ids_
+        elif isinstance(ids_, set):
+            ids[freq_str] = sorted(ids_)
+        elif isinstance(ids_, list):
+            ids[freq_str] = sorted(set(ids_))
+        else:
+            raise TypeError(
+                f"Unrecognised type for IDs for frequency '{freq}' in include/exclude "
+                f"dictionary provided to dataset, {type(ids_)}"
+            )
+    return ids
 
 
 @attrs.define
@@ -126,11 +151,11 @@ class FrameSet:
         converter=metadata_converter,
         repr=False,
     )
-    include: ty.Dict[str, ty.Union[ty.List[str], str]] = attrs.field(
-        factory=dict, converter=default_if_none(factory=dict), repr=False
+    include: dict[str, list[str]] = attrs.field(
+        factory=dict, converter=include_exclude_converter, repr=False
     )
-    exclude: ty.Dict[str, ty.Union[ty.List[str], str]] = attrs.field(
-        factory=dict, converter=default_if_none(factory=dict), repr=False
+    exclude: dict[str, list[str]] = attrs.field(
+        factory=dict, converter=include_exclude_converter, repr=False
     )
     name: str = attrs.field(default="")
     columns: ty.Dict[str, DataColumn] = attrs.field(
