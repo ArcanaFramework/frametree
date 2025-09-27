@@ -51,8 +51,6 @@ def include_exclude_converter(
     for freq, ids_ in ids_dct.items():
         freq_str = str(freq)
         if isinstance(ids_, str):
-            if ":" not in ids_:
-                ids_ = [ids_]
             ids[freq_str] = ids_
         elif isinstance(ids_, set):
             ids[freq_str] = sorted(ids_)
