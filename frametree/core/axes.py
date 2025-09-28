@@ -1,8 +1,9 @@
-from importlib import import_module
-import typing as ty
-from typing import Iterator, List, Type, cast
 import re
+import typing as ty
 from enum import Enum
+from importlib import import_module
+from typing import Iterator, List, Type, cast
+
 from frametree.core.serialize import ClassResolver
 from frametree.core.utils import classproperty
 
@@ -184,6 +185,8 @@ class Axes(Enum):
 
     @classmethod
     def fromstr(cls, s: str) -> "Axes | str":
+        if isinstance(s, Axes):
+            return s
         if "/" in s:
             ns, val = s.split("/")
             try:

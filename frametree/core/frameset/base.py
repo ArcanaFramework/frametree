@@ -56,6 +56,8 @@ def include_exclude_converter(
             ids[freq_str] = sorted(ids_)
         elif isinstance(ids_, list):
             ids[freq_str] = sorted(set(ids_))
+        elif ids_ is None:
+            ids[freq_str] = None
         else:
             raise TypeError(
                 f"Unrecognised type for IDs for frequency '{freq}' in include/exclude "
