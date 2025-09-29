@@ -184,7 +184,7 @@ class Axes(Enum):
             return f"{ClassResolver.tostr(type(self), strip_prefix=False)}[{str(self)}]"
 
     @classmethod
-    def fromstr(cls, s: str) -> "Axes | str":
+    def fromstr(cls, s: str, axes: ty.Optional[ty.Type["Axes"]] = None) -> "Axes | str":
         if isinstance(s, Axes):
             return s
         if "/" in s:
@@ -211,6 +211,8 @@ class Axes(Enum):
             class_loc, val = match.groups()
             space: Type["Axes"] = ClassResolver(cls)(class_loc)
             return space[val] if not isinstance(space, str) else s
+        elif axes is not None:
+            return axes[s]  # type: ignore[no-any-return]
         raise ValueError(
             f"'{s}' is not a string of the format <axes-namespace>/<value> or <module>:<axes-class>[<value>]"
         )
