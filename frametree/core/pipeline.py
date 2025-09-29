@@ -1,42 +1,40 @@
-import attrs
+import logging
 import typing as ty
 from collections import OrderedDict
-import logging
 from copy import copy
-from typing_extensions import Self
+
+import attrs
 import attrs.converters
 from fileformats.core import DataType
 from fileformats.core.exceptions import FormatConversionError
-from pydra.utils.typing import StateArray
-from pydra.utils import get_fields
+from pydra.compose import python, workflow
 from pydra.compose.base import Task
-from pydra.compose import workflow, python
-from frametree.core.exceptions import (
-    FrameTreeNameError,
-    FrameTreeUsageError,
-    FrameTreeDesignError,
-    FrameTreePipelinesStackError,
-    FrameTreeOutputNotProducedException,
-    FrameTreeDataMatchError,
-)
+from pydra.utils import get_fields
+from pydra.utils.typing import StateArray
+from typing_extensions import Self
+
 import frametree.core.frameset.base
 import frametree.core.row
 from frametree.core.axes import Axes
-from frametree.core.utils import (
-    path2varname,
-    add_exc_note,
+from frametree.core.column import SinkColumn
+from frametree.core.exceptions import (
+    FrameTreeDataMatchError,
+    FrameTreeDesignError,
+    FrameTreeNameError,
+    FrameTreeOutputNotProducedException,
+    FrameTreePipelinesStackError,
+    FrameTreeUsageError,
 )
+from frametree.core.frameset.base import FrameSet
 from frametree.core.serialize import (
+    ClassResolver,
+    ObjectListConverter,
     asdict,
     fromdict,
     pydra_asdict,
     pydra_fromdict,
-    ClassResolver,
-    ObjectListConverter,
 )
-from frametree.core.column import SinkColumn
-from frametree.core.frameset.base import FrameSet
-
+from frametree.core.utils import add_exc_note, path2varname
 
 logger = logging.getLogger("frametree")
 
@@ -636,8 +634,8 @@ def SourceItems(
     logger.debug("Sourcing %s", inputs)
     sourced: ty.Dict[str, ty.Union["frametree.core.row.DataRow", DataType]] = {}
     missing_inputs: ty.Dict[str, str] = {}
-    row = frameset.row(row_frequency, row_id)
     with frameset.store.connection:
+        row = frameset.row(row_frequency, row_id)
         for inpt in inputs:
             # If the required datatype is of type DataRow then provide the whole
             # row to the pipeline input
@@ -684,8 +682,8 @@ def SinkItems(
     if provenance is not None:
         raise NotImplementedError("Provenance storage not implemented yet")
     logger.debug("Sinking %s", items)
-    row = frameset.row(row_frequency, row_id)
     with frameset.store.connection:
+        row = frameset.row(row_frequency, row_id)
         for outpt_name, output in items.items():
             row.cell(outpt_name).item = output
     return row_id
