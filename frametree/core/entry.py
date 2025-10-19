@@ -2,6 +2,7 @@ from __future__ import annotations
 import typing as ty
 import os
 import attrs
+from pydra.utils.typing import optional_type, is_optional
 from fileformats.core import DataType
 from frametree.core.exceptions import FrameTreeDataMatchError, FrameTreeUsageError
 from .quality import DataQuality
@@ -135,7 +136,7 @@ class DataEntry:
     def get_item(self, datatype: type[DataType] | None = None) -> DataType:
         if datatype is None:
             datatype = self.datatype
-        return self.row.frameset.store.get(self, datatype)
+        return self.row.frameset.store.get(self, optional_type(datatype))
 
     @property
     def recorded_checksums(self) -> dict[str, ty.Any] | None:

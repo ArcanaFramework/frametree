@@ -10,7 +10,7 @@ from attrs.converters import optional
 from fileformats.core import DataType, Field, from_mime
 from fileformats.core.exceptions import FormatMismatchError
 from pydra.utils.hash import hash_single
-from pydra.utils.typing import is_fileset_or_union
+from pydra.utils.typing import is_fileset_or_union, is_union
 from frametree.core.exceptions import FrameTreeDataMatchError
 from .salience import ColumnSalience
 from .quality import DataQuality
@@ -43,10 +43,13 @@ def datatype_converter(datatype: ty.Union[type, str]) -> ty.Type[DataType]:
     ------
     TypeError
         If the datatype is not a subclass of DataType or a primitive type"""
-    if ty.get_origin(datatype) is ty.Union:
-        return ty.Union.__getitem__(
-            tuple(datatype_converter(a) for a in ty.get_args(datatype))
-        )
+    if is_union(datatype):
+        return ty.Union[
+            tuple(
+                datatype_converter(a) if a not in (None, type(None)) else None
+                for a in ty.get_args(datatype)
+            )
+        ]
     if inspect.isclass(datatype) and issubclass(datatype, DataType):
         return datatype
     elif isinstance(datatype, str) and "/" in datatype:
