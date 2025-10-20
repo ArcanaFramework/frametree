@@ -10,7 +10,7 @@ from fileformats.core.exceptions import FormatConversionError
 from pydra.compose import python, workflow
 from pydra.compose.base import Task
 from pydra.utils import get_fields
-from pydra.utils.typing import StateArray
+from pydra.utils.typing import StateArray, TypeParser
 from typing_extensions import Self
 
 import frametree.core.frameset.base
@@ -60,6 +60,7 @@ class PipelineField:
         converter=ClassResolver(
             DataType,
             allow_none=True,
+            allow_optional=True,
             alternative_types=[frametree.core.row.DataRow],
         ),
     )
@@ -171,8 +172,8 @@ class Pipeline:
                 # Check that a converter can be found if required
                 if (
                     outpt.datatype
-                    and not issubclass(outpt.datatype, column.datatype)
-                    and not issubclass(column.datatype, outpt.datatype)
+                    and not TypeParser.is_subclass(outpt.datatype, column.datatype)
+                    and not TypeParser.is_subclass(column.datatype, outpt.datatype)
                 ):
                     try:
                         column.datatype.get_converter(outpt.datatype)
@@ -530,8 +531,8 @@ def PipelineRowWorkflow(
         sink_name = path2varname(outpt.name)
         if (
             outpt.datatype
-            and not issubclass(outpt.datatype, stored_format)
-            and not issubclass(stored_format, outpt.datatype)
+            and not TypeParser.is_subclass(outpt.datatype, stored_format)
+            and not TypeParser.is_subclass(stored_format, outpt.datatype)
         ):
             converter = stored_format.get_converter(outpt.datatype)
             logger.info(
