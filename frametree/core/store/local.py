@@ -9,7 +9,8 @@ import json
 import attrs
 import yaml
 from fasteners import InterProcessLock
-from fileformats.core import DataType, FileSet, Field
+from fileformats.core import DataType, FileSet, Field, FileSetPrimitive, FieldPrimitive
+from pydra.utils.typing import TypeParser
 from frametree.core.exceptions import (
     FrameTreeMissingDataException,
     FrameTreeUsageError,
@@ -72,7 +73,9 @@ class LocalStore(Store):
     ####################
 
     @abstractmethod
-    def get_field(self, entry: DataEntry, datatype: type) -> Field[ty.Any, ty.Any]:
+    def get_field(
+        self, entry: DataEntry, datatype: type
+    ) -> Field[ty.Any, ty.Any] | FieldPrimitive:
         """Retrieves a field from a data entry
 
         Parameters
@@ -106,7 +109,9 @@ class LocalStore(Store):
         """
 
     @abstractmethod
-    def get_fileset(self, entry: DataEntry, datatype: type) -> FileSet:
+    def get_fileset(
+        self, entry: DataEntry, datatype: type
+    ) -> FileSet | FileSetPrimitive:
         """Retrieves a file-set from a data entry
 
         Parameters

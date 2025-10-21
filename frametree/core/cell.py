@@ -2,6 +2,7 @@ from __future__ import annotations
 import typing as ty
 import attrs
 from fileformats.core import DataType
+from pydra.utils.typing import TypeParser
 from frametree.core.exceptions import FrameTreeError
 
 if ty.TYPE_CHECKING:  # pragma: no cover
@@ -54,7 +55,7 @@ class DataCell:
             raise FrameTreeError(
                 f"Cannot set data items ({item}) into source column cell {self}"
             )
-        item = self.datatype(item)
+        item = TypeParser(self.datatype).coerce(item)
         if self.is_empty:
             entry = self.row.frameset.store.post(
                 item=item, path=self.column.path, datatype=self.datatype, row=self.row

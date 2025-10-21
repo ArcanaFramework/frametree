@@ -25,6 +25,7 @@ from fileformats.testing import (
     YourFormat,
     Xyz,
 )
+from pydra.utils.typing import TypeParser
 from frametree.core import FrameSet
 from frametree.core.row import DataRow
 from frametree.core.axes import Axes

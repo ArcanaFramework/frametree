@@ -13,8 +13,9 @@ from frametree.core.serialize import (
 )
 import frametree
 from ..axes import Axes
-from fileformats.core import DataType
+from fileformats.core import DataType, FileSetPrimitive, FieldPrimitive
 from fileformats.text import Plain as PlainText
+from pydra.utils.typing import is_union
 from frametree.core.utils import (
     get_config_file_path,
     NestedContext,
@@ -30,6 +31,7 @@ from frametree.core.exceptions import (
 
 S = ty.TypeVar("S", bound="Store")
 DT = ty.TypeVar("DT", bound="DataType")
+
 
 logger = logging.getLogger("frametree")
 
@@ -713,7 +715,9 @@ class Store(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def get(self, entry: DataEntry, datatype: ty.Type[DT]) -> DT:
+    def get(
+        self, entry: DataEntry, datatype: ty.Type[DT]
+    ) -> FileSetPrimitive | FieldPrimitive:
         """
         Gets the data item corresponding to the given entry
 
@@ -958,5 +962,29 @@ class Store(metaclass=ABCMeta):
                 f"Stored version of dataset ({store_version}) does not match current "
                 f"version of {type(self).__name__} ({self.VERSION})"
             )
+
+    @classmethod
+    def to_datatype(cls, item: ty.Any, datatype: ty.Type[DT]) -> DT:
+        """Convert an item to the specified datatype if it isn't already of that type
+
+        Parameters
+        ----------
+        item : ty.Any
+            the item to convert
+        datatype : type
+            the datatype to convert the item to
+
+        Returns
+        -------
+        DT
+            the converted item
+        """
+        if is_optional(datatype):
+            if item is None:
+                return None
+
+        if not isinstance(item, datatype):
+            item = datatype.convert(item)
+        return ty.cast(DT, item)
 
     pattern_comp_re = re.compile(r"#[^\#]+#")

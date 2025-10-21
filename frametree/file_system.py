@@ -152,9 +152,9 @@ class FileSystem(LocalStore):
             the retrieved field
         """
         fspath, key = self._fields_fspath_and_key(entry)
-        return datatype(self.read_from_json(fspath, key))
+        return self.read_from_json(fspath, key)
 
-    def get_fileset(self, entry: DataEntry, datatype: ty.Type[FileSet]) -> FileSet:
+    def get_fileset(self, entry: DataEntry, datatype: ty.Type[FileSet]) -> Path:
         """Retrieve the file-set associated with the given entry and return it cast
         to the specified datatype
 
@@ -170,7 +170,7 @@ class FileSystem(LocalStore):
         FileSet
             the retrieved file-set
         """
-        return datatype(self._fileset_fspath(entry))
+        return self._fileset_fspath(entry)
 
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
         """Put a file-set into the specified data entry

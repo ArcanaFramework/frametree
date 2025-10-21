@@ -11,7 +11,10 @@ import os.path
 import attrs
 from contextlib import contextmanager
 from collections.abc import Iterable
+from fileformats.core.exceptions import FormatMismatchError
+from pydra.utils.typing import is_optional, is_union, optional_type
 from typing_extensions import Self
+from fileformats.core import DataType, FileSetPrimitive, FieldPrimitive
 from types import TracebackType
 import cloudpickle as cp
 import pydra.compose.base
@@ -525,6 +528,44 @@ def dict_diff(
 
 def full_path(fspath: ty.Union[str, Path]) -> Path:
     return Path(fspath).resolve().absolute()
+
+
+DT = ty.TypeVar("DT", bound=DataType)
+
+
+def to_datatype(
+    item: DataType | FileSetPrimitive | FieldPrimitive, datatype: ty.Type[DT]
+) -> DT:
+    """Casts a given item into the specified datatype, handling optional and union types
+
+    Parameters
+    ----------
+    item : DataType | FileSetPrimitive | FieldPrimitive
+        the item to convert
+    datatype : ty.Type[DT]
+        the datatype to convert the item to
+
+    Returns
+    -------
+    DataType
+        the converted item
+    """
+    if is_optional(datatype):
+        if item is None:
+            return None
+        datatype = optional_type(datatype)
+
+    if is_union(datatype):
+        for tp in ty.get_args(datatype):
+            try:
+                return to_datatype(item, tp)
+            except FormatMismatchError:
+                pass
+        raise FormatMismatchError(
+            f"Item {item} could not be converted to any of the union types {datatype}"
+        )
+
+    return datatype(item)
 
 
 class fromdict_converter:

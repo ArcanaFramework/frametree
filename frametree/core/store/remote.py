@@ -10,8 +10,9 @@ import errno
 import json
 import shutil
 import attrs
-from fileformats.core import DataType, FileSet, Field
+from fileformats.core import DataType, FileSet, Field, FileSetPrimitive, FieldPrimitive
 from fileformats.generic import File
+from pydra.utils.typing import TypeParser
 from frametree.core.utils import (
     dir_modtime,
     JSON_ENCODING,
@@ -178,9 +179,7 @@ class RemoteStore(Store):
         """
 
     @abstractmethod
-    def download_value(
-        self, entry: DataEntry
-    ) -> ty.Union[float, int, str, ty.List[float], ty.List[int], ty.List[str]]:
+    def download_value(self, entry: DataEntry) -> FieldPrimitive:
         """
         Extract and return the value of the field from the store
 
@@ -198,7 +197,7 @@ class RemoteStore(Store):
     @abstractmethod
     def upload_value(
         self,
-        value: ty.Union[float, int, str, ty.List[float], ty.List[int], ty.List[str]],
+        value: FieldPrimitive,
         entry: DataEntry,
     ) -> None:
         """Store the value for a field in the XNAT repository
@@ -292,7 +291,9 @@ class RemoteStore(Store):
     # Abstractmethod implementations
     ################################
 
-    def get(self, entry: DataEntry, datatype: ty.Type[DT]) -> DT:
+    def get(
+        self, entry: DataEntry, datatype: ty.Type[DT]
+    ) -> FileSetPrimitive | FieldPrimitive:
         with self.connection:
             if entry.datatype.is_fileset:
                 item = self.get_fileset(entry, datatype)
@@ -300,7 +301,6 @@ class RemoteStore(Store):
                 item = self.get_field(entry, datatype)
             else:
                 raise DatatypeUnsupportedByStoreError(entry.datatype, self)
-        assert isinstance(item, datatype)
         return item
 
     def put(self, item: DT, entry: DataEntry) -> DT:
@@ -392,7 +392,7 @@ class RemoteStore(Store):
     # Get and putters #
     ###################
 
-    def get_fileset(self, entry: DataEntry, datatype: type) -> FileSet:
+    def get_fileset(self, entry: DataEntry, datatype: type) -> list[Path]:
         """
         Caches a fileset to the local file system and returns the path to
         the cached files
@@ -458,7 +458,7 @@ class RemoteStore(Store):
                     str(cache_path) + self.CHECKSUM_SUFFIX, "w", **JSON_ENCODING
                 ) as f:
                     json.dump(checksums, f, indent=2)
-        return datatype(cache_path.iterdir())
+        return list(cache_path.iterdir())
 
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
         """
@@ -526,7 +526,7 @@ class RemoteStore(Store):
         )
         return cached
 
-    def get_field(self, entry: DataEntry, datatype: type) -> Field:
+    def get_field(self, entry: DataEntry, datatype: type) -> FieldPrimitive:
         """
         Retrieves a fields value
 
@@ -540,9 +540,9 @@ class RemoteStore(Store):
         value : ty.Union[float, int, str, ty.List[float], ty.List[int], ty.List[str]]
             The value of the field
         """
-        return datatype(self.download_value(entry))
+        return self.download_value(entry)
 
-    def put_field(self, field: Field, entry: DataEntry) -> None:
+    def put_field(self, field: Field | FieldPrimitive, entry: DataEntry) -> None:
         """Store the value for a field in the XNAT repository
 
         Parameters
@@ -552,7 +552,7 @@ class RemoteStore(Store):
         value : str or float or int or bool
             the value to store
         """
-        return self.upload_value(entry.datatype(field).value, entry)
+        return self.upload_value(TypeParser(entry.datatype).coerce(field).value, entry)
 
     ##############
     # Public API #
