@@ -10,7 +10,7 @@ from fileformats.core.exceptions import FormatConversionError
 from pydra.compose import python, workflow
 from pydra.compose.base import Task
 from pydra.utils import get_fields
-from pydra.utils.typing import StateArray, TypeParser
+from pydra.utils.typing import StateArray, TypeParser, is_union
 from typing_extensions import Self
 
 import frametree.core.frameset.base
@@ -476,37 +476,57 @@ def PipelineRowWorkflow(
 
     # Do input datatype conversions if required
     for inpt in inputs:
-        if inpt.datatype == frametree.core.row.DataRow:
-            continue
         stored_format = frameset[inpt.name].datatype
         if (
-            inpt.datatype
-            and not issubclass(inpt.datatype, stored_format)
-            and not issubclass(stored_format, inpt.datatype)
+            inpt.datatype == frametree.core.row.DataRow
+            or not inpt.datatype
+            or is_coercible(inpt.datatype, stored_format)
         ):
-            converter = inpt.datatype.get_converter(stored_format)
-            logger.info(
-                "Adding implicit conversion for input '%s' from %s to %s",
-                inpt.name,
-                stored_format.mime_like,
-                inpt.datatype.mime_like,
+            # No conversion required
+            continue
+        logger.info(
+            "Adding implicit conversion for input '%s' from %s to %s",
+            inpt.name,
+            stored_format.mime_like,
+            inpt.datatype.mime_like,
+        )
+        in_file = sourced.pop(inpt.name)
+        if is_union(stored_format):
+            if all(
+                is_coercible(inpt.datatype, ff) for ff in ty.get_args(stored_format)
+            ):
+                # No conversion is ever required
+                continue
+            # We need to use a workflow to determine the actual converter that needs to
+            # be used at runtime when dealing with union column datatypes
+            converter_task = RuntimeConverterWorkflow(
+                datatype=inpt.datatype,
+                converter_args=converter_args.get(inpt.name, {}),
             )
-            in_file = sourced.pop(inpt.name)
+            in_file_name = "in_file"
+            out_file_name = "out_file"
+        else:
+            # The source -> input conversion is fixed so we know which converter to use at
+            # build time
+            converter = inpt.datatype.get_converter(stored_format)
             converter_task = copy(converter.task)
+            in_file_name = converter.in_file
+            out_file_name = converter.out_file
             for nm, val in converter_args.get(inpt.name, {}).items():
                 setattr(converter_task, nm, val)
-            if ty.get_origin(source_types[inpt.name]) is StateArray:
-                # Iterate over all items in the sequence and convert them
-                # separately
-                converter_task.split(converter.in_file, **{converter.in_file: in_file})
-            else:
-                setattr(converter_task, converter.in_file, in_file)
-            # Insert converter
-            converter_outputs = workflow.add(
-                converter_task, name=f"{inpt.name}_input_converter"
-            )
-            # Map converter output to input_interface
-            sourced[inpt.name] = getattr(converter_outputs, converter.out_file)
+        # Split converter input if state array
+        if ty.get_origin(source_types[inpt.name]) is StateArray:
+            # Iterate over all items in the sequence and convert them
+            # separately
+            converter_task.split(in_file_name, **{in_file_name: in_file})
+        else:
+            setattr(converter_task, in_file_name, in_file)
+        # Add converter to workflow
+        converter_outputs = workflow.add(
+            converter_task, name=f"{inpt.name}_input_converter"
+        )
+        # Map converter output to input_interface
+        sourced[inpt.name] = getattr(converter_outputs, out_file_name)
 
     # Copy the task of the pipeline that actually performs the analysis/processing and
     # connections from the sourced/converted inputs
@@ -688,6 +708,43 @@ def SinkItems(
         for outpt_name, output in items.items():
             row.cell(outpt_name).item = output
     return row_id
+
+
+@workflow.define(outputs=["out_file"])
+def RuntimeConverterWorkflow(
+    in_file: DataType,
+    datatype: ty.Type[DataType],
+    converter_kwargs: ty.Dict[str, ty.Any],
+) -> DataType:
+    """A workflow that selects the appropriate converter for a union datatype
+    at runtime based on the actual type of the input file.
+
+    Parameters
+    ----------
+    in_file : DataType
+        the input file to be converted
+    datatype : type
+        the target datatype to convert to
+    converter_kwargs : dict
+        keyword arguments passed on to the converter to control how the
+        conversion is performed.
+
+    Returns
+    -------
+    out_file : DataType
+        the converted output file
+    """
+    if is_coercible(type(in_file), datatype):
+        return in_file  # type: ignore[return-value]
+    converter = datatype.get_converter(type(in_file))
+    task = attrs.evolve(converter.task, **converter_kwargs)
+    setattr(task, converter.in_file, in_file)
+    out = workflow.add(task)
+    return getattr(out, converter.out_file)
+
+
+def is_coercible(t: ty.Type[DataType], u: ty.Type[DataType]) -> bool:
+    return issubclass(t, u) or issubclass(u, t)
 
 
 # Provenance mismatch detection methods salvaged from data.provenance

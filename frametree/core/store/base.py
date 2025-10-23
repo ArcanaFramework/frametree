@@ -963,28 +963,4 @@ class Store(metaclass=ABCMeta):
                 f"version of {type(self).__name__} ({self.VERSION})"
             )
 
-    @classmethod
-    def to_datatype(cls, item: ty.Any, datatype: ty.Type[DT]) -> DT:
-        """Convert an item to the specified datatype if it isn't already of that type
-
-        Parameters
-        ----------
-        item : ty.Any
-            the item to convert
-        datatype : type
-            the datatype to convert the item to
-
-        Returns
-        -------
-        DT
-            the converted item
-        """
-        if is_optional(datatype):
-            if item is None:
-                return None
-
-        if not isinstance(item, datatype):
-            item = datatype.convert(item)
-        return ty.cast(DT, item)
-
     pattern_comp_re = re.compile(r"#[^\#]+#")

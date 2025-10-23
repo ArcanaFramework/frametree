@@ -1,4 +1,5 @@
 from __future__ import annotations
+import itertools
 import subprocess as sp
 import typing as ty
 import re
@@ -14,7 +15,7 @@ from collections.abc import Iterable
 from fileformats.core.exceptions import FormatMismatchError
 from pydra.utils.typing import is_optional, is_union, optional_type
 from typing_extensions import Self
-from fileformats.core import DataType, FileSetPrimitive, FieldPrimitive
+from fileformats.core import DataType, FileSet, FileSetPrimitive, FieldPrimitive
 from types import TracebackType
 import cloudpickle as cp
 import pydra.compose.base
@@ -566,6 +567,45 @@ def to_datatype(
         )
 
     return datatype(item)
+
+
+def convertible_from(datatype: ty.Type[DataType]) -> ty.Type[DataType]:
+    """Determine the list of types that can be converted into the given datatype
+
+    Parameters
+    ----------
+    datatype : ty.Type[DataType]
+        the datatype to check
+
+    Returns
+    -------
+    ty.Type[DataType]
+        the union of datatypes that can be converted into the given datatype
+    """
+    convertible: list[ty.Type[DataType]] = []
+
+    if is_optional(datatype):
+        datatype = optional_type(datatype)
+
+    if is_union(datatype):
+        for tp in ty.get_args(datatype):
+            convertible.append(convertible_from(tp))
+        # Flatten any union types into a single list to be returned as a union
+        flattened = list(
+            itertools.chain(
+                *(ty.get_args(c) if is_union(c) else (c,) for c in convertible)
+            )
+        )
+        # Remove any duplicates, favouring the first time the type appears in the
+        # list
+        unique = []
+        for tp in flattened:
+            if tp not in unique:
+                unique.append(tp)
+        return ty.Union.__getitem__(tuple(unique))
+    elif issubclass(datatype, FileSet):
+        return datatype.convertible_from()
+    return datatype
 
 
 class fromdict_converter:
