@@ -420,7 +420,7 @@ def PipelineRowWorkflow(
     inputs: ty.List[PipelineField],
     outputs: ty.List[PipelineField],
     converter_args: ty.Dict[str, dict],
-):
+) -> str:
 
     # Get the values from the frameset, caching remote files locally
     source = workflow.add(
