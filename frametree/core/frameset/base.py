@@ -805,7 +805,7 @@ class FrameSet:
         ids: ty.Optional[ty.Iterable[str]] = None,
         cache_dir: Path = None,
         **kwargs: ty.Any,
-    ) -> None:
+    ) -> list[DataColumn]:
         """Generate derivatives from the workflows
 
         Parameters
@@ -831,6 +831,7 @@ class FrameSet:
             # data axes
             with self.tree:
                 pipeline(ids=ids)(cache_root=cache_dir, **kwargs)
+        return sinks
 
     def parse_frequency(self, freq: ty.Union[Axes, str, None]) -> Axes:
         """Parses the data row_frequency, converting from string if necessary and

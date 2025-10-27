@@ -5,7 +5,7 @@ from copy import copy
 
 import attrs
 import attrs.converters
-from fileformats.core import DataType
+from fileformats.core import DataType, to_mime
 from fileformats.core.exceptions import FormatConversionError
 from pydra.compose import python, workflow
 from pydra.compose.base import Task
@@ -487,8 +487,8 @@ def PipelineRowWorkflow(
         logger.info(
             "Adding implicit conversion for input '%s' from %s to %s",
             inpt.name,
-            stored_format.mime_like,
-            inpt.datatype.mime_like,
+            to_mime(stored_format, official=False),
+            to_mime(inpt.datatype, official=False),
         )
         in_file = sourced.pop(inpt.name)
         if is_union(stored_format):
@@ -714,7 +714,7 @@ def SinkItems(
 def RuntimeConverterWorkflow(
     in_file: DataType,
     datatype: ty.Type[DataType],
-    converter_kwargs: ty.Dict[str, ty.Any],
+    converter_args: ty.Dict[str, ty.Any],
 ) -> DataType:
     """A workflow that selects the appropriate converter for a union datatype
     at runtime based on the actual type of the input file.
@@ -725,7 +725,7 @@ def RuntimeConverterWorkflow(
         the input file to be converted
     datatype : type
         the target datatype to convert to
-    converter_kwargs : dict
+    converter_args : dict
         keyword arguments passed on to the converter to control how the
         conversion is performed.
 
@@ -737,14 +737,14 @@ def RuntimeConverterWorkflow(
     if is_coercible(type(in_file), datatype):
         return in_file  # type: ignore[return-value]
     converter = datatype.get_converter(type(in_file))
-    task = attrs.evolve(converter.task, **converter_kwargs)
+    task = attrs.evolve(converter.task, **converter_args)
     setattr(task, converter.in_file, in_file)
     out = workflow.add(task)
     return getattr(out, converter.out_file)
 
 
 def is_coercible(t: ty.Type[DataType], u: ty.Type[DataType]) -> bool:
-    return issubclass(t, u) or issubclass(u, t)
+    return (issubclass(t, u) or issubclass(u, t)) and not (is_union(u) or is_union(t))
 
 
 # Provenance mismatch detection methods salvaged from data.provenance

@@ -1,15 +1,18 @@
+from fileformats.extras.testing import EncodedToTextConverter
 from fileformats.testing import EncodedText
-from fileformats.text import Plain as PlainText
+from fileformats.text import TextFile
 from pydra.compose import python
 
+from frametree.core.pipeline import RuntimeConverterWorkflow
 from frametree.file_system import FileSystem
 from frametree.testing import TestAxes
 from frametree.testing.blueprint import FileSetEntryBlueprint as FileBP
 from frametree.testing.blueprint import TestDatasetBlueprint
 
 
-@python.define
+@python.define(outputs=["out_file"])
 def EncodedTextIdentity(in_file: EncodedText) -> EncodedText:
+    assert in_file.raw_contents != "file.txt"
     return in_file
 
 
@@ -22,17 +25,17 @@ def test_pipeline_union_column_datatype(saved_dataset, data_store, work_dir):
         axes=TestAxes,
         dim_lengths=[1, 1, 1, 1],
         entries=[
-            FileBP(path="file", datatype=PlainText, filenames=["file.txt"]),
+            FileBP(path="file", datatype=TextFile, filenames=["file.txt"]),
         ],
     )
     frameset = bp.make_dataset(FileSystem(), str(work_dir / "dataset"))
     frameset.add_source(
         "file",
-        EncodedText.convertible_from(),
+        EncodedText.convertible_from(),  # Union datatype
     )
     frameset.add_sink(
         "out",
-        PlainText,
+        TextFile,
     )
 
     # Start generating the arguments for the CLI
@@ -40,22 +43,31 @@ def test_pipeline_union_column_datatype(saved_dataset, data_store, work_dir):
 
     frameset.apply(
         "a_pipeline",
-        EncodedTextIdentity,
+        EncodedTextIdentity(),
         inputs={
             (
                 "file",
                 "in_file",
-                PlainText,
+                EncodedText,
             )
         },
         outputs=[
             (
                 "out",
                 "out_file",
-                PlainText,
+                EncodedText,
             )
         ],
     )
 
-    workflow = frameset.pipeline("a_pipeline")()
-    assert workflow
+    pipeline = frameset.pipelines["a_pipeline"]
+    wf = pipeline()
+
+    per_row = wf.construct()["PipelineRowWorkflow"]._task.construct()
+    input_converter = per_row["file_input_converter"]
+    output_converter = per_row["out_output_converter"]
+    assert isinstance(input_converter._task, RuntimeConverterWorkflow)
+    assert isinstance(output_converter._task, EncodedToTextConverter)
+
+    out = next(iter(frameset.derive("out")[0]))
+    assert out.raw_contents == "file.txt"
