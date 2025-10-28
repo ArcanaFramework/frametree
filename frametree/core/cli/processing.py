@@ -1,16 +1,18 @@
-from pathlib import Path
 import logging
 import typing as ty
-import cloudpickle as cp
+from pathlib import Path
+
 import click
+import cloudpickle as cp
 import pydra.compose.base
 from fileformats.core import from_mime
-from frametree.core.frameset.base import FrameSet
-from frametree.core.store import Store
-from frametree.core.serialize import ClassResolver, parse_value
-from frametree.core.utils import set_loggers
-from .base import cli
 
+from frametree.core.frameset.base import FrameSet
+from frametree.core.serialize import ClassResolver, parse_value
+from frametree.core.store import Store
+from frametree.core.utils import set_loggers
+
+from .base import cli
 
 logger = logging.getLogger("frametree")
 
@@ -55,6 +57,7 @@ def derive(address, columns, work, worker, loglevel):
         work_dir = Path(work)
         store_cache = work_dir / "store-cache"
         pipeline_cache = work_dir / "pipeline-cache"
+        store_cache.mkdir(parents=True, exist_ok=True)
     else:
         store_cache = None
         pipeline_cache = None
