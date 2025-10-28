@@ -1,32 +1,33 @@
 from __future__ import annotations
-import os
-import os.path as op
-import typing as ty
-from pathlib import Path
-from abc import abstractmethod
-import time
-import logging
+
 import errno
 import json
+import logging
+import os
+import os.path as op
 import shutil
+import time
+import typing as ty
+from abc import abstractmethod
+from pathlib import Path
+
 import attrs
-from fileformats.core import DataType, FileSet, Field, FileSetPrimitive, FieldPrimitive
+from fileformats.core import DataType, Field, FieldPrimitive, FileSet, FileSetPrimitive
 from fileformats.generic import File
 from pydra.utils.typing import TypeParser
+
+from frametree.core.exceptions import DatatypeUnsupportedByStoreError, FrameTreeError
 from frametree.core.utils import (
-    dir_modtime,
     JSON_ENCODING,
     append_suffix,
+    dict_diff,
+    dir_modtime,
+    full_path,
 )
-from frametree.core.exceptions import (
-    FrameTreeError,
-    DatatypeUnsupportedByStoreError,
-)
-from frametree.core.utils import dict_diff, full_path
+
 from ..entry import DataEntry
 from ..row import DataRow
 from .base import Store
-
 
 logger = logging.getLogger("frametree")
 
@@ -304,6 +305,8 @@ class RemoteStore(Store):
         return item
 
     def put(self, item: DT, entry: DataEntry) -> DT:
+        if not isinstance(item, entry.datatype):
+            item = entry.datatype(item)
         with self.connection:
             if entry.datatype.is_fileset:
                 item = self.put_fileset(item, entry)

@@ -1,26 +1,29 @@
 from __future__ import annotations
-from pathlib import Path
-import re
-from abc import abstractmethod
-import typing as ty
+
 import errno
-import logging
 import json
+import logging
+import re
+import typing as ty
+from abc import abstractmethod
+from pathlib import Path
+
 import attrs
 import yaml
 from fasteners import InterProcessLock
-from fileformats.core import DataType, FileSet, Field, FileSetPrimitive, FieldPrimitive
+from fileformats.core import DataType, Field, FieldPrimitive, FileSet, FileSetPrimitive
 from pydra.utils.typing import TypeParser
+
 from frametree.core.exceptions import (
+    DatatypeUnsupportedByStoreError,
     FrameTreeMissingDataException,
     FrameTreeUsageError,
-    DatatypeUnsupportedByStoreError,
 )
-from frametree.core.utils import get_home_dir, append_suffix
-from ..row import DataRow
-from ..entry import DataEntry
-from .base import Store
+from frametree.core.utils import append_suffix, get_home_dir
 
+from ..entry import DataEntry
+from ..row import DataRow
+from .base import Store
 
 logger = logging.getLogger("frametree")
 
@@ -295,6 +298,8 @@ class LocalStore(Store):
         return item
 
     def put(self, item: DT, entry: DataEntry) -> DT:
+        if not isinstance(item, entry.datatype):
+            item = entry.datatype(item)
         if entry.datatype.is_fileset:
             cpy = self.put_fileset(item, entry)
         elif entry.datatype.is_field:
