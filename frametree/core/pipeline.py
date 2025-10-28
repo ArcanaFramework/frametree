@@ -476,14 +476,14 @@ def PipelineRowWorkflow(
 
     # Do input datatype conversions if required
     for inpt in inputs:
-        stored_format = frameset[inpt.name].datatype
         if (
             inpt.datatype == frametree.core.row.DataRow
             or not inpt.datatype
-            or is_coercible(inpt.datatype, stored_format)
+            or is_coercible(inpt.datatype, frameset[inpt.name].datatype)
         ):
             # No conversion required
             continue
+        stored_format = frameset[inpt.name].datatype
         logger.info(
             "Adding implicit conversion for input '%s' from %s to %s",
             inpt.name,

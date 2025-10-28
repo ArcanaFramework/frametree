@@ -586,18 +586,21 @@ def convertible_from(datatype: ty.Type[DataType]) -> ty.Type[DataType]:
     ty.Type[DataType]
         the union of datatypes that can be converted into the given datatype
     """
-    convertible: list[ty.Type[DataType]] = []
 
     if is_optional(datatype):
         datatype = optional_type(datatype)
+        optional = True
+    else:
+        optional = False
 
     if is_union(datatype):
+        union_args: list[ty.Type[DataType]] = []
         for tp in ty.get_args(datatype):
-            convertible.append(convertible_from(tp))
+            union_args.append(convertible_from(tp))
         # Flatten any union types into a single list to be returned as a union
         flattened = list(
             itertools.chain(
-                *(ty.get_args(c) if is_union(c) else (c,) for c in convertible)
+                *(ty.get_args(c) if is_union(c) else (c,) for c in union_args)
             )
         )
         # Remove any duplicates, favouring the first time the type appears in the
@@ -606,10 +609,12 @@ def convertible_from(datatype: ty.Type[DataType]) -> ty.Type[DataType]:
         for tp in flattened:
             if tp not in unique:
                 unique.append(tp)
-        return functools.reduce(operator.or_, unique)  # type: ignore[no-any-return]
+        conv_from = functools.reduce(operator.or_, unique)  # type: ignore[no-any-return]
     elif issubclass(datatype, FileSet):
-        return datatype.convertible_from()
-    return datatype
+        conv_from = datatype.convertible_from()
+    if optional:
+        conv_from |= None
+    return conv_from
 
 
 class fromdict_converter:
