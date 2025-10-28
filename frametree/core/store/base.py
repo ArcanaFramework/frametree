@@ -13,8 +13,9 @@ from frametree.core.serialize import (
 )
 import frametree
 from ..axes import Axes
-from fileformats.core import DataType
+from fileformats.core import DataType, FileSetPrimitive, FieldPrimitive
 from fileformats.text import Plain as PlainText
+from pydra.utils.typing import is_union
 from frametree.core.utils import (
     get_config_file_path,
     NestedContext,
@@ -30,6 +31,7 @@ from frametree.core.exceptions import (
 
 S = ty.TypeVar("S", bound="Store")
 DT = ty.TypeVar("DT", bound="DataType")
+
 
 logger = logging.getLogger("frametree")
 
@@ -713,7 +715,9 @@ class Store(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def get(self, entry: DataEntry, datatype: ty.Type[DT]) -> DT:
+    def get(
+        self, entry: DataEntry, datatype: ty.Type[DT]
+    ) -> FileSetPrimitive | FieldPrimitive:
         """
         Gets the data item corresponding to the given entry
 

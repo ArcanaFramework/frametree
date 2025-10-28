@@ -22,7 +22,7 @@ import pydra.compose.base
 import pydra.compose.python
 import pydra.compose.workflow
 from pydra.utils import get_fields
-from pydra.utils.typing import optional_type, is_fileset_or_union
+from pydra.utils.typing import is_optional, optional_type, is_fileset_or_union
 from pydra.engine.workflow import Workflow
 from pydra.utils.typing import TypeParser, is_lazy
 from pydra.engine.lazy import LazyField
@@ -73,6 +73,8 @@ class ClassResolver:
         the target class to resolve the string representation to
     allow_none : bool
         whether None is a valid value, if True, None is returned if the string is None
+    allow_optional : bool
+        whether optional types (i.e. union with None) are allowed
     alternative_types : list[type]
         alternative types that are allowed to be resolved to
     package : str
@@ -83,6 +85,7 @@ class ClassResolver:
 
     base_class: ty.Optional[type] = None
     allow_none: bool = False
+    allow_optional: bool = False
     alternative_types: ty.List[type] = attrs.field(factory=list)
     package: str = PACKAGE_NAME
 
@@ -301,10 +304,12 @@ class ClassResolver:
                     )
             if klass in self.alternative_types:
                 return  # ok
+            if self.allow_optional and is_optional(klass):
+                klass = optional_type(klass)
             # TypeParser handles unions and other exotic base classes Python < 3.10
             if not (
                 TypeParser.is_subclass(klass, self.base_class)
-                or issubclass(klass, self.base_class)
+                # or issubclass(klass, self.base_class)
             ):
                 raise ValueError(
                     f"Found {klass}, which is not a subclass of {self.base_class}"

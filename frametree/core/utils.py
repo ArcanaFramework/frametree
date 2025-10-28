@@ -1,22 +1,30 @@
 from __future__ import annotations
-import subprocess as sp
-import typing as ty
-import re
-import traceback
-import yaml
+
 import difflib
-from pathlib import Path
+import functools
+import itertools
 import logging
+import operator
 import os.path
-import attrs
-from contextlib import contextmanager
+import re
+import subprocess as sp
+import traceback
+import typing as ty
 from collections.abc import Iterable
-from typing_extensions import Self
+from contextlib import contextmanager
+from pathlib import Path
 from types import TracebackType
+
+import attrs
 import cloudpickle as cp
 import pydra.compose.base
-from frametree.core.exceptions import FrameTreeUsageError, FrameTreeError
+import yaml
+from fileformats.core import DataType, FieldPrimitive, FileSet, FileSetPrimitive
+from fileformats.core.exceptions import FormatMismatchError
+from pydra.utils.typing import is_optional, is_union, optional_type
+from typing_extensions import Self
 
+from frametree.core.exceptions import FrameTreeError, FrameTreeUsageError
 
 logger = logging.getLogger("frametree")
 
@@ -525,6 +533,83 @@ def dict_diff(
 
 def full_path(fspath: ty.Union[str, Path]) -> Path:
     return Path(fspath).resolve().absolute()
+
+
+DT = ty.TypeVar("DT", bound=DataType)
+
+
+def to_datatype(
+    item: DataType | FileSetPrimitive | FieldPrimitive, datatype: ty.Type[DT]
+) -> DT:
+    """Casts a given item into the specified datatype, handling optional and union types
+
+    Parameters
+    ----------
+    item : DataType | FileSetPrimitive | FieldPrimitive
+        the item to convert
+    datatype : ty.Type[DT]
+        the datatype to convert the item to
+
+    Returns
+    -------
+    DataType
+        the converted item
+    """
+    if is_optional(datatype):
+        if item is None:
+            return None
+        datatype = optional_type(datatype)
+
+    if is_union(datatype):
+        for tp in ty.get_args(datatype):
+            try:
+                return to_datatype(item, tp)
+            except FormatMismatchError:
+                pass
+        raise FormatMismatchError(
+            f"Item {item} could not be converted to any of the union types {datatype}"
+        )
+
+    return datatype(item)
+
+
+def convertible_from(datatype: ty.Type[DataType]) -> ty.Type[DataType]:
+    """Determine the list of types that can be converted into the given datatype
+
+    Parameters
+    ----------
+    datatype : ty.Type[DataType]
+        the datatype to check
+
+    Returns
+    -------
+    ty.Type[DataType]
+        the union of datatypes that can be converted into the given datatype
+    """
+    convertible: list[ty.Type[DataType]] = []
+
+    if is_optional(datatype):
+        datatype = optional_type(datatype)
+
+    if is_union(datatype):
+        for tp in ty.get_args(datatype):
+            convertible.append(convertible_from(tp))
+        # Flatten any union types into a single list to be returned as a union
+        flattened = list(
+            itertools.chain(
+                *(ty.get_args(c) if is_union(c) else (c,) for c in convertible)
+            )
+        )
+        # Remove any duplicates, favouring the first time the type appears in the
+        # list
+        unique = []
+        for tp in flattened:
+            if tp not in unique:
+                unique.append(tp)
+        return functools.reduce(operator.or_, unique)  # type: ignore[no-any-return]
+    elif issubclass(datatype, FileSet):
+        return datatype.convertible_from()
+    return datatype
 
 
 class fromdict_converter:

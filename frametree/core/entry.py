@@ -2,9 +2,11 @@ from __future__ import annotations
 import typing as ty
 import os
 import attrs
-from fileformats.core import DataType
+from pydra.utils.typing import TypeParser, optional_type, is_optional
+from fileformats.core import DataType, FileSetPrimitive, FieldPrimitive
 from frametree.core.exceptions import FrameTreeDataMatchError, FrameTreeUsageError
 from .quality import DataQuality
+from .utils import to_datatype
 
 if ty.TYPE_CHECKING:  # pragma: no cover
     from .row import DataRow
@@ -120,22 +122,21 @@ class DataEntry:
         return self.get_item()
 
     @item.setter
-    def item(
-        self, item: DataType | os.PathLike[str] | int | bool | float | str
-    ) -> None:
+    def item(self, item: DataType | FileSetPrimitive | FieldPrimitive) -> None:
         if isinstance(item, DataType):
             if not isinstance(item, self.datatype):
                 raise FrameTreeDataMatchError(
                     f"Cannot put {item} into {self.datatype} entry of {self.row}"
                 )
         else:
-            item = self.datatype(item)  # type: ignore
+            item = to_datatype(item, self.datatype)  # type: ignore
         self.row.frameset.store.put(item, self)
 
     def get_item(self, datatype: type[DataType] | None = None) -> DataType:
         if datatype is None:
             datatype = self.datatype
-        return self.row.frameset.store.get(self, datatype)
+        item = self.row.frameset.store.get(self, datatype)
+        return to_datatype(item, datatype)
 
     @property
     def recorded_checksums(self) -> dict[str, ty.Any] | None:

@@ -1,7 +1,7 @@
 from operator import mul
 from pathlib import Path
 from functools import reduce
-from fileformats.core import FileSet
+from fileformats.generic import FileSet, File
 from fileformats.text import TextFile
 from fileformats.field import Text, Boolean
 from frametree.file_system import FileSystem
@@ -48,6 +48,9 @@ def test_column_datatype_conversion(tmp_path: Path):
             FileSetEntryBlueprint(
                 path="file1", datatype=TextFile, filenames=["file.txt"]
             ),
+            FileSetEntryBlueprint(
+                path="file2", datatype=TextFile, filenames=["file.txt"]
+            ),
             FieldEntryBlueprint(
                 path="textfield",
                 row_frequency="abcd",
@@ -71,8 +74,10 @@ def test_column_datatype_conversion(tmp_path: Path):
     ID_KEY = ("a0", "b0", "c0", "d0")
 
     frameset.add_source("text_file", "text/text-file", path="file1")
+    frameset.add_source("optional_file", File | None, path="file2")
     frameset.add_source("text_field", str, path="textfield")
     frameset.add_source("boolean_field", bool, path="booleanfield")
     assert [p.name for p in frameset["text_file"][ID_KEY].fspaths] == ["file1.txt"]
+    assert [p.name for p in frameset["optional_file"][ID_KEY].fspaths] == ["file2.txt"]
     assert frameset["text_field"][ID_KEY].value == "sample-text"
     assert frameset["boolean_field"][ID_KEY].value is False

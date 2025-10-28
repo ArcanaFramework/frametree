@@ -1,13 +1,14 @@
+import tempfile
 from functools import reduce
 from operator import mul
-from frametree.core.utils import show_cli_trace
-from fileformats.text import TextFile
 from pathlib import Path
-import tempfile
+
 import pytest
+from fileformats.text import TextFile
+
+from frametree.core.cli.processing import apply, derive, install_license
 from frametree.core.frameset import FrameSet
-from frametree.core.cli.processing import install_license
-from frametree.core.cli.processing import derive, apply
+from frametree.core.utils import show_cli_trace
 from frametree.testing import MockRemote
 
 
@@ -29,7 +30,7 @@ def test_apply_cli(saved_dataset: FrameSet, ConcatenateTask, cli_runner):
     result = cli_runner(
         apply,
         [
-            saved_dataset.locator,
+            saved_dataset.address,
             "a_pipeline",
             "frametree.testing.tasks:" + ConcatenateTask.__name__,
             "--source",
@@ -50,11 +51,11 @@ def test_apply_cli(saved_dataset: FrameSet, ConcatenateTask, cli_runner):
         ],
     )
     assert result.exit_code == 0, show_cli_trace(result)
-    loaded_dataset = FrameSet.load(saved_dataset.locator)
+    loaded_dataset = FrameSet.load(saved_dataset.address)
     assert saved_dataset.pipelines == loaded_dataset.pipelines
 
 
-def test_derive_cli(saved_dataset, ConcatenateTask, cli_runner):
+def test_derive_cli(saved_dataset, ConcatenateTask, cli_runner, tmp_path):
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
     bp = saved_dataset.__annotations__["blueprint"]
     duplicates = 3
@@ -63,7 +64,7 @@ def test_derive_cli(saved_dataset, ConcatenateTask, cli_runner):
     result = cli_runner(
         apply,
         [
-            saved_dataset.locator,
+            saved_dataset.address,
             "a_pipeline",
             "frametree.testing.tasks:" + ConcatenateTask.__name__,
             "--source",
@@ -86,7 +87,15 @@ def test_derive_cli(saved_dataset, ConcatenateTask, cli_runner):
     assert result.exit_code == 0, show_cli_trace(result)
     # Add source column to saved dataset
     result = cli_runner(
-        derive, [saved_dataset.locator, "concatenated", "--worker", "debug"]
+        derive,
+        [
+            saved_dataset.address,
+            "concatenated",
+            "--worker",
+            "debug",
+            "--work",
+            str(tmp_path),
+        ],
     )
     assert result.exit_code == 0, show_cli_trace(result)
     sink = saved_dataset.add_sink("concatenated", TextFile)
