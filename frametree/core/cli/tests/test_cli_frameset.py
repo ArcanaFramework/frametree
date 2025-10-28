@@ -1,23 +1,23 @@
 from pathlib import Path
-import pytest
-from frametree.core.frameset.base import FrameSet
-from frametree.core.salience import ColumnSalience
-from frametree.core.quality import DataQuality
-from frametree.testing import TestAxes
-from frametree.core.cli.frameset import (
-    define,
-    add_source,
-    add_sink,
-    missing_items,
-    export,
-)
-from fileformats.text import TextFile
-from fileformats.generic import Directory
-from frametree.core.utils import show_cli_trace
-from frametree.testing.blueprint import TEST_DATASET_BLUEPRINTS
-from frametree.testing import MockRemote
-from frametree.file_system import FileSystem
 
+import pytest
+from fileformats.generic import Directory
+from fileformats.text import TextFile
+
+from frametree.core.cli.frameset import (
+    add_sink,
+    add_source,
+    define,
+    export,
+    missing_items,
+)
+from frametree.core.frameset.base import FrameSet
+from frametree.core.quality import DataQuality
+from frametree.core.salience import ColumnSalience
+from frametree.core.utils import show_cli_trace
+from frametree.file_system import FileSystem
+from frametree.testing import MockRemote, TestAxes
+from frametree.testing.blueprint import TEST_DATASET_BLUEPRINTS
 
 ARBITRARY_INTS_A = [234221, 93380, 43271, 137483, 30009, 214205, 363526]
 ARBITRARY_INTS_B = [353726, 29202, 32867, 129872, 12281, 776524, 908763]
@@ -48,7 +48,7 @@ def test_add_column_cli(saved_dataset: FrameSet, cli_runner):
     result = cli_runner(
         add_source,
         [
-            saved_dataset.locator,
+            saved_dataset.address,
             "a_source",
             "text/text-file",
             "--path",
@@ -74,7 +74,7 @@ def test_add_column_cli(saved_dataset: FrameSet, cli_runner):
     result = cli_runner(
         add_sink,
         [
-            saved_dataset.locator,
+            saved_dataset.address,
             "a_sink",
             "text/text-file",
             "--path",
@@ -88,7 +88,7 @@ def test_add_column_cli(saved_dataset: FrameSet, cli_runner):
     assert result.exit_code == 0, show_cli_trace(result)
     # Reload the saved dataset and check the parameters were saved/loaded
     # correctly
-    loaded_dataset = FrameSet.load(saved_dataset.locator)
+    loaded_dataset = FrameSet.load(saved_dataset.address)
     assert saved_dataset.columns == loaded_dataset.columns
 
 
@@ -101,7 +101,7 @@ def test_add_missing_items_cli(saved_dataset: FrameSet, cli_runner):
 def test_define_cli(dataset: FrameSet, cli_runner):
     blueprint = dataset.__annotations__["blueprint"]
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
-    path = dataset.locator
+    path = dataset.address
     # Start generating the arguments for the CLI
     args = list(blueprint.hierarchy)
     # Generate "arbitrary" values for included and excluded from dim length
@@ -163,7 +163,7 @@ def test_export_import_roundtrip(cli_runner, work_dir: Path, frametree_home):
     result = cli_runner(
         export,
         [
-            original.locator,
+            original.address,
             "file_system",
             local_dataset_id,
         ],
@@ -173,7 +173,7 @@ def test_export_import_roundtrip(cli_runner, work_dir: Path, frametree_home):
     result = cli_runner(
         export,
         [
-            local_dataset.locator,
+            local_dataset.address,
             "my_mock_remote",
             "reimported",
         ],

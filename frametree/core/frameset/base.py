@@ -436,7 +436,7 @@ class FrameSet:
     def address(self) -> str:
         if self.store.name is None:
             raise Exception(
-                f"Must save store {self.store} first before accessing locator for "
+                f"Must save store {self.store} first before accessing address for "
                 f"{self}"
             )
         address = f"{self.store.name}//{self.id}"
