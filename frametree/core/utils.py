@@ -1,26 +1,30 @@
 from __future__ import annotations
-import itertools
-import subprocess as sp
-import typing as ty
-import re
-import traceback
-import yaml
+
 import difflib
-from pathlib import Path
+import functools
+import itertools
 import logging
+import operator
 import os.path
-import attrs
-from contextlib import contextmanager
+import re
+import subprocess as sp
+import traceback
+import typing as ty
 from collections.abc import Iterable
+from contextlib import contextmanager
+from pathlib import Path
+from types import TracebackType
+
+import attrs
+import cloudpickle as cp
+import pydra.compose.base
+import yaml
+from fileformats.core import DataType, FieldPrimitive, FileSet, FileSetPrimitive
 from fileformats.core.exceptions import FormatMismatchError
 from pydra.utils.typing import is_optional, is_union, optional_type
 from typing_extensions import Self
-from fileformats.core import DataType, FileSet, FileSetPrimitive, FieldPrimitive
-from types import TracebackType
-import cloudpickle as cp
-import pydra.compose.base
-from frametree.core.exceptions import FrameTreeUsageError, FrameTreeError
 
+from frametree.core.exceptions import FrameTreeError, FrameTreeUsageError
 
 logger = logging.getLogger("frametree")
 
@@ -602,7 +606,7 @@ def convertible_from(datatype: ty.Type[DataType]) -> ty.Type[DataType]:
         for tp in flattened:
             if tp not in unique:
                 unique.append(tp)
-        return ty.Union.__getitem__(tuple(unique))
+        return functools.reduce(operator.or_, unique)  # type: ignore[no-any-return]
     elif issubclass(datatype, FileSet):
         return datatype.convertible_from()
     return datatype
