@@ -575,6 +575,7 @@ def to_datatype(
 
 def convertible_from(datatype: ty.Type[DataType]) -> ty.Type[DataType]:
     """Determine the list of types that can be converted into the given datatype
+    or union of datatypes
 
     Parameters
     ----------
