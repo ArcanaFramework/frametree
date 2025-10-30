@@ -1,7 +1,9 @@
 import re
 import pytest
+from fileformats.image import Png, RasterImage
+from fileformats.application import Atfx, Dicom
 from frametree.core.packaging import package_from_module
-from frametree.core.utils import path2varname, varname2path
+from frametree.core.utils import path2varname, varname2path, convertible_from
 
 
 def test_package_from_module():
@@ -35,3 +37,16 @@ def test_triple_path2varname(path: str):
         )
         == path
     )
+
+
+@pytest.mark.parametrize(
+    ["klass", "expected"],
+    [
+        (Png, Png | RasterImage),
+        (Png | None, Png | RasterImage | None),
+        (Dicom | Png, Dicom | Png | RasterImage),
+        (Atfx, Atfx),
+    ],
+)
+def test_convertible_from(klass, expected):
+    assert convertible_from(klass) == expected
