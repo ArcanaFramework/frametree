@@ -613,6 +613,8 @@ def convertible_from(datatype: ty.Type[DataType]) -> ty.Type[DataType]:
         conv_from = functools.reduce(operator.or_, unique)  # type: ignore[no-any-return]
     elif issubclass(datatype, FileSet):
         conv_from = datatype.convertible_from()
+    else:
+        conv_from = datatype
     if optional:
         conv_from |= None
     return conv_from
