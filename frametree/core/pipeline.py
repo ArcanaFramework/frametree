@@ -5,7 +5,7 @@ from copy import copy
 
 import attrs
 import attrs.converters
-from fileformats.core import DataType, to_mime
+from fileformats.core import DataType, FileSet, to_mime
 from fileformats.core.exceptions import FormatConversionError
 from pydra.compose import python, workflow
 from pydra.compose.base import Task
@@ -712,10 +712,10 @@ def SinkItems(
 
 @workflow.define(outputs=["out_file"])
 def RuntimeConverterWorkflow(
-    in_file: DataType,
-    datatype: ty.Type[DataType],
+    in_file: FileSet,
+    datatype: ty.Type[FileSet],
     converter_args: ty.Dict[str, ty.Any],
-) -> DataType:
+) -> FileSet:
     """A workflow that selects the appropriate converter for a union datatype
     at runtime based on the actual type of the input file.
 
