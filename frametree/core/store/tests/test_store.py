@@ -1,27 +1,27 @@
 import operator as op
-from itertools import chain
-from functools import reduce, partial
 import time
-from pathlib import Path
+from functools import partial, reduce
+from itertools import chain
 from multiprocessing import Pool, cpu_count
+from pathlib import Path
 from typing import Any, Type
+
 import pytest
-from fileformats.generic import File
-from fileformats.text import TextFile
 from fileformats.field import Text as TextField
-from pydra.utils.typing import TypeParser
-from frametree.core.frameset.base import FrameSet
-from frametree.core.store import Store
-from frametree.core.entry import DataEntry
-from frametree.core.serialize import asdict
-from frametree.file_system import FileSystem
-from frametree.testing.blueprint import (
-    TestDatasetBlueprint,
-    FileSetEntryBlueprint as FileBP,
-    FieldEntryBlueprint as FieldBP,
-)
+from fileformats.generic import File
 from fileformats.text import Plain as PlainText
-from frametree.testing import MockRemote, TestAxes, MockRemote
+from fileformats.text import TextFile
+from pydra.utils.typing import is_fileset_or_union
+
+from frametree.core.entry import DataEntry
+from frametree.core.frameset.base import FrameSet
+from frametree.core.serialize import asdict
+from frametree.core.store import Store
+from frametree.file_system import FileSystem
+from frametree.testing import MockRemote, TestAxes
+from frametree.testing.blueprint import FieldEntryBlueprint as FieldBP
+from frametree.testing.blueprint import FileSetEntryBlueprint as FileBP
+from frametree.testing.blueprint import TestDatasetBlueprint
 
 
 def test_populate_tree(dataset: FrameSet) -> None:
@@ -82,7 +82,7 @@ def test_post(dataset: FrameSet) -> None:
                 if item.is_fileset and isinstance(dataset.store, FileSystem):
                     assert item.fspath.relative_to(dataset.id)  # type: ignore
                 assert isinstance(item, deriv_bp.datatype)
-                if deriv_bp.datatype.is_fileset:
+                if is_fileset_or_union(deriv_bp.datatype):
                     assert item.hash_files() == all_checksums[deriv_bp.path]  # type: ignore[attr-defined]
                 else:
                     assert item.primitive(item.value) == item.primitive(  # type: ignore[attr-defined]
@@ -98,7 +98,7 @@ def test_post(dataset: FrameSet) -> None:
                 row_frequency=deriv_bp.row_frequency,
             )
             test_file = deriv_bp.make_item()
-            if deriv_bp.datatype.is_fileset:
+            if is_fileset_or_union(deriv_bp.datatype):
                 all_checksums[deriv_bp.path] = test_file.hash_files()
             # Test inserting the new item into the store
             with dataset.tree:

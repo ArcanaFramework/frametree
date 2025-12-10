@@ -12,7 +12,7 @@ import attrs
 import yaml
 from fasteners import InterProcessLock
 from fileformats.core import DataType, Field, FieldPrimitive, FileSet, FileSetPrimitive
-from pydra.utils.typing import TypeParser
+from pydra.utils.typing import is_fileset_or_union
 
 from frametree.core.exceptions import (
     DatatypeUnsupportedByStoreError,
@@ -287,7 +287,7 @@ class LocalStore(Store):
         return definition
 
     def get(self, entry: DataEntry, datatype: ty.Type[DT]) -> DT:
-        if entry.datatype.is_fileset:
+        if is_fileset_or_union(entry.datatype):
             item = self.get_fileset(entry, datatype)
         elif entry.datatype.is_field:
             item = self.get_field(entry, datatype)
@@ -300,7 +300,7 @@ class LocalStore(Store):
     def put(self, item: DT, entry: DataEntry) -> DT:
         if not isinstance(item, entry.datatype):
             item = entry.datatype(item)
-        if entry.datatype.is_fileset:
+        if is_fileset_or_union(entry.datatype):
             cpy = self.put_fileset(item, entry)
         elif entry.datatype.is_field:
             cpy = self.put_field(item, entry)
@@ -311,7 +311,7 @@ class LocalStore(Store):
         return cpy
 
     def get_provenance(self, entry: DataEntry) -> ty.Dict[str, ty.Any]:
-        if entry.datatype.is_fileset:
+        if is_fileset_or_union(entry.datatype):
             provenance = self.get_fileset_provenance(entry)
         elif entry.datatype.is_field:
             provenance = self.get_field_provenance(entry)
@@ -322,7 +322,7 @@ class LocalStore(Store):
     def put_provenance(
         self, provenance: ty.Dict[str, ty.Any], entry: DataEntry
     ) -> None:
-        if entry.datatype.is_fileset:
+        if is_fileset_or_union(entry.datatype):
             self.put_fileset_provenance(provenance, entry)
         elif entry.datatype.is_field:
             self.put_field_provenance(provenance, entry)
