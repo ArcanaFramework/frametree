@@ -14,7 +14,7 @@ from pathlib import Path
 import attrs
 from fileformats.core import DataType, Field, FieldPrimitive, FileSet, FileSetPrimitive
 from fileformats.generic import File
-from pydra.utils.typing import TypeParser
+from pydra.utils.typing import TypeParser, is_fileset_or_union
 
 from frametree.core.exceptions import DatatypeUnsupportedByStoreError, FrameTreeError
 from frametree.core.utils import (
@@ -296,7 +296,7 @@ class RemoteStore(Store):
         self, entry: DataEntry, datatype: ty.Type[DT]
     ) -> FileSetPrimitive | FieldPrimitive:
         with self.connection:
-            if entry.datatype.is_fileset:
+            if is_fileset_or_union(entry.datatype):
                 item = self.get_fileset(entry, datatype)
             elif entry.datatype.is_field:
                 item = self.get_field(entry, datatype)
@@ -308,7 +308,7 @@ class RemoteStore(Store):
         if not isinstance(item, entry.datatype):
             item = entry.datatype(item)
         with self.connection:
-            if entry.datatype.is_fileset:
+            if is_fileset_or_union(entry.datatype):
                 item = self.put_fileset(item, entry)
             elif entry.datatype.is_field:
                 item = self.put_field(item, entry)
@@ -324,7 +324,7 @@ class RemoteStore(Store):
         order_key: int | str | None = None,
     ) -> DataEntry:
         with self.connection:
-            if datatype.is_fileset:
+            if is_fileset_or_union(datatype):
                 entry = self.create_fileset_entry(
                     path=path, datatype=datatype, row=row, order_key=order_key
                 )
