@@ -60,6 +60,7 @@ test = [
     "pytest>=6.2.5",
     "pytest-cov>=2.12.1",
     "pytest-env>=0.6.2",
+    "pytest-rerunfailures >=15.0",
 ]
 
 [project.urls]
