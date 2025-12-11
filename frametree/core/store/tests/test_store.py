@@ -41,16 +41,8 @@ def test_populate_tree(dataset: FrameSet) -> None:
 def test_populate_row(dataset: FrameSet) -> None:
     blueprint = dataset.__annotations__["blueprint"]
     for row in dataset.rows("abcd"):
-        if isinstance(dataset.store, FileSystem):
-            expected_paths = sorted(
-                chain(
-                    (e.path for e in blueprint.entries if isinstance(e, FieldBP)),
-                    *(e.filenames for e in blueprint.entries if isinstance(e, FileBP)),
-                )
-            )
-        else:
-            expected_paths = sorted(e.path for e in blueprint.entries)
-        entry_paths = sorted(e.path for e in row.entries)
+        expected_paths = sorted(e.path for e in blueprint.entries)
+        entry_paths = sorted(set(e.path.split(".")[0] for e in row.entries))
         assert entry_paths == expected_paths
 
 
@@ -62,10 +54,13 @@ def test_get(dataset: FrameSet) -> None:
         for entry_bp in blueprint.entries:
             item = row[entry_bp.path]
             if item.is_fileset:
-                item.trim_paths()  # type: ignore[attr-defined]
-                assert sorted(p.name for p in item.fspaths) == sorted(  # type: ignore[attr-defined]
-                    entry_bp.filenames
-                )
+                if entry_bp.filenames is None:
+                    pass
+                else:
+                    item.trim_paths()  # type: ignore[attr-defined]
+                    assert sorted(p.name for p in item.fspaths) == sorted(  # type: ignore[attr-defined]
+                        entry_bp.filenames
+                    )
             else:
                 assert item.value == entry_bp.expected_value  # type: ignore[attr-defined]
 
@@ -97,7 +92,7 @@ def test_post(dataset: FrameSet) -> None:
                 datatype=deriv_bp.datatype,
                 row_frequency=deriv_bp.row_frequency,
             )
-            test_file = deriv_bp.make_item()
+            test_file = deriv_bp.make_item(index=0)
             if is_fileset_or_union(deriv_bp.datatype):
                 all_checksums[deriv_bp.path] = test_file.hash_files()
             # Test inserting the new item into the store

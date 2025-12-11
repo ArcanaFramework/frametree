@@ -559,7 +559,7 @@ def PipelineRowWorkflow(
                 "Adding implicit conversion for output '%s' " "from %s to %s",
                 outpt.name,
                 to_mime(outpt.datatype, official=False),
-                stored_format.mime_like,
+                to_mime(stored_format, official=False),
             )
             # Insert converter
             task_kwargs = {converter.in_file: to_sink.pop(sink_name)}

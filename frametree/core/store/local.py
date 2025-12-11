@@ -12,7 +12,7 @@ import attrs
 import yaml
 from fasteners import InterProcessLock
 from fileformats.core import DataType, Field, FieldPrimitive, FileSet, FileSetPrimitive
-from pydra.utils.typing import is_fileset_or_union
+from pydra.utils.typing import is_fileset_or_union, is_union
 
 from frametree.core.exceptions import (
     DatatypeUnsupportedByStoreError,
@@ -261,6 +261,11 @@ class LocalStore(Store):
         row: DataRow,
         order_key: int | str | None = None,
     ) -> DataEntry:
+        if is_union(datatype):
+            raise TypeError(
+                f"Cannot create entry for union datatype {datatype}; "
+                "create entries for each constituent datatype instead"
+            )
         if issubclass(datatype, FileSet):
             uri = self.fileset_uri(path, datatype, row)
         elif issubclass(datatype, Field):

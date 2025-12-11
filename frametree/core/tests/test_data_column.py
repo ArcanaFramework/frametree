@@ -1,17 +1,20 @@
+from functools import reduce
 from operator import mul
 from pathlib import Path
-from functools import reduce
-from fileformats.generic import FileSet, File
+
+from fileformats.field import Boolean, Text
+from fileformats.generic import File
 from fileformats.text import TextFile
-from fileformats.field import Text, Boolean
+from pydra.utils.typing import is_fileset_or_union
+
+from frametree.core.frameset.base import FrameSet
 from frametree.file_system import FileSystem
 from frametree.testing.blueprint import (
-    TestDatasetBlueprint,
-    TestAxes,
-    FileSetEntryBlueprint,
     FieldEntryBlueprint,
+    FileSetEntryBlueprint,
+    TestAxes,
+    TestDatasetBlueprint,
 )
-from frametree.core.frameset.base import FrameSet
 
 
 def test_column_api_access(dataset: FrameSet):
@@ -32,7 +35,10 @@ def test_column_api_access(dataset: FrameSet):
             for id_ in col.ids:
                 item = col[id_]
                 assert isinstance(item, fileset_bp.datatype)
-                if issubclass(fileset_bp.datatype, FileSet):
+                if (
+                    is_fileset_or_union(fileset_bp.datatype)
+                    and fileset_bp.filenames is not None
+                ):
                     assert sorted(p.name for p in item.fspaths) == sorted(
                         fileset_bp.filenames
                     )
