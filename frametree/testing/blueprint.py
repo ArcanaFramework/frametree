@@ -1,37 +1,42 @@
 from __future__ import annotations
-import typing as ty
-import itertools
-from abc import ABCMeta, abstractmethod
-from pathlib import Path
-import tempfile
-import shutil
-import logging
-import glob
+
 import decimal
-from copy import deepcopy
+import glob
+import itertools
+import logging
+import shutil
+import tempfile
+import typing as ty
 import zipfile
+from abc import ABCMeta, abstractmethod
+from copy import deepcopy
+from pathlib import Path
+
 import attrs
-from fileformats.core import FileSet, Field, DataType
+from fileformats.application import Json, Zip
+from fileformats.core import DataType, Field, FileSet
+from fileformats.field import Array, Boolean, Decimal, Integer
+from fileformats.field import Text as TextField
 from fileformats.generic import Directory
-from fileformats.text import TextFile
-from fileformats.application import Zip, Json
-from fileformats.field import Text as TextField, Decimal, Boolean, Integer, Array
 from fileformats.testing import (
+    ImageWithHeader,
+    MyFormat,
     MyFormatGz,
     MyFormatGzX,
     MyFormatX,
-    MyFormat,
-    ImageWithHeader,
-    YourFormat,
     Xyz,
+    YourFormat,
 )
-from pydra.utils.typing import TypeParser
+from fileformats.text import TextFile
+from pydra.utils.typing import is_union
+
 from frametree.core import FrameSet
-from frametree.core.row import DataRow
 from frametree.core.axes import Axes
-from frametree.core.utils import path2varname, set_cwd
 from frametree.core.exceptions import FrameTreeError
+from frametree.core.row import DataRow
 from frametree.core.store import Store
+from frametree.core.utils import path2varname, set_cwd
+
 from .axes import TestAxes
 
 logger = logging.getLogger("frametree")
@@ -57,17 +62,17 @@ class EntryBlueprint(metaclass=ABCMeta):
             raise ValueError("datatype cannot be None")
 
     @abstractmethod
-    def make_item(self, **kwargs: ty.Any) -> None:
+    def make_item(self, index: int, **kwargs: ty.Any) -> None:
         pass
 
-    def make_entry(self, row: DataRow, **kwargs: ty.Any) -> None:
+    def make_entry(self, row: DataRow, index: int, **kwargs: ty.Any) -> None:
         if self.ids and row.id not in self.ids:
             return
-        item = self.make_item(**kwargs)
+        item = self.make_item(index=index, **kwargs)
         logger.debug("Creating entry at %s in %s", self.path, row)
         entry = row.frameset.store.create_entry(
             path=self.path,
-            datatype=self.datatype,
+            datatype=type(item),
             row=row,
             order_key=self.order_key,
         )
@@ -78,10 +83,11 @@ class EntryBlueprint(metaclass=ABCMeta):
 @attrs.define(kw_only=True)
 class FileSetEntryBlueprint(EntryBlueprint):
 
-    filenames: ty.List[str]
+    filenames: list[str] | None = None
 
     def make_item(
         self,
+        index: int,
         source_data: ty.Optional[Path] = None,
         source_fallback: bool = False,
         escape_source_name: bool = True,
@@ -91,12 +97,15 @@ class FileSetEntryBlueprint(EntryBlueprint):
 
         Parameters
         ----------
+        index : int
+            the index of the file, used to create different files for different entries
+            e.g. different file formats
         source_data : Path, optional
             path to a directory containing source data to use instead of the dummy
             data
         source_fallback : bool
             whether to fall back to the generated file if fname isn't in the source
-            data dir
+            data directory
         escape_source_name : bool
             whether to escape the source name or simple use the file name of the source
 
@@ -107,60 +116,70 @@ class FileSetEntryBlueprint(EntryBlueprint):
         """
         tmp_dir = Path(tempfile.mkdtemp())
         out_paths = []
-        for fname in self.filenames:
-            out_path = None
-            if source_data is not None:
-                src_path = source_data.joinpath(*fname.split("/"))
-                fspaths = [Path(f) for f in glob.glob(str(src_path))]
-                if fspaths:
-                    for fspath in fspaths:
-                        if escape_source_name:
-                            parts = fname.split(".")
-                            out_fname = (
-                                path2varname(parts[0]) + "." + ".".join(parts[1:])
-                            )
-                        else:
-                            out_fname = Path(fname).name
-                        out_path = tmp_dir / out_fname
-                        if fspath.is_dir():
-                            shutil.copytree(fspath, out_path)
-                        else:
-                            shutil.copyfile(fspath, out_path, follow_symlinks=True)
-                elif not source_fallback:
-                    raise FrameTreeError(
-                        f"Couldn't find {fname} in source data directory {source_data}"
-                    )
-            if out_path is None:
-                out_path = tmp_dir / fname
-                next_part = fname
-                if next_part.endswith(".zip"):
-                    next_part = next_part.strip(".zip")
-                next_path = Path(next_part)
-                # Make double dir
-                if next_part.startswith("doubledir"):
-                    (tmp_dir / next_path).mkdir(exist_ok=True)
-                    next_part = "dir"
-                    next_path /= next_part
-                if next_part.startswith("dir"):
-                    (tmp_dir / next_path).mkdir(exist_ok=True)
-                    next_part = "test.txt"
-                    next_path /= next_part
-                if not next_path.suffix:
-                    next_path = next_path.with_suffix(".txt")
-                if next_path.suffix == ".json":
-                    contents = '{"a": 1.0}'
-                else:
-                    contents = fname
-                inner_path = tmp_dir / next_path
-                inner_path.parent.mkdir(exist_ok=True, parents=True)
-                with open(inner_path, "w") as f:
-                    f.write(contents)
-                if fname.endswith(".zip"):
-                    with zipfile.ZipFile(out_path, mode="w") as zfile, set_cwd(tmp_dir):
-                        zfile.write(next_path)
-                    (tmp_dir / next_path).unlink()
-            out_paths.append(out_path)
-        item = self.datatype(out_paths)
+        if self.filenames is not None:
+            for fname in self.filenames:
+                out_path = None
+                if source_data is not None:
+                    src_path = source_data.joinpath(*fname.split("/"))
+                    fspaths = [Path(f) for f in glob.glob(str(src_path))]
+                    if fspaths:
+                        for fspath in fspaths:
+                            if escape_source_name:
+                                parts = fname.split(".")
+                                out_fname = (
+                                    path2varname(parts[0]) + "." + ".".join(parts[1:])
+                                )
+                            else:
+                                out_fname = Path(fname).name
+                            out_path = tmp_dir / out_fname
+                            if fspath.is_dir():
+                                shutil.copytree(fspath, out_path)
+                            else:
+                                shutil.copyfile(fspath, out_path, follow_symlinks=True)
+                    elif not source_fallback:
+                        raise FrameTreeError(
+                            f"Couldn't find {fname} in source data directory {source_data}"
+                        )
+                if out_path is None:
+                    out_path = tmp_dir / fname
+                    next_part = fname
+                    if next_part.endswith(".zip"):
+                        next_part = next_part.strip(".zip")
+                    next_path = Path(next_part)
+                    # Make double dir
+                    if next_part.startswith("doubledir"):
+                        (tmp_dir / next_path).mkdir(exist_ok=True)
+                        next_part = "dir"
+                        next_path /= next_part
+                    if next_part.startswith("dir"):
+                        (tmp_dir / next_path).mkdir(exist_ok=True)
+                        next_part = "test.txt"
+                        next_path /= next_part
+                    if not next_path.suffix:
+                        next_path = next_path.with_suffix(".txt")
+                    if next_path.suffix == ".json":
+                        contents = '{"a": 1.0}'
+                    else:
+                        contents = fname
+                    inner_path = tmp_dir / next_path
+                    inner_path.parent.mkdir(exist_ok=True, parents=True)
+                    with open(inner_path, "w") as f:
+                        f.write(contents)
+                    if fname.endswith(".zip"):
+                        with zipfile.ZipFile(out_path, mode="w") as zfile, set_cwd(
+                            tmp_dir
+                        ):
+                            zfile.write(next_path)
+                        (tmp_dir / next_path).unlink()
+                out_paths.append(out_path)
+            item = self.datatype(out_paths)
+        else:
+            if is_union(self.datatype):
+                datatypes = ty.get_args(self.datatype)
+                dt = datatypes[index % len(datatypes)]
+            else:
+                dt = self.datatype
+            item = dt.sample(seed=index)
         logger.debug("Created %s item", item)
         return item
 
@@ -247,8 +266,8 @@ class TestDatasetBlueprint:
                 "Adding entries to test dataset for: %s",
                 dataset.rows(frequency=max(self.axes)),
             )
-            for row in dataset.rows(frequency=max(self.axes)):
-                self.make_entries(row, source_data=source_data)
+            for i, row in enumerate(dataset.rows(frequency=max(self.axes))):
+                self.make_entries(row, index=i, source_data=source_data)
             dataset.metadata.type = orig_type
             dataset.save()
         dataset.__annotations__["blueprint"] = self
@@ -352,6 +371,7 @@ class TestDatasetBlueprint:
     def make_entries(
         self,
         row: DataRow,
+        index: int = 0,
         **kwargs: ty.Any,
     ) -> None:
         """Creates the actual data in the store, from the provided blueprint, which
@@ -359,18 +379,16 @@ class TestDatasetBlueprint:
 
         Parameters
         ----------
-        store
-            the store to create the test dataset in
-        dataset_id : str
-            the ID of the dataset to create
-        name : str
-            the name of the dataset
+        row
+            the row to create the entries within
+        index : int
+            the index of the row within the dataset
         **kwargs
             passed directly through to the EntryBlueprint.create_item method
         """
         logger.debug("making entries for %s: %s", row, self.entries)
         for entry_bp in self.entries:
-            entry_bp.make_entry(row, **kwargs)
+            entry_bp.make_entry(row, index=index, **kwargs)
 
     @property
     def all_ids(self) -> ty.Generator[ty.Tuple[str, ...], None, None]:
@@ -590,10 +608,28 @@ TEST_DATASET_BLUEPRINTS = {
             FileSetEntryBlueprint(path="file2", datatype=Zip, filenames=["file2.zip"]),
         ],
     ),
+    "union_datatypes": TestDatasetBlueprint(
+        axes=TestAxes,
+        hierarchy=["abcd"],
+        dim_lengths=[1, 1, 1, 3],
+        entries=[
+            FileSetEntryBlueprint(
+                path="file1",
+                datatype=TextFile | MyFormat | YourFormat,
+            ),
+        ],
+    ),
 }
 
 
-GOOD_DATASETS = ["full", "one_layer", "skip_single", "skip_with_inference", "redundant"]
+GOOD_DATASETS = [
+    "full",
+    "one_layer",
+    "skip_single",
+    "skip_with_inference",
+    "redundant",
+    "union_datatypes",
+]
 
 
 EXTENSION_DATASET_BLUEPRINTS = {

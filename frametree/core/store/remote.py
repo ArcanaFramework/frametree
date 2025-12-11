@@ -14,7 +14,7 @@ from pathlib import Path
 import attrs
 from fileformats.core import DataType, Field, FieldPrimitive, FileSet, FileSetPrimitive
 from fileformats.generic import File
-from pydra.utils.typing import TypeParser, is_fileset_or_union
+from pydra.utils.typing import TypeParser, is_fileset_or_union, is_union
 
 from frametree.core.exceptions import DatatypeUnsupportedByStoreError, FrameTreeError
 from frametree.core.utils import (
@@ -319,16 +319,21 @@ class RemoteStore(Store):
     def create_entry(
         self,
         path: str,
-        datatype: ty.Type[DataType],
+        datatype: type[DataType],
         row: DataRow,
         order_key: int | str | None = None,
     ) -> DataEntry:
+        if is_union(datatype):
+            raise TypeError(
+                f"Cannot create entry for union datatype {datatype}; "
+                "create entries for each constituent datatype instead"
+            )
         with self.connection:
-            if is_fileset_or_union(datatype):
+            if issubclass(datatype, FileSet):
                 entry = self.create_fileset_entry(
                     path=path, datatype=datatype, row=row, order_key=order_key
                 )
-            elif datatype.is_field:
+            elif issubclass(datatype, Field):
                 entry = self.create_field_entry(
                     path=path, datatype=datatype, row=row, order_key=order_key
                 )

@@ -1,22 +1,18 @@
 from __future__ import annotations
+
 import typing as ty
+
 import attrs
 import natsort
-from frametree.core.exceptions import (
-    FrameTreeNameError,
-    FrameTreeWrongFrequencyError,
-)
 from fileformats.core import DataType
-from pydra.utils.hash import (
-    register_serializer,
-    Cache,
-    bytes_repr_mapping_contents,
-)
-from .quality import DataQuality
+from pydra.utils.hash import Cache, bytes_repr_mapping_contents, register_serializer
+
+from frametree.core.exceptions import FrameTreeNameError, FrameTreeWrongFrequencyError
+
 from .axes import Axes
 from .cell import DataCell
 from .entry import DataEntry
-
+from .quality import DataQuality
 
 if ty.TYPE_CHECKING:  # pragma: no cover
     from .frameset.base import FrameSet
@@ -281,7 +277,7 @@ class DataRow:
             path=path, datatype=datatype, row=self, order_key=order_key
         )
 
-    def add_entry(
+    def found_entry(
         self,
         path: str,
         datatype: type[DataType],
