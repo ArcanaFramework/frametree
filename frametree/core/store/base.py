@@ -909,9 +909,7 @@ class Store(metaclass=ABCMeta):
 
     # Can be overridden if necessary (e.g. the underlying store only returns new URI
     # when a new item is added)
-    def post(
-        self, item: DataType, path: str, datatype: type[DataType], row: DataRow
-    ) -> DataEntry:
+    def post(self, item: DataType, path: str, row: DataRow) -> DataEntry:
         """Inserts the item within a newly created entry in the data store
 
         Parameters
@@ -920,8 +918,6 @@ class Store(metaclass=ABCMeta):
             the item to insert
         path : str
             the path to the entry relative to the data row
-        datatype : type[DataType]
-            the datatype of the entry
         row : DataRow
             the data row to insert the entry into
 
@@ -931,7 +927,7 @@ class Store(metaclass=ABCMeta):
             the inserted entry
         """
         with self.connection:
-            entry = self.create_entry(path, datatype, row)
+            entry = self.create_entry(path, type(item), row)
             self.put(item, entry)
         return entry
 

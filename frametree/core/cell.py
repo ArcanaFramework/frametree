@@ -1,14 +1,17 @@
 from __future__ import annotations
+
 import typing as ty
+
 import attrs
 from fileformats.core import DataType
 from pydra.utils.typing import TypeParser
+
 from frametree.core.exceptions import FrameTreeError
 
 if ty.TYPE_CHECKING:  # pragma: no cover
-    from .row import DataRow
     from .column import DataColumn
     from .entry import DataEntry
+    from .row import DataRow
 
 
 @attrs.define
@@ -58,7 +61,7 @@ class DataCell:
         item = TypeParser(self.datatype).coerce(item)
         if self.is_empty:
             entry = self.row.frameset.store.post(
-                item=item, path=self.column.path, datatype=self.datatype, row=self.row
+                item=item, path=self.column.path, row=self.row
             )
             self.entry = entry
         else:
