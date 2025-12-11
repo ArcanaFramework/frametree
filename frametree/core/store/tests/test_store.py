@@ -1,7 +1,6 @@
 import operator as op
 import time
 from functools import partial, reduce
-from itertools import chain
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
 from typing import Any, Type
