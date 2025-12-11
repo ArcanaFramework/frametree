@@ -1,18 +1,21 @@
 from __future__ import annotations
-import typing as ty
+
 import json
 import shutil
-from pathlib import Path
-import attrs
 import time
+import typing as ty
+from pathlib import Path
+
+import attrs
 import yaml
-from fileformats.core import FileSet, Field
-from frametree.core.store import RemoteStore
+from fileformats.core import Field, FileSet
+
+from frametree.core.axes import Axes
+from frametree.core.entry import DataEntry
 from frametree.core.frameset import FrameSet
 from frametree.core.row import DataRow
+from frametree.core.store import RemoteStore
 from frametree.core.tree import DataTree
-from frametree.core.entry import DataEntry
-from frametree.core.axes import Axes
 from frametree.core.utils import full_path
 
 
@@ -101,14 +104,14 @@ class MockRemote(RemoteStore):
                     p.name[9:] for p in path.iterdir() if p.name.startswith("__order__")
                 ]:
                     for order_key in order_keys:
-                        row.add_entry(
+                        row.found_entry(
                             path=path.name,
                             datatype=datatype,
                             uri=uri / f"__order__{order_key}",
                             order_key=order_key,
                         )
                 else:
-                    row.add_entry(
+                    row.found_entry(
                         path=path.name,
                         datatype=datatype,
                         uri=uri,
@@ -350,7 +353,7 @@ class MockRemote(RemoteStore):
         uri = self.get_row_path(row) / path
         if order_key is not None:
             uri /= f"__order__{order_key}"
-        entry = row.add_entry(
+        entry = row.found_entry(
             path=path,
             datatype=datatype,
             uri=uri,

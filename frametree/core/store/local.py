@@ -143,7 +143,7 @@ class LocalStore(Store):
         """
 
     @abstractmethod
-    def fileset_uri(self, path: str, datatype: type, row: DataRow) -> str:
+    def fileset_uri(self, path: str, datatype: type[DataType], row: DataRow) -> str:
         """Returns the "uri" (e.g. file-system path relative to root dir) of a file-set
         entry at the given path relative to the given row
 
@@ -257,15 +257,19 @@ class LocalStore(Store):
     def create_entry(
         self,
         path: str,
-        datatype: type,
+        datatype: type[DataType],
         row: DataRow,
         order_key: int | str | None = None,
     ) -> DataEntry:
         if issubclass(datatype, FileSet):
             uri = self.fileset_uri(path, datatype, row)
-        else:
+        elif issubclass(datatype, Field):
             uri = self.field_uri(path, datatype, row)
-        return row.add_entry(path=path, datatype=datatype, uri=uri, order_key=order_key)
+        else:
+            raise DatatypeUnsupportedByStoreError(datatype, self)
+        return row.found_entry(
+            path=path, datatype=datatype, uri=uri, order_key=order_key
+        )
 
     def save_frameset_definition(
         self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
@@ -286,7 +290,9 @@ class LocalStore(Store):
             definition = None
         return definition
 
-    def get(self, entry: DataEntry, datatype: ty.Type[DT]) -> DT:
+    def get(
+        self, entry: DataEntry, datatype: ty.Type[DT]
+    ) -> FileSetPrimitive | FieldPrimitive | DT:
         if is_fileset_or_union(entry.datatype):
             item = self.get_fileset(entry, datatype)
         elif entry.datatype.is_field:

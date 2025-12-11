@@ -558,7 +558,7 @@ def PipelineRowWorkflow(
             logger.info(
                 "Adding implicit conversion for output '%s' " "from %s to %s",
                 outpt.name,
-                outpt.datatype.mime_like,
+                to_mime(outpt.datatype, official=False),
                 stored_format.mime_like,
             )
             # Insert converter

@@ -1,33 +1,30 @@
 from __future__ import annotations
+
 import logging
 import re
-from abc import abstractmethod, ABCMeta
-from pathlib import Path
-import attrs
 import typing as ty
+from abc import ABCMeta, abstractmethod
+from pathlib import Path
 from pprint import pformat
+
+import attrs
 import yaml
-from frametree.core.serialize import (
-    asdict,
-    fromdict,
-)
-import frametree
-from ..axes import Axes
-from fileformats.core import DataType, FileSetPrimitive, FieldPrimitive
+from fileformats.core import DataType, FieldPrimitive, FileSetPrimitive
 from fileformats.text import Plain as PlainText
 from pydra.utils.typing import is_union
-from frametree.core.utils import (
-    get_config_file_path,
-    NestedContext,
+
+import frametree
+from frametree.core.exceptions import (
+    FrameTreeConstructionError,
+    FrameTreeError,
+    FrameTreeNameError,
+    FrameTreeUsageError,
 )
 from frametree.core.packaging import list_subclasses
-from frametree.core.exceptions import (
-    FrameTreeUsageError,
-    FrameTreeNameError,
-    FrameTreeError,
-    FrameTreeConstructionError,
-)
+from frametree.core.serialize import asdict, fromdict
+from frametree.core.utils import NestedContext, get_config_file_path
 
+from ..axes import Axes
 
 S = ty.TypeVar("S", bound="Store")
 DT = ty.TypeVar("DT", bound="DataType")
@@ -37,10 +34,10 @@ logger = logging.getLogger("frametree")
 
 
 if ty.TYPE_CHECKING:  # pragma: no cover
-    from ..frameset import FrameSet
-    from ..tree import DataTree
     from ..entry import DataEntry
+    from ..frameset import FrameSet
     from ..row import DataRow
+    from ..tree import DataTree
 
 
 @attrs.define
@@ -239,8 +236,8 @@ class Store(metaclass=ABCMeta):
             except AttributeError:
                 hierarchy = [str(max(axes))]  # one-layer with only leaf nodes
         from frametree.core.frameset import (
-            FrameSet,
-        )  # avoid circular imports it is imported here rather than at the top of the file
+            FrameSet,  # avoid circular imports it is imported here rather than at the top of the file
+        )
 
         dataset = FrameSet(
             id=id,
@@ -697,7 +694,7 @@ class Store(metaclass=ABCMeta):
         """
         Populate a row with all data entries found in the corresponding node in the data
         store (e.g. files within a directory, scans within an XNAT session) using the
-        ``DataRow.add_entry`` method. Within a node/row there are assumed to be two types
+        ``DataRow.found_entry`` method. Within a node/row there are assumed to be two types
         of entries, "primary" entries (e.g. acquired scans) common to all analyses performed
         on the dataset and "derivative" entries corresponding to intermediate outputs
         of previously performed analyses. These types should be stored in separate
@@ -886,7 +883,7 @@ class Store(metaclass=ABCMeta):
     def create_entry(
         self,
         path: str,
-        datatype: type,
+        datatype: type[DataType],
         row: DataRow,
         order_key: int | str | None = None,
     ) -> DataEntry:
@@ -913,7 +910,7 @@ class Store(metaclass=ABCMeta):
     # Can be overridden if necessary (e.g. the underlying store only returns new URI
     # when a new item is added)
     def post(
-        self, item: DataType, path: str, datatype: type, row: DataRow
+        self, item: DataType, path: str, datatype: type[DataType], row: DataRow
     ) -> DataEntry:
         """Inserts the item within a newly created entry in the data store
 
@@ -923,7 +920,7 @@ class Store(metaclass=ABCMeta):
             the item to insert
         path : str
             the path to the entry relative to the data row
-        datatype : type
+        datatype : type[DataType]
             the datatype of the entry
         row : DataRow
             the data row to insert the entry into

@@ -1,26 +1,30 @@
 from __future__ import annotations
-from abc import abstractmethod, ABCMeta
+
+import inspect
+import logging
 import re
 import typing as ty
-import logging
-import attrs
-import inspect
+from abc import ABCMeta, abstractmethod
 from operator import attrgetter
+
+import attrs
 from attrs.converters import optional
-from fileformats.core import DataType, Field, from_mime
+from fileformats.core import DataType, Field, from_mime, to_mime
 from fileformats.core.exceptions import FormatMismatchError
 from pydra.utils.hash import hash_single
 from pydra.utils.typing import is_fileset_or_union, is_union
+
 from frametree.core.exceptions import FrameTreeDataMatchError
-from .salience import ColumnSalience
-from .quality import DataQuality
+
 from .axes import Axes
 from .cell import DataCell
 from .entry import DataEntry
+from .quality import DataQuality
+from .salience import ColumnSalience
 
 if ty.TYPE_CHECKING:  # pragma: no cover
-    from .row import DataRow
     from .frameset.base import FrameSet
+    from .row import DataRow
 
 
 logger = logging.getLogger("frametree")
@@ -206,7 +210,7 @@ class DataColumn(metaclass=ABCMeta):
             )
 
     def matches_datatype(self, entry: DataEntry) -> bool:
-        "that matched the datatype '{self.datatype.mime_like}'"
+        "that matched the datatype '{to_mime(self.datatype, official=False)}'"
         if self.datatype is entry.datatype:
             return True
         if not is_fileset_or_union and (
@@ -216,7 +220,7 @@ class DataColumn(metaclass=ABCMeta):
             return self._log_mismatch(
                 entry,
                 "required datatype '{}' is not a " "sub-type of '{}'",
-                self.datatype.mime_like,
+                to_mime(self.datatype, official=False),
                 entry.datatype,
             )
         try:
@@ -345,7 +349,7 @@ class SourceColumn(DataColumn):
             msg += f"\n    quality_threshold='{self.quality_threshold}'"
         if self.required_metadata:
             msg += f"\n    required_metadata={self.required_metadata}"
-        msg += f"\n    datatype='{self.datatype.mime_like}'"
+        msg += f"\n    datatype='{to_mime(self.datatype, official=False)}'"
         if self.order:
             msg += f"\n    order={self.order}"
         return msg
@@ -465,7 +469,7 @@ class SinkColumn(DataColumn):
         return (
             "\n\n  Criteria: "
             f"\n    path='{self.path}' "
-            f"\n    datatype='{self.datatype.mime_like}' "
+            f"\n    datatype='{to_mime(self.datatype, official=False)}' "
         )
 
     def __setitem__(self, id, value: DataType):

@@ -1,3 +1,6 @@
+from fileformats.core import to_mime
+
+
 class FrameTreeException(Exception):
     @property
     def msg(self):
@@ -240,5 +243,5 @@ class DatatypeUnsupportedByStoreError(FrameTreeError):
 
     def __init__(self, datatype, store):
         super().__init__(
-            f"'{datatype.mime_like}' data types aren't supported by {type(store)} stores"
+            f"'{to_mime(datatype, official=False)}' data types aren't supported by {type(store)} stores"
         )

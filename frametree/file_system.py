@@ -1,18 +1,21 @@
 from __future__ import annotations
+
+import json
+import logging
 import os
-from pathlib import Path
 import re
 import typing as ty
-import logging
-import json
+from pathlib import Path
+
 import attrs
-from fileformats.core import FileSet, Field
-from frametree.core.exceptions import FrameTreeUsageError
-from frametree.core.tree import DataTree
+from fileformats.core import Field, FileSet
+
 from frametree.core.axes import Axes
-from frametree.core.row import DataRow
 from frametree.core.entry import DataEntry
+from frametree.core.exceptions import FrameTreeUsageError
+from frametree.core.row import DataRow
 from frametree.core.store import LocalStore
+from frametree.core.tree import DataTree
 from frametree.core.utils import full_path
 
 __all__ = ["FileSystem"]
@@ -108,7 +111,7 @@ class FileSystem(LocalStore):
                     path = str(entry_fspath.relative_to(row_dir))
                     if dataset_name is not None:
                         path += "@" + dataset_name
-                    row.add_entry(
+                    row.found_entry(
                         path=path,
                         datatype=FileSet,
                         uri=str(entry_fspath.relative_to(root_dir)),
@@ -127,7 +130,7 @@ class FileSystem(LocalStore):
                             if dataset_name is not None
                             else name
                         )
-                        row.add_entry(
+                        row.found_entry(
                             path=path,
                             datatype=Field,
                             uri=str(fields_json.relative_to(root_dir)) + "::" + name,

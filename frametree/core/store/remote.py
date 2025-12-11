@@ -319,16 +319,16 @@ class RemoteStore(Store):
     def create_entry(
         self,
         path: str,
-        datatype: ty.Type[DataType],
+        datatype: type[DataType],
         row: DataRow,
         order_key: int | str | None = None,
     ) -> DataEntry:
         with self.connection:
-            if is_fileset_or_union(datatype):
+            if issubclass(datatype, FileSet):
                 entry = self.create_fileset_entry(
                     path=path, datatype=datatype, row=row, order_key=order_key
                 )
-            elif datatype.is_field:
+            elif issubclass(datatype, Field):
                 entry = self.create_field_entry(
                     path=path, datatype=datatype, row=row, order_key=order_key
                 )
