@@ -1,9 +1,12 @@
 from operator import itemgetter
+
 import click
-from frametree.core.store import Store
-from frametree.core.serialize import ClassResolver
-from frametree.core.utils import get_home_dir
+
 from frametree.core.exceptions import FrameTreeUsageError
+from frametree.core.serialize import ClassResolver
+from frametree.core.store import Store
+from frametree.core.utils import get_home_dir
+
 from .base import cli
 
 
@@ -149,4 +152,6 @@ def ls():
         store_class = entry.pop("class")
         click.echo(f"{name} - {store_class[1:-1]}")
         for key, val in sorted(entry.items(), key=itemgetter(0)):
+            if key == "password":
+                val = "********"
             click.echo(f"    {key}: {val}")
