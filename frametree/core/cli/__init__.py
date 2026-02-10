@@ -1,11 +1,18 @@
 from .base import cli
-from .store import store  # noqa: F401
-from .frameset import (  # noqa: F401
-    define,
-    add_source,
-    add_sink,
-    missing_items,
-    export,
-    copy,
-)
-from .processing import derive, apply, install_license  # noqa: F401
+from .frameset import add_sink, add_source, copy, define, export, missing_items
+from .processing import apply, derive, install_license
+from .store import store
+
+__all__ = [
+    "cli",
+    "store",
+    "define",
+    "add_source",
+    "add_sink",
+    "missing_items",
+    "export",
+    "copy",
+    "derive",
+    "apply",
+    "install_license",
+]

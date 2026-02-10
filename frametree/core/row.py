@@ -336,7 +336,7 @@ class DataRow:
         return entry
 
 
-@register_serializer(DataRow)  # type: ignore[misc]
+@register_serializer(DataRow)  # type: ignore[untyped-decorator]
 def bytes_repr_data_row(row: DataRow, cache: Cache) -> ty.Iterator[bytes]:
     yield "frametree.core.row.DataRow:(".encode()
     yield b"frameset.id="
