@@ -11,7 +11,6 @@ from pydra.compose import python, workflow
 from pydra.compose.base import Task
 from pydra.utils import get_fields
 from pydra.utils.typing import StateArray, TypeParser, is_union
-from typing_extensions import Self
 
 import frametree.core.frameset.base
 import frametree.core.row
@@ -257,7 +256,7 @@ class Pipeline:
         return dct
 
     @classmethod
-    def fromdict(cls, dct: ty.Dict[str, ty.Any], **kwargs: ty.Any) -> Self:
+    def fromdict(cls, dct: ty.Dict[str, ty.Any], **kwargs: ty.Any) -> ty.Self:
         return fromdict(dct, task=pydra_fromdict(dct["task"]), **kwargs)
 
     @classmethod

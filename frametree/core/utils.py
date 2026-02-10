@@ -22,7 +22,6 @@ import yaml
 from fileformats.core import DataType, FieldPrimitive, FileSet, FileSetPrimitive
 from fileformats.core.exceptions import FormatMismatchError
 from pydra.utils.typing import is_optional, is_union, optional_type
-from typing_extensions import Self
 
 from frametree.core.exceptions import FrameTreeError, FrameTreeUsageError
 
@@ -65,7 +64,7 @@ class NestedContext:
 
     depth: int = attrs.field(default=0, init=False)
 
-    def __enter__(self) -> Self:
+    def __enter__(self) -> ty.Self:
         # This allows the store to be used within nested contexts
         # but still only use one connection. This is useful for calling
         # methods that need connections, and therefore control their
