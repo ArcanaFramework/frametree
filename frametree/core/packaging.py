@@ -1,16 +1,22 @@
 from __future__ import annotations
+
 import json
-import typing as ty
-import importlib_metadata
 import pkgutil
+import typing as ty
+from collections.abc import Iterable
 from importlib import import_module
 from inspect import isclass
-import pkg_resources
 from pathlib import Path
-from collections.abc import Iterable
+
 from pydra.utils.general import STDLIB_MODULES
+
+from frametree.core import PACKAGE_NAME, __version__
 from frametree.core.exceptions import FrameTreeUsageError
-from frametree.core import __version__, PACKAGE_NAME
+
+try:
+    import importlib.metadata as importlib_metadata
+except ImportError:
+    import importlib_metadata
 
 
 def submodules(package, subpkg=None):
@@ -105,23 +111,23 @@ def package_from_module(module: Iterable[str]) -> ty.Any:
             module_path = module
         module_paths.add(importlib_metadata.PackagePath(module_path.replace(".", "/")))
     packages = set()
-    for pkg in pkg_resources.working_set:
-        if editable_dir := get_editable_dir(pkg):
+    for dist in importlib_metadata.distributions():
+        if editable_dir := get_editable_dir(dist):
 
-            def is_in_pkg(module_path):
+            def is_in_dist(module_path):
                 pth = editable_dir.joinpath(module_path)
                 return pth.with_suffix(".py").exists() or (pth / "__init__.py").exists()
 
         else:
-            installed_paths = installed_module_paths(pkg)
+            installed_paths = installed_module_paths(dist)
 
-            def is_in_pkg(module_path):
+            def is_in_dist(module_path):
                 return module_path in installed_paths
 
-        if in_pkg := set(m for m in module_paths if is_in_pkg(m)):
-            packages.add(pkg)
-            module_paths -= in_pkg
-            if not module_paths:  # If there are no more modules to find pkgs for break
+        if in_dist := set(m for m in module_paths if is_in_dist(m)):
+            packages.add(dist)
+            module_paths -= in_dist
+            if not module_paths:  # If there are no more modules to find dists for break
                 break
     if module_paths:
         paths_str = "', '".join(str(p) for p in module_paths)
@@ -129,12 +135,12 @@ def package_from_module(module: Iterable[str]) -> ty.Any:
     return tuple(packages) if as_tuple else next(iter(packages))
 
 
-def get_editable_dir(pkg: pkg_resources.DistInfoDistribution):
+def get_editable_dir(dist: importlib_metadata.Distribution):
     """Returns the path to the editable dir to a package if it exists
 
     Parameters
     ----------
-    pkg : pkg_resources.DistInfoDistribution
+    dist : importlib_metadata.Distribution
         the package to get the editable directory for
 
     Returns
@@ -142,13 +148,10 @@ def get_editable_dir(pkg: pkg_resources.DistInfoDistribution):
     Path or None
         the path to the editable file or None if the package isn't installed in editable mode
     """
-    if pkg.egg_info is None:
+    direct_url = dist.read_text("direct_url.json")
+    if direct_url is None:
         return None
-    direct_url_path = Path(pkg.egg_info) / "direct_url.json"
-    if not direct_url_path.exists():
-        return None
-    with open(direct_url_path) as f:
-        url_spec = json.load(f)
+    url_spec = json.loads(direct_url)
     url = url_spec["url"]
     if "dir_info" not in url_spec or not url_spec["dir_info"].get("editable"):
         return None
@@ -156,20 +159,15 @@ def get_editable_dir(pkg: pkg_resources.DistInfoDistribution):
     return Path(url[len("file://") :])
 
 
-def installed_module_paths(pkg: pkg_resources.DistInfoDistribution):
+def installed_module_paths(dist: importlib_metadata.Distribution):
     """Returns the list of modules that are part of an installed package
 
     Parameters
     ----------
-    pkg
+    dist
         the package to list the installed modules
     """
-    try:
-        paths = importlib_metadata.files(pkg.key)
-    except importlib_metadata.PackageNotFoundError:
-        paths = []
-    if paths is None:
-        paths = []
+    paths = dist.files if dist.files is not None else []
     paths = set(
         p.parent if p.name == "__init__.py" else p.with_suffix("")
         for p in paths
@@ -180,6 +178,6 @@ def installed_module_paths(pkg: pkg_resources.DistInfoDistribution):
 
 def pkg_versions(modules: Iterable[str]) -> dict[str, str]:
     nonstd = [m for m in modules if m.split(".")[0] not in STDLIB_MODULES]
-    versions = {p.key: p.version for p in package_from_module(nonstd)}
+    versions = {d.name: d.version for d in package_from_module(nonstd)}
     versions[PACKAGE_NAME] = __version__
     return versions

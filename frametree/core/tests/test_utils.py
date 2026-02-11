@@ -1,14 +1,16 @@
 import re
+
 import pytest
-from fileformats.image import Png, RasterImage
 from fileformats.application import Atfx, Dicom
+from fileformats.image import Png, RasterImage
+
 from frametree.core.packaging import package_from_module
-from frametree.core.utils import path2varname, varname2path, convertible_from
+from frametree.core.utils import convertible_from, path2varname, varname2path
 
 
 def test_package_from_module():
-    assert package_from_module("frametree.core").key == "frametree"
-    assert package_from_module("pydra.engine").key == "pydra"
+    assert package_from_module("frametree.core").name == "frametree"
+    assert package_from_module("pydra.engine").name == "pydra"
 
 
 PATHS_TO_TEST = [

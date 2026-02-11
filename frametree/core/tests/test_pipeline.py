@@ -1,9 +1,13 @@
+from pathlib import Path
+
 from fileformats.extras.testing import EncodedToTextConverter
 from fileformats.testing import EncodedText
 from fileformats.text import TextFile
 from pydra.compose import python
 
+from frametree.core.frameset.base import FrameSet
 from frametree.core.pipeline import RuntimeConverterWorkflow
+from frametree.core.store.base import Store
 from frametree.file_system import FileSystem
 from frametree.testing import TestAxes
 from frametree.testing.blueprint import FileSetEntryBlueprint as FileBP
@@ -16,7 +20,9 @@ def EncodedTextIdentity(in_file: EncodedText) -> EncodedText:
     return in_file
 
 
-def test_pipeline_union_column_datatype(saved_dataset, data_store, work_dir):
+def test_pipeline_union_column_datatype(
+    saved_dataset: FrameSet, data_store: Store, work_dir: Path
+):
 
     bp = TestDatasetBlueprint(
         hierarchy=[
@@ -69,5 +75,5 @@ def test_pipeline_union_column_datatype(saved_dataset, data_store, work_dir):
     assert isinstance(input_converter._task, RuntimeConverterWorkflow)
     assert isinstance(output_converter._task, EncodedToTextConverter)
 
-    out = next(iter(frameset.derive("out")[0]))
+    out = next(iter(frameset.derive("out", cache_dir=work_dir / "cache")[0]))
     assert out.raw_contents == "file.txt"

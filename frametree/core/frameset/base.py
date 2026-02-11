@@ -13,7 +13,6 @@ from attrs.converters import default_if_none
 from fileformats.text import Plain as PlainText
 from pydra.compose import workflow
 from pydra.utils.hash import bytes_repr_mapping_contents, hash_single
-from typing_extensions import Self
 
 from frametree.core.exceptions import (
     FrameTreeDataMatchError,
@@ -387,7 +386,7 @@ class FrameSet:
                 return cls(id, store, **kwargs)
             raise
 
-    def reload(self) -> Self:
+    def reload(self) -> ty.Self:
         """Reload the frameset from the store
 
         Returns
