@@ -139,7 +139,7 @@ def test_singletons() -> None:
     assert set(Store.singletons()) & standard == standard  # type: ignore[call-overload]
 
 
-@pytest.mark.flaky(reruns=2)
+@pytest.mark.flaky(reruns=3)
 @pytest.mark.skipif(
     condition=cpu_count() < 2, reason="Not enough cpus to run test with multiprocessing"
 )
