@@ -210,7 +210,7 @@ class DataColumn(metaclass=ABCMeta):
             )
 
     def matches_datatype(self, entry: DataEntry) -> bool:
-        "that matched the datatype '{to_mime(self.datatype, official=False)}'"
+        "that matched the datatype '{self.datatype}'"
         if self.datatype is entry.datatype:
             return True
         if not is_fileset_or_union and (
