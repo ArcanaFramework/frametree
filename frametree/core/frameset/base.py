@@ -575,12 +575,18 @@ class FrameSet:
             If there is no row corresponding to the given ids
         """
         with self.tree:
-            # Parse str to frequency enums
-            if not frequency:
-                if id not in (None, attrs.NOTHING):
+            # Parse str to frequency enums. Note we can't just rely on the truthiness
+            # of `frequency` to detect the root row here, as an unparsed string (e.g.
+            # "__") is truthy even though it parses to the (falsy, all-zero-bits) root
+            # frequency, so the string form has to be parsed before comparing.
+            if frequency is None:
+                frequency = self.root_freq
+            else:
+                frequency = self.parse_frequency(frequency)
+            if frequency == self.root_freq:
+                if id not in (None, "", attrs.NOTHING):
                     raise FrameTreeUsageError(f"Root rows don't have any IDs ({id})")
                 return self.root
-            frequency = self.parse_frequency(frequency)
             if id is not attrs.NOTHING:
                 if id_kwargs:
                     raise FrameTreeUsageError(
