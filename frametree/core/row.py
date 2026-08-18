@@ -243,9 +243,11 @@ class DataRow:
             # rows) or the whole dataset
             spec = self.frameset.columns[column_name]
             try:
-                # Assume children values are DataEntry, return their .item
+                # self.children[freq] holds the child DataRows themselves (not
+                # DataEntry objects), so fetch the column from each one in turn
                 return [
-                    entry.item for entry in self.children[spec.row_frequency].values()
+                    child_row[column_name]
+                    for child_row in self.children[spec.row_frequency].values()
                 ]
             except KeyError:
                 # If frameset.column does not exist, raise a clear error

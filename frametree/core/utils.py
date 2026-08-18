@@ -610,6 +610,12 @@ def convertible_from(datatype: ty.Type[DataType]) -> ty.Type[DataType]:
             if tp not in unique:
                 unique.append(tp)
         conv_from = functools.reduce(operator.or_, unique)  # type: ignore[no-any-return]
+    elif ty.get_origin(datatype) is list:
+        # A list of a fileset/field type (e.g. items gathered from several rows by a
+        # coarser-frequency pipeline, see `frametree.core.pipeline.SourceItems`) is
+        # convertible from a list of whatever the element type is convertible from
+        (elem_type,) = ty.get_args(datatype)
+        conv_from = ty.List[convertible_from(elem_type)]  # type: ignore[valid-type]
     elif issubclass(datatype, FileSet):
         conv_from = datatype.convertible_from()
     else:
