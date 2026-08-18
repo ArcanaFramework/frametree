@@ -10,7 +10,7 @@ from fileformats.core.exceptions import FormatConversionError
 from pydra.compose import python, workflow
 from pydra.compose.base import Task
 from pydra.utils import get_fields
-from pydra.utils.typing import StateArray, TypeParser, is_union
+from pydra.utils.typing import TypeParser, is_union
 
 import frametree.core.frameset.base
 import frametree.core.row
@@ -441,13 +441,19 @@ def PipelineRowWorkflow(
         # If the row frequency of the column is not a parent of the pipeline
         # then the input will be a sequence of all the child rows
         dtype = frameset[inpt.name].datatype
-        # If the row frequency of the source column is higher than the frequency
+        # If the row frequency of the source column is finer than the frequency
         # of the pipeline, then the related elements of the source column are
-        # collected into a list and passed to the pipeline
+        # collected into a plain list (by `SourceItems`/`DataRow.column_items`) and
+        # passed to the pipeline as a whole. This is a real, already-materialised
+        # list rather than a pydra splitter state, so it's typed as `ty.List[dtype]`
+        # rather than `StateArray[dtype]` - pydra's `TypeParser.check_type` special-
+        # cases `StateArray` by unwrapping the *value's* type but not its own
+        # pattern, so a `StateArray[X]` field fails to type-check against another
+        # `StateArray[X]`.
         if inpt.datatype is not frametree.core.row.DataRow and not frameset[
             inpt.name
         ].row_frequency.is_parent(row_frequency, if_match=True):
-            dtype = StateArray[dtype]
+            dtype = ty.List[dtype]
         source_types[inpt.name] = dtype
 
     column_names = list(source_types)
@@ -513,8 +519,8 @@ def PipelineRowWorkflow(
             out_file_name = converter.out_file
             for nm, val in converter_args.get(inpt.name, {}).items():
                 setattr(converter_task, nm, val)
-        # Split converter input if state array
-        if ty.get_origin(source_types[inpt.name]) is StateArray:
+        # Split converter input if it's a gathered list of child-row items
+        if ty.get_origin(source_types[inpt.name]) is list:
             # Iterate over all items in the sequence and convert them
             # separately
             converter_task.split(in_file_name, **{in_file_name: in_file})
@@ -668,7 +674,18 @@ def SourceItems(
                 sourced[inpt.name] = row
                 continue
             try:
-                sourced[inpt.name] = row[inpt.name]
+                # Mirrors the StateArray condition in `PipelineRowWorkflow`: if the
+                # source column's row_frequency isn't a parent (or the same as) the
+                # pipeline's row_frequency, then the column is finer-grained than the
+                # row being processed (e.g. a per-session column sourced by a
+                # dataset-wide pipeline), so every matching item in the row's
+                # descendants is collected into a list instead of a single item.
+                if frameset[inpt.name].row_frequency.is_parent(
+                    row_frequency, if_match=True
+                ):
+                    sourced[inpt.name] = row[inpt.name]
+                else:
+                    sourced[inpt.name] = row.column_items(inpt.name)
             except FrameTreeDataMatchError as e:
                 missing_inputs[inpt.name] = str(e)
     if missing_inputs:
