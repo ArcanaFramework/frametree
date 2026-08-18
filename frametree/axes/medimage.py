@@ -9,7 +9,7 @@ class MedImage(BaseAxes):
     """
 
     # Root row of the dataset
-    constant = 0b000  # constant across the dataset
+    dataset = 0b000  # constant across the dataset
 
     # Axes of the data space
     member = 0b001  # subjects relative to their group membership, i.e.
