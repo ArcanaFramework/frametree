@@ -1,4 +1,5 @@
 import re
+import typing as ty
 
 import pytest
 from fileformats.application import Atfx, Dicom
@@ -48,6 +49,10 @@ def test_triple_path2varname(path: str):
         (Png | None, Png | RasterImage | None),
         (Dicom | Png, Dicom | Png | RasterImage),
         (Atfx, Atfx),
+        # A list of a type (e.g. items gathered from several rows by a
+        # coarser-frequency pipeline, see `frametree.core.pipeline.SourceItems`) is
+        # convertible from a list of whatever the element type is convertible from
+        (ty.List[Png], ty.List[Png | RasterImage]),
     ],
 )
 def test_convertible_from(klass, expected):

@@ -522,8 +522,14 @@ def PipelineRowWorkflow(
         # Split converter input if it's a gathered list of child-row items
         if ty.get_origin(source_types[inpt.name]) is list:
             # Iterate over all items in the sequence and convert them
-            # separately
-            converter_task.split(in_file_name, **{in_file_name: in_file})
+            # separately, then combine the results back into a plain list so the
+            # downstream task (whose input is typed `ty.List[dtype]`, not a pydra
+            # state) receives a materialised list rather than a split state. Both
+            # `split()` and `combine()` return a new task object rather than
+            # mutating in place, so the result has to be reassigned.
+            converter_task = converter_task.split(
+                in_file_name, **{in_file_name: in_file}
+            ).combine(in_file_name)
         else:
             setattr(converter_task, in_file_name, in_file)
         # Add converter to workflow
