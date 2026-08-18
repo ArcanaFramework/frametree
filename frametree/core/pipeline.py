@@ -612,12 +612,17 @@ def ToProcess(
     row_ids = []
     cant_process = []
     for row in frameset.rows(row_frequency, ids=requested_ids):
+        # The root row (e.g. when row_frequency is dataset-wide) doesn't have an ID
+        # of its own (row.id is None), but this task's outputs are typed as
+        # List[str], so it is represented by an empty string instead. `FrameSet.row`
+        # accepts "" as well as None to look the root row back up again downstream.
+        row_id = row.id if row.id is not None else ""
         # TODO: Should check provenance of existing rows to see if it matches
         empty = [row.cell(o.name).is_empty for o in outputs]
         if all(empty):
-            row_ids.append(row.id)
+            row_ids.append(row_id)
         elif any(empty):
-            cant_process.append(row.id)
+            cant_process.append(row_id)
     logger.debug(
         "Found %s ids to process, and can't process %s due to partially present outputs",
         row_ids,
