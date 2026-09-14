@@ -125,7 +125,7 @@ class Pipeline:
                 field.datatype = self.frameset[field.name].datatype
 
     @inputs.validator
-    def inputs_validator(self, _: ty.Any, inputs: ty.List[PipelineField]) -> None:
+    def inputs_validator(self, _: ty.Any, inputs: list[PipelineField]) -> None:
         for inpt in inputs:
             if inpt.datatype is frametree.core.row.DataRow:  # special case
                 continue
@@ -134,8 +134,8 @@ class Pipeline:
                 # Check that a converter can be found if required
                 if (
                     inpt.datatype
-                    and not issubclass(inpt.datatype, column.datatype)
-                    and not issubclass(column.datatype, inpt.datatype)
+                    and not TypeParser.is_subclass(inpt.datatype, column.datatype)
+                    and not TypeParser.is_subclass(column.datatype, inpt.datatype)
                 ):
                     try:
                         inpt.datatype.get_converter(column.datatype)
@@ -159,7 +159,7 @@ class Pipeline:
                 )
 
     @outputs.validator
-    def outputs_validator(self, _: ty.Any, outputs: ty.List[PipelineField]) -> None:
+    def outputs_validator(self, _: ty.Any, outputs: list[PipelineField]) -> None:
         for outpt in outputs:
             if self.frameset:
                 column = self.frameset[outpt.name]
@@ -196,13 +196,13 @@ class Pipeline:
                 )
 
     @property
-    def input_varnames(self) -> ty.List[str]:
+    def input_varnames(self) -> list[str]:
         return [
             i.name for i in self.inputs
         ]  # [path2varname(i.name) for i in self.inputs]
 
     @property
-    def output_varnames(self) -> ty.List[str]:
+    def output_varnames(self) -> list[str]:
         return [
             o.name for o in self.outputs
         ]  # [path2varname(o.name) for o in self.outputs]
@@ -211,7 +211,7 @@ class Pipeline:
     # self.wf.to_process.inputs.parameterisation = parameterisation
     # self.wf.per_node.source.inputs.parameterisation = parameterisation
 
-    def __call__(self, ids: ty.List[str] = None) -> workflow.Task:
+    def __call__(self, ids: list[str] = None) -> workflow.Task:
         """
         Create an "outer" workflow that interacts with the frameset to pull input
         data, process it and then push the derivatives back to the store.
@@ -248,9 +248,7 @@ class Pipeline:
     PROVENANCE_VERSION = "1.0"
     WORKFLOW_NAME = "processing"
 
-    def asdict(
-        self, required_modules: ty.Optional[ty.Set[str]] = None
-    ) -> ty.Dict[str, ty.Any]:
+    def asdict(self, required_modules: set[str] | None = None) -> dict[str, ty.Any]:
         dct = asdict(self, omit=["task"], required_modules=required_modules)
         dct["task"] = pydra_asdict(self.task, required_modules=required_modules)
         return dct
@@ -770,8 +768,10 @@ def RuntimeConverterWorkflow(
     return getattr(out, converter.out_file)
 
 
-def is_coercible(t: ty.Type[DataType], u: ty.Type[DataType]) -> bool:
-    return (issubclass(t, u) or issubclass(u, t)) and not (is_union(u) or is_union(t))
+def is_coercible(t: type[DataType], u: type[DataType]) -> bool:
+    return (TypeParser.is_subclass(t, u) or TypeParser.is_subclass(u, t)) and not (
+        is_union(u) or is_union(t)
+    )
 
 
 # Provenance mismatch detection methods salvaged from data.provenance
