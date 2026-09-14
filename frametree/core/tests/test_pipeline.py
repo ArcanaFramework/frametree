@@ -1,13 +1,15 @@
 import typing as ty
 from pathlib import Path
 
+import pytest
 from fileformats.extras.testing import EncodedFromTextConverter, EncodedToTextConverter
+from fileformats.generic import File
 from fileformats.testing import EncodedText
 from fileformats.text import TextFile
 from pydra.compose import python
 
 from frametree.core.frameset.base import FrameSet
-from frametree.core.pipeline import RuntimeConverterWorkflow
+from frametree.core.pipeline import RuntimeConverterWorkflow, is_coercible
 from frametree.core.store.base import Store
 from frametree.file_system import FileSystem
 from frametree.testing import TestAxes
@@ -150,3 +152,54 @@ def test_pipeline_gathers_source_column_into_list_and_converts(
     out = next(iter(frameset.derive("out", cache_dir=work_dir / "cache")[0]))
     shifted = "".join(chr(ord(c) + 1) for c in "file.txt")  # default shift=1
     assert out.raw_contents.split("\n") == [shifted] * num_sessions
+
+
+@pytest.mark.parametrize(
+    "t,u,expected",
+    [
+        (TextFile, TextFile, True),
+        (TextFile, File, True),
+        (File, TextFile, True),
+        (TextFile, EncodedText, False),
+        # Parameterised generics raise a TypeError with the builtin issubclass
+        (list[TextFile], list[TextFile], True),
+        (list[TextFile], list[File], True),
+        (list[File], ty.List[TextFile], True),
+        (list[TextFile], list[EncodedText], False),
+        (list[TextFile], TextFile, False),
+        (TextFile, list[TextFile], False),
+        # Unions are never considered coercible (a runtime converter is required)
+        (EncodedText | TextFile, TextFile, False),
+        (TextFile, EncodedText | TextFile, False),
+    ],
+)
+def test_is_coercible(t: type, u: type, expected: bool) -> None:
+    assert is_coercible(t, u) is expected
+
+
+def test_pipeline_validates_union_field_datatypes(work_dir: Path) -> None:
+    """Checks that the input/output validators of a pipeline bound to a frameset can
+    handle union datatypes on the pipeline fields, which the builtin issubclass
+    can't be passed as its first argument"""
+    bp = TestDatasetBlueprint(
+        hierarchy=["abcd"],
+        axes=TestAxes,
+        dim_lengths=[1, 1, 1, 1],
+        entries=[
+            FileBP(path="file", datatype=TextFile, filenames=["file.txt"]),
+        ],
+    )
+    frameset = bp.make_dataset(FileSystem(), str(work_dir / "dataset"))
+    frameset.add_source("file", TextFile)
+    frameset.add_sink("out", TextFile)
+
+    frameset.apply(
+        "a_pipeline",
+        EncodedTextIdentity(),
+        inputs=[("file", "in_file", EncodedText | TextFile)],
+        outputs=[("out", "out_file", EncodedText | TextFile)],
+    )
+
+    pipeline = frameset.pipelines["a_pipeline"]
+    assert pipeline.inputs[0].datatype == EncodedText | TextFile
+    assert pipeline.outputs[0].datatype == EncodedText | TextFile
