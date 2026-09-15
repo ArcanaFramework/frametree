@@ -10,7 +10,7 @@ from fileformats.core.exceptions import FormatConversionError
 from pydra.compose import python, workflow
 from pydra.compose.base import Task
 from pydra.utils import get_fields
-from pydra.utils.typing import TypeParser, is_union
+from pydra.utils.typing import TypeParser, is_optional, is_union, optional_type
 
 import frametree.core.frameset.base
 import frametree.core.row
@@ -33,7 +33,7 @@ from frametree.core.serialize import (
     pydra_asdict,
     pydra_fromdict,
 )
-from frametree.core.utils import add_exc_note, path2varname
+from frametree.core.utils import path2varname
 
 logger = logging.getLogger("frametree")
 
@@ -137,15 +137,7 @@ class Pipeline:
                     and not TypeParser.is_subclass(inpt.datatype, column.datatype)
                     and not TypeParser.is_subclass(column.datatype, inpt.datatype)
                 ):
-                    try:
-                        inpt.datatype.get_converter(column.datatype)
-                    except FormatConversionError as e:
-                        msg = (
-                            f"required to in conversion of '{inpt.name}' input "
-                            f"to '{self.name}' pipeline"
-                        )
-                        add_exc_note(e, msg)
-                        raise
+                    check_convertible(column.datatype, inpt.datatype)
             elif inpt.datatype is None:
                 raise ValueError(
                     f"Datatype must be explicitly set for {inpt.name} in unbound Pipeline"
@@ -165,8 +157,8 @@ class Pipeline:
                 column = self.frameset[outpt.name]
                 if column.row_frequency != self.row_frequency:
                     raise FrameTreeUsageError(
-                        f"Pipeline row_frequency ('{str(self.row_frequency)}') doesn't match "
-                        f"that of '{outpt.name}' output ('{str(self.row_frequency)}')"
+                        f"Pipeline row_frequency ('{self.row_frequency!s}') doesn't match "
+                        f"that of '{outpt.name}' output ('{column.row_frequency!s}')"
                     )
                 # Check that a converter can be found if required
                 if (
@@ -174,15 +166,7 @@ class Pipeline:
                     and not TypeParser.is_subclass(outpt.datatype, column.datatype)
                     and not TypeParser.is_subclass(column.datatype, outpt.datatype)
                 ):
-                    try:
-                        column.datatype.get_converter(outpt.datatype)
-                    except FormatConversionError as e:
-                        msg = (
-                            f"required to in conversion of '{outpt.name}' output "
-                            f"from '{self.name}' pipeline"
-                        )
-                        add_exc_note(e, msg)
-                        raise
+                    check_convertible(column.datatype, outpt.datatype)
             elif outpt.datatype is None:
                 raise ValueError(
                     f"Datatype must be explicitly set for {outpt.name} in unbound Pipeline"
@@ -511,7 +495,26 @@ def PipelineRowWorkflow(
         else:
             # The source -> input conversion is fixed so we know which converter to use at
             # build time
-            converter = inpt.datatype.get_converter(stored_format)
+            msg = []
+            converter = None
+            for dt in (
+                ty.get_args(inpt.datatype)
+                if is_union(inpt.datatype)
+                else (inpt.datatype,)
+            ):
+                if dt is None:
+                    continue
+                try:
+                    converter = dt.get_converter(stored_format)
+                except FormatConversionError as e:
+                    msg.append(str(e))
+                else:
+                    break
+            if converter is None:
+                raise FormatConversionError(
+                    f"Failed to get converter from {stored_format} to {inpt.datatype}:\n"
+                    + "\n".join(msg)
+                )
             converter_task = copy(converter.task)
             in_file_name = converter.in_file
             out_file_name = converter.out_file
@@ -563,7 +566,12 @@ def PipelineRowWorkflow(
             and not TypeParser.is_subclass(outpt.datatype, stored_format)
             and not TypeParser.is_subclass(stored_format, outpt.datatype)
         ):
-            converter = stored_format.get_converter(outpt.datatype)
+            output_type = (
+                optional_type(outpt.datatype)
+                if is_optional(outpt.datatype)
+                else outpt.datatype
+            )
+            converter = stored_format.get_converter(output_type)
             logger.info(
                 "Adding implicit conversion for output '%s' " "from %s to %s",
                 outpt.name,
@@ -761,7 +769,23 @@ def RuntimeConverterWorkflow(
     """
     if is_coercible(type(in_file), datatype):
         return in_file  # type: ignore[return-value]
-    converter = datatype.get_converter(type(in_file))
+    converter = None
+    msg = []
+    for dt in ty.get_args(datatype) if is_union(datatype) else (datatype,):
+        if dt is None:
+            continue
+        try:
+            converter = dt.get_converter(type(in_file))
+        except FormatConversionError as e:
+            msg.append(str(e))
+            continue
+        else:
+            break
+    if converter is None:
+        raise FormatConversionError(
+            f"Failed to get converter from {type(in_file)} to {datatype}:\n"
+            + "\n".join(msg)
+        )
     task = attrs.evolve(converter.task, **converter_args)
     setattr(task, converter.in_file, in_file)
     out = workflow.add(task)
@@ -772,6 +796,49 @@ def is_coercible(t: type[DataType], u: type[DataType]) -> bool:
     return (TypeParser.is_subclass(t, u) or TypeParser.is_subclass(u, t)) and not (
         is_union(u) or is_union(t)
     )
+
+
+def check_convertible(inpt_datatype: type, outpt_datatype: type) -> None:
+    """Check that the input type can be converted into the output type.
+    If the input type is a union, all members of the union must be convertible
+    to the output type. If the output type, only one needs to be convertible from
+    the an all input type(s).
+
+    Parameters
+    ----------
+    inpt_datatype : type | tp.Union[type, ...]
+        The input datatype
+    outpt_datatype : type | tp.Union[type, ...]
+        The output datatype
+
+    Raises
+    ------
+    FormatConversionError
+        If no suitable converter is found
+    """
+    inpt_datatypes = (
+        ty.get_args(inpt_datatype) if is_union(inpt_datatype) else (inpt_datatype,)
+    )
+    outpt_datatypes = (
+        ty.get_args(outpt_datatype) if is_union(outpt_datatype) else (outpt_datatype,)
+    )
+    for inpt_dt in inpt_datatypes:
+        if inpt_dt is None:
+            continue
+        msg = []
+        for outpt_dt in outpt_datatypes:
+            if outpt_dt is None:
+                continue
+            try:
+                return outpt_dt.get_converter(inpt_dt)
+            except FormatConversionError as e:
+                msg.append(str(e))
+        if msg:
+            raise FormatConversionError(
+                f"Failed to get converter from {inpt_datatype} to {outpt_datatype}:\n"
+                + "\n".join(msg)
+            )
+    # Removed as it's now handled in the nested loops above
 
 
 # Provenance mismatch detection methods salvaged from data.provenance
