@@ -24,6 +24,13 @@ def EncodedTextIdentity(in_file: EncodedText) -> EncodedText:
 
 
 @python.define(outputs=["out_file"])
+def OptionalEncodedTextIdentity(in_file: EncodedText | None) -> EncodedText | None:
+    assert in_file is not None
+    assert in_file.raw_contents != "file.txt"
+    return in_file
+
+
+@python.define(outputs=["out_file"])
 def ConcatenateEncodedText(in_files: ty.List[EncodedText]) -> TextFile:
     # Every item should have already been converted from the stored TextFile
     # format to EncodedText (i.e. shifted) by a per-item converter task before
@@ -203,3 +210,101 @@ def test_pipeline_validates_union_field_datatypes(work_dir: Path) -> None:
     pipeline = frameset.pipelines["a_pipeline"]
     assert pipeline.inputs[0].datatype == EncodedText | TextFile
     assert pipeline.outputs[0].datatype == EncodedText | TextFile
+
+
+
+@pytest.mark.parametrize(
+    ("source_datatype", "input_datatype", "output_datatype"),
+    [
+        pytest.param(
+            EncodedText.convertible_from(),
+            EncodedText | None,
+            EncodedText,
+            id="union-column-optional-input",
+        ),
+        pytest.param(
+            # e.g. the optional inputs of an XNAT container service command
+            ty.Optional[EncodedText.convertible_from()],
+            EncodedText | None,
+            EncodedText,
+            id="optional-union-column-optional-input",
+        ),
+        pytest.param(
+            TextFile,
+            EncodedText | None,
+            EncodedText,
+            id="fixed-column-optional-input",
+        ),
+        pytest.param(
+            TextFile | None,
+            EncodedText | None,
+            EncodedText,
+            id="optional-fixed-column-optional-input",
+        ),
+        pytest.param(
+            TextFile,
+            EncodedText,
+            EncodedText | None,
+            id="optional-output",
+        ),
+        pytest.param(
+            ty.Optional[EncodedText.convertible_from()],
+            EncodedText | None,
+            EncodedText | None,
+            id="optional-union-column-optional-input-and-output",
+        ),
+    ],
+)
+def test_pipeline_optional_field_datatypes(
+    source_datatype: type,
+    input_datatype: type,
+    output_datatype: type,
+    work_dir: Path,
+) -> None:
+    """Checks that optional datatypes (i.e. unions with None) on pipeline fields and
+    source columns are handled when the stored format needs to be converted, both
+    when constructing the pipeline (validators) and at runtime (converters)"""
+    bp = TestDatasetBlueprint(
+        hierarchy=["abcd"],
+        axes=TestAxes,
+        dim_lengths=[1, 1, 1, 1],
+        entries=[
+            FileBP(path="file", datatype=TextFile, filenames=["file.txt"]),
+        ],
+    )
+    frameset = bp.make_dataset(FileSystem(), str(work_dir / "dataset"))
+    frameset.add_source("file", source_datatype)
+    frameset.add_sink("out", TextFile)
+
+    frameset.apply(
+        "a_pipeline",
+        OptionalEncodedTextIdentity(),
+        inputs=[("file", "in_file", input_datatype)],
+        outputs=[("out", "out_file", output_datatype)],
+    )
+
+    out = next(iter(frameset.derive("out", cache_dir=work_dir / "cache")[0]))
+    assert out.raw_contents == "file.txt"
+
+
+@pytest.mark.parametrize(
+    "datatype",
+    [
+        EncodedText,
+        EncodedText | None,
+        ty.Optional[EncodedText],
+    ],
+)
+def test_runtime_converter_workflow_optional_datatype(
+    datatype: type, work_dir: Path
+) -> None:
+    """Runs the runtime converter workflow used for union column datatypes directly,
+    to check that optional target datatypes are handled without needing to set up a
+    dataset"""
+    in_file = TextFile.sample(work_dir / "in")
+    in_file.write_text("file.txt")
+    outputs = RuntimeConverterWorkflow(
+        in_file=in_file, datatype=datatype, converter_args={}
+    )(cache_root=work_dir / "cache", worker="debug")
+    assert isinstance(outputs.out_file, EncodedText)
+    assert outputs.out_file.raw_contents != "file.txt"
