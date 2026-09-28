@@ -477,7 +477,7 @@ def PipelineRowWorkflow(
             to_mime(stored_format, official=False),
             to_mime(inpt.datatype, official=False),
         )
-        in_file = sourced.pop(inpt.name)
+        in_file = sourced[inpt.name]
         if is_union(stored_format):
             if all(
                 is_coercible(inpt.datatype, ff) for ff in ty.get_args(stored_format)
