@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import difflib
 import functools
-import itertools
+import inspect
 import logging
 import operator
 import os.path
@@ -21,7 +21,12 @@ import pydra.compose.base
 import yaml
 from fileformats.core import DataType, FieldPrimitive, FileSet, FileSetPrimitive
 from fileformats.core.exceptions import FormatMismatchError
-from pydra.utils.typing import is_optional, is_union, optional_type
+from pydra.utils.typing import (
+    is_optional,
+    is_union,
+    optional_type,
+    strip_annotated,
+)
 
 from frametree.core.exceptions import FrameTreeError, FrameTreeUsageError
 
@@ -554,6 +559,7 @@ def to_datatype(
     DataType
         the converted item
     """
+    datatype = strip_annotated(datatype)
     if is_optional(datatype):
         if item is None:
             return None
@@ -572,9 +578,13 @@ def to_datatype(
     return datatype(item)
 
 
-def convertible_from(datatype: ty.Type[DataType]) -> ty.Type[DataType]:
-    """Determine the list of types that can be converted into the given datatype
-    or union of datatypes
+def convertible_from(datatype: ty.Type[DataType]) -> ty.Any:
+    """Determine the types that can be converted into the given datatype or union of
+    datatypes, annotated with the datatypes they were determined from (see
+    `fileformats.core.ConvertibleTo`) so that they are written to MIME-like strings as
+    "<namespace>/<format>+convertible-to", and determined again from the converters
+    that are installed when the string is read. Use `pydra.utils.typing.strip_annotated`
+    to get the union of the types themselves
 
     Parameters
     ----------
@@ -583,46 +593,30 @@ def convertible_from(datatype: ty.Type[DataType]) -> ty.Type[DataType]:
 
     Returns
     -------
-    ty.Type[DataType]
-        the union of datatypes that can be converted into the given datatype
+    type
+        the annotated union of datatypes that can be converted into the given datatype
     """
-
-    if is_optional(datatype):
-        datatype = optional_type(datatype)
-        optional = True
-    else:
-        optional = False
-
+    if ty.get_origin(datatype) is ty.Annotated:
+        return datatype  # e.g. already the types that a datatype is convertible from
     if is_union(datatype):
-        union_args: list[ty.Type[DataType]] = []
-        for tp in ty.get_args(datatype):
-            union_args.append(convertible_from(tp))
-        # Flatten any union types into a single list to be returned as a union
-        flattened = list(
-            itertools.chain(
-                *(ty.get_args(c) if is_union(c) else (c,) for c in union_args)
-            )
+        # Includes optional types, the annotated types aren't flattened into a
+        # single union so the datatype each was determined from is retained
+        return functools.reduce(
+            operator.or_,
+            (
+                tp if tp is type(None) else convertible_from(tp)
+                for tp in ty.get_args(datatype)
+            ),
         )
-        # Remove any duplicates, favouring the first time the type appears in the
-        # list
-        unique = []
-        for tp in flattened:
-            if tp not in unique:
-                unique.append(tp)
-        conv_from = functools.reduce(operator.or_, unique)  # type: ignore[no-any-return]
-    elif ty.get_origin(datatype) is list:
+    if ty.get_origin(datatype) is list:
         # A list of a fileset/field type (e.g. items gathered from several rows by a
         # coarser-frequency pipeline, see `frametree.core.pipeline.SourceItems`) is
         # convertible from a list of whatever the element type is convertible from
         (elem_type,) = ty.get_args(datatype)
-        conv_from = ty.List[convertible_from(elem_type)]  # type: ignore[valid-type]
-    elif issubclass(datatype, FileSet):
-        conv_from = datatype.convertible_from()
-    else:
-        conv_from = datatype
-    if optional:
-        conv_from |= None
-    return conv_from
+        return ty.List[convertible_from(elem_type)]  # type: ignore[misc]
+    if inspect.isclass(datatype) and issubclass(datatype, FileSet):
+        return datatype.convertible_from()
+    return datatype
 
 
 class fromdict_converter:

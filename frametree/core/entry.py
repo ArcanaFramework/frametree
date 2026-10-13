@@ -1,12 +1,15 @@
 from __future__ import annotations
-import typing as ty
+
 import os
+import typing as ty
+
 import attrs
-from pydra.utils.typing import TypeParser, optional_type, is_optional
-from fileformats.core import DataType, FileSetPrimitive, FieldPrimitive
+from fileformats.core import DataType, FieldPrimitive, FileSetPrimitive
+
 from frametree.core.exceptions import FrameTreeDataMatchError, FrameTreeUsageError
+
 from .quality import DataQuality
-from .utils import to_datatype
+from .utils import strip_annotated, to_datatype
 
 if ty.TYPE_CHECKING:  # pragma: no cover
     from .row import DataRow
@@ -135,6 +138,8 @@ class DataEntry:
     def get_item(self, datatype: type[DataType] | None = None) -> DataType:
         if datatype is None:
             datatype = self.datatype
+        # Annotations of column datatypes, e.g. `ConvertibleTo[Png]`, aren't relevant
+        datatype = strip_annotated(datatype)
         item = self.row.frameset.store.get(self, datatype)
         return to_datatype(item, datatype)
 

@@ -212,7 +212,6 @@ def test_pipeline_validates_union_field_datatypes(work_dir: Path) -> None:
     assert pipeline.outputs[0].datatype == EncodedText | TextFile
 
 
-
 @pytest.mark.parametrize(
     ("source_datatype", "input_datatype", "output_datatype"),
     [

@@ -2,12 +2,15 @@ from functools import reduce
 from operator import mul
 from pathlib import Path
 
+from fileformats.core import ConvertibleTo, ConvertibleToMarker
 from fileformats.field import Boolean, Text
 from fileformats.generic import File
 from fileformats.text import TextFile
 from pydra.utils.typing import is_fileset_or_union
 
 from frametree.core.frameset.base import FrameSet
+from frametree.core.serialize import asdict
+from frametree.core.utils import strip_annotated
 from frametree.file_system import FileSystem
 from frametree.testing.blueprint import (
     FieldEntryBlueprint,
@@ -87,3 +90,40 @@ def test_column_datatype_conversion(tmp_path: Path):
     assert [p.name for p in frameset["optional_file"][ID_KEY].fspaths] == ["file2.txt"]
     assert frameset["text_field"][ID_KEY].value == "sample-text"
     assert frameset["boolean_field"][ID_KEY].value is False
+
+
+def test_column_convertible_datatype(dataset: FrameSet):
+    """Datatypes of columns that are specified by the formats that are convertible to
+    a format are saved as such, so they are resolved from the converters that are
+    installed in the environment the frameset is loaded in"""
+    dataset.add_source("convertible_source", ConvertibleTo[TextFile], path="file1")
+    dataset.add_sink("optional_source", TextFile.convertible_from() | None)
+    dataset.add_sink("convertible_sink", "text/text-file+convertible-to")
+
+    source = dataset["convertible_source"]
+    assert source.datatype == ConvertibleTo[TextFile]
+    assert ConvertibleToMarker.from_hint(source.datatype).format is TextFile
+    assert dataset["optional_source"].datatype == ConvertibleTo[TextFile] | None
+    assert dataset["convertible_sink"].datatype == ConvertibleTo[TextFile]
+    # The annotations are stripped to get the datatypes of the items
+    assert strip_annotated(source.datatype) == ConvertibleToMarker(TextFile).resolve()
+    assert is_fileset_or_union(strip_annotated(source.datatype))
+    assert (
+        strip_annotated(dataset["optional_source"].datatype)
+        == strip_annotated(source.datatype) | None
+    )
+
+    assert asdict(source)["datatype"] == "text/text-file+convertible-to"
+    assert (
+        asdict(dataset["optional_source"])["datatype"]
+        == "text/text-file+convertible-to?"
+    )
+    assert (
+        asdict(dataset["convertible_sink"])["datatype"]
+        == "text/text-file+convertible-to"
+    )
+
+    dataset.save("convertible")
+    reloaded = dataset.store.load_frameset(dataset.id, name="convertible")
+    for name in ("convertible_source", "optional_source", "convertible_sink"):
+        assert reloaded[name].datatype == dataset[name].datatype
