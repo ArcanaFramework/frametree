@@ -13,7 +13,7 @@ import typing as ty
 from collections.abc import Iterable
 from contextlib import contextmanager
 from pathlib import Path
-from types import TracebackType
+from types import TracebackType, UnionType
 
 import attrs
 import cloudpickle as cp
@@ -21,12 +21,7 @@ import pydra.compose.base
 import yaml
 from fileformats.core import DataType, FieldPrimitive, FileSet, FileSetPrimitive
 from fileformats.core.exceptions import FormatMismatchError
-from pydra.utils.typing import (
-    is_optional,
-    is_union,
-    optional_type,
-    strip_annotated,
-)
+from pydra.utils.typing import is_optional, is_union, optional_type
 
 from frametree.core.exceptions import FrameTreeError, FrameTreeUsageError
 
@@ -578,12 +573,44 @@ def to_datatype(
     return datatype(item)
 
 
+def strip_annotated(type_: ty.Any) -> ty.Any:
+    """Strips the metadata from `typing.Annotated` types, including those nested within
+    unions and the arguments of generic types, e.g. ``Annotated[A | B, meta] | None``
+    is stripped to ``A | B | None``. Types without any annotations are returned as is
+
+    Parameters
+    ----------
+    type_ : type
+        the type to strip the annotations from
+
+    Returns
+    -------
+    type
+        the type without the annotations
+    """
+    origin = ty.get_origin(type_)
+    if origin is None:
+        return type_
+    args = ty.get_args(type_)
+    if origin is ty.Annotated:
+        return strip_annotated(args[0])
+    stripped = tuple(strip_annotated(a) for a in args)
+    if all(s is a for s, a in zip(stripped, args)):
+        return type_
+    if origin in (ty.Union, UnionType):
+        return ty.Union[stripped]  # flattens the unions that were annotated
+    try:
+        return origin[stripped]
+    except TypeError:
+        return type_
+
+
 def convertible_from(datatype: ty.Type[DataType]) -> ty.Any:
     """Determine the types that can be converted into the given datatype or union of
     datatypes, annotated with the datatypes they were determined from (see
     `fileformats.core.ConvertibleTo`) so that they are written to MIME-like strings as
     "<namespace>/<format>+convertible-to", and determined again from the converters
-    that are installed when the string is read. Use `pydra.utils.typing.strip_annotated`
+    that are installed when the string is read. Use `strip_annotated`
     to get the union of the types themselves
 
     Parameters
