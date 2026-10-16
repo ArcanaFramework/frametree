@@ -21,6 +21,7 @@ from .cell import DataCell
 from .entry import DataEntry
 from .quality import DataQuality
 from .salience import ColumnSalience
+from .utils import strip_annotated
 
 if ty.TYPE_CHECKING:  # pragma: no cover
     from .frameset.base import FrameSet
@@ -47,6 +48,14 @@ def datatype_converter(datatype: ty.Union[type, str]) -> ty.Type[DataType]:
     ------
     TypeError
         If the datatype is not a subclass of DataType or a primitive type"""
+    if ty.get_origin(datatype) is ty.Annotated:
+        # Annotations, e.g. those of `Png.convertible_from()` or `ConvertibleTo[Png]`,
+        # are retained so that the datatype is saved as it was specified, e.g. as
+        # "image/png+convertible-to", and determined from the converters that are
+        # installed in the environment the frameset is loaded in. Use
+        # `strip_annotated` to get the datatype, or union of datatypes, of the items
+        inner, *metadata = ty.get_args(datatype)
+        return ty.Annotated[(datatype_converter(inner), *metadata)]  # type: ignore[return-value]
     if is_union(datatype):
         return ty.Union[
             tuple(
@@ -86,6 +95,7 @@ class DataColumn(metaclass=ABCMeta):
 
     @datatype.validator
     def datatype_validator(self, _, datatype):
+        datatype = strip_annotated(datatype)
         if not is_fileset_or_union(datatype) and not (
             inspect.isclass(datatype) and issubclass(datatype, DataType)
         ):
@@ -211,11 +221,11 @@ class DataColumn(metaclass=ABCMeta):
 
     def matches_datatype(self, entry: DataEntry) -> bool:
         "that matched the datatype '{self.datatype}'"
-        if self.datatype is entry.datatype:
+        datatype = strip_annotated(self.datatype)
+        if datatype is entry.datatype:
             return True
         if not is_fileset_or_union and (
-            not inspect.isclass(self.datatype)
-            or not issubclass(self.datatype, entry.datatype)
+            not inspect.isclass(datatype) or not issubclass(datatype, entry.datatype)
         ):
             return self._log_mismatch(
                 entry,
@@ -269,7 +279,8 @@ class DataColumn(metaclass=ABCMeta):
         """For Pydra input hashing"""
         yield f"{type(self).__module__}.{type(self).__name__}:".encode()
         yield self.name.encode()
-        yield bytes(hash_single(self.datatype, cache))
+        # Annotations of the datatype don't change the items in the column
+        yield bytes(hash_single(strip_annotated(self.datatype), cache))
         yield bytes(hash_single(self.row_frequency, cache))
         yield bytes(hash_single(self.path, cache))
 

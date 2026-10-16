@@ -33,7 +33,7 @@ from frametree.core.serialize import (
     pydra_asdict,
     pydra_fromdict,
 )
-from frametree.core.utils import path2varname
+from frametree.core.utils import path2varname, strip_annotated
 
 logger = logging.getLogger("frametree")
 
@@ -122,7 +122,7 @@ class Pipeline:
     def __attrs_post_init__(self) -> None:
         for field in self.inputs + self.outputs:
             if field.datatype is None:
-                field.datatype = self.frameset[field.name].datatype
+                field.datatype = column_datatype(self.frameset, field.name)
 
     @inputs.validator
     def inputs_validator(self, _: ty.Any, inputs: list[PipelineField]) -> None:
@@ -130,14 +130,14 @@ class Pipeline:
             if inpt.datatype is frametree.core.row.DataRow:  # special case
                 continue
             if self.frameset:
-                column = self.frameset[inpt.name]
+                stored_format = column_datatype(self.frameset, inpt.name)
                 # Check that a converter can be found if required
                 if (
                     inpt.datatype
-                    and not TypeParser.is_subclass(inpt.datatype, column.datatype)
-                    and not TypeParser.is_subclass(column.datatype, inpt.datatype)
+                    and not TypeParser.is_subclass(inpt.datatype, stored_format)
+                    and not TypeParser.is_subclass(stored_format, inpt.datatype)
                 ):
-                    check_convertible(column.datatype, inpt.datatype)
+                    check_convertible(stored_format, inpt.datatype)
             elif inpt.datatype is None:
                 raise ValueError(
                     f"Datatype must be explicitly set for {inpt.name} in unbound Pipeline"
@@ -161,12 +161,13 @@ class Pipeline:
                         f"that of '{outpt.name}' output ('{column.row_frequency!s}')"
                     )
                 # Check that a converter can be found if required
+                stored_format = column_datatype(self.frameset, outpt.name)
                 if (
                     outpt.datatype
-                    and not TypeParser.is_subclass(outpt.datatype, column.datatype)
-                    and not TypeParser.is_subclass(column.datatype, outpt.datatype)
+                    and not TypeParser.is_subclass(outpt.datatype, stored_format)
+                    and not TypeParser.is_subclass(stored_format, outpt.datatype)
                 ):
-                    check_convertible(column.datatype, outpt.datatype)
+                    check_convertible(stored_format, outpt.datatype)
             elif outpt.datatype is None:
                 raise ValueError(
                     f"Datatype must be explicitly set for {outpt.name} in unbound Pipeline"
@@ -422,7 +423,7 @@ def PipelineRowWorkflow(
             continue
         # If the row frequency of the column is not a parent of the pipeline
         # then the input will be a sequence of all the child rows
-        dtype = frameset[inpt.name].datatype
+        dtype = column_datatype(frameset, inpt.name)
         # If the row frequency of the source column is finer than the frequency
         # of the pipeline, then the related elements of the source column are
         # collected into a plain list (by `SourceItems`/`DataRow.column_items`) and
@@ -466,11 +467,11 @@ def PipelineRowWorkflow(
         if (
             inpt.datatype == frametree.core.row.DataRow
             or not inpt.datatype
-            or is_coercible(inpt.datatype, frameset[inpt.name].datatype)
+            or is_coercible(inpt.datatype, column_datatype(frameset, inpt.name))
         ):
             # No conversion required
             continue
-        stored_format = frameset[inpt.name].datatype
+        stored_format = column_datatype(frameset, inpt.name)
         logger.info(
             "Adding implicit conversion for input '%s' from %s to %s",
             inpt.name,
@@ -559,7 +560,7 @@ def PipelineRowWorkflow(
 
     # Do output datatype conversions if required
     for outpt in outputs:
-        stored_format = frameset[outpt.name].datatype
+        stored_format = column_datatype(frameset, outpt.name)
         sink_name = path2varname(outpt.name)
         if (
             outpt.datatype
@@ -591,7 +592,7 @@ def PipelineRowWorkflow(
             to_sink[sink_name] = getattr(converter_task, converter.out_file)
 
     # Dynamically collect the outputs into a dictionary
-    sink_types = {o.name: frameset[o.name].datatype for o in outputs}
+    sink_types = {o.name: column_datatype(frameset, o.name) for o in outputs}
     column_names = list(sink_types)
 
     @python.define(inputs=sink_types, outputs=["items"])
@@ -790,6 +791,15 @@ def RuntimeConverterWorkflow(
     setattr(task, converter.in_file, in_file)
     out = workflow.add(task)
     return getattr(out, converter.out_file)
+
+
+def column_datatype(
+    frameset: frametree.core.frameset.base.FrameSet, name: str
+) -> type[DataType]:
+    """The datatype, or union of datatypes, of the items in a column, i.e. without
+    the annotations of datatypes such as `ConvertibleTo[Png]`, which are only
+    relevant to how the datatype of the column is saved"""
+    return strip_annotated(frameset[name].datatype)  # type: ignore[no-any-return]
 
 
 def is_coercible(t: type[DataType], u: type[DataType]) -> bool:

@@ -1,39 +1,48 @@
 from __future__ import annotations
-from dataclasses import is_dataclass, fields as dataclass_fields
-from typing import Sequence
-import typing as ty
-import functools
-import operator
-from types import TracebackType, UnionType
-from enum import Enum
+
 import builtins
-from copy import copy
-import json
-import re
+import functools
 import inspect
+import json
+import logging
+import operator
+import re
+import typing as ty
+from copy import copy
+from dataclasses import fields as dataclass_fields
+from dataclasses import is_dataclass
+from enum import Enum
 from importlib import import_module
 from inspect import isclass, isfunction
-from pathlib import PurePath, Path
-import logging
+from pathlib import Path, PurePath
+from types import TracebackType, UnionType
+from typing import Sequence
+
 import attrs
-from fileformats.core import from_mime, to_mime, DataType
 import fileformats.field
 import pydra.compose.base
 import pydra.compose.python
 import pydra.compose.workflow
-from pydra.utils import get_fields
-from pydra.utils.typing import is_optional, optional_type, is_fileset_or_union
-from pydra.engine.workflow import Workflow
-from pydra.utils.typing import TypeParser, is_lazy
+from fileformats.core import DataType, from_mime, to_mime
 from pydra.engine.lazy import LazyField
-from frametree.core.exceptions import (
-    FrameTreeUsageError,
-    FrametreeCannotSerializeDynamicDefinitionError,
+from pydra.engine.workflow import Workflow
+from pydra.utils import get_fields
+from pydra.utils.typing import (
+    TypeParser,
+    is_fileset_or_union,
+    is_lazy,
+    is_optional,
+    optional_type,
 )
-from .packaging import pkg_versions, package_from_module
-from .utils import add_exc_note
-from frametree.core import PACKAGE_NAME
 
+from frametree.core import PACKAGE_NAME
+from frametree.core.exceptions import (
+    FrametreeCannotSerializeDynamicDefinitionError,
+    FrameTreeUsageError,
+)
+
+from .packaging import package_from_module, pkg_versions
+from .utils import add_exc_note, strip_annotated
 
 logger = logging.getLogger("frametree")
 
@@ -265,6 +274,12 @@ class ClassResolver:
         """
         if isinstance(klass, str):
             return klass
+        if ty.get_origin(klass) is ty.Annotated:
+            # Annotated datatypes, e.g. `Png.convertible_from()`, are written as
+            # "image/png+convertible-to"
+            if is_fileset_or_union(strip_annotated(klass)):
+                return to_mime(klass, official=False)
+            klass = strip_annotated(klass)
         if ty.get_origin(klass) is ty.Union or type(klass) is UnionType:
             if ty.get_origin(klass):
                 args = ty.get_args(klass)
@@ -357,7 +372,9 @@ def asdict(
         return "<" + ClassResolver.tostr(klass, strip_prefix=False) + ">"
 
     def value_asdict(value: ty.Any) -> ty.Dict[str, ty.Any]:
-        if is_fileset_or_union(value):
+        # Annotated datatypes, e.g. `Png.convertible_from()`, are written as
+        # "image/png+convertible-to"
+        if is_fileset_or_union(strip_annotated(value)):
             value = to_mime(value, official=False)
         elif isclass(value):
             value = serialise_class(value)
@@ -437,7 +454,9 @@ def fromdict(dct: ty.Dict[str, ty.Any], **kwargs: ty.Any) -> object:
 
     def field_filter(klass: ty.Type[ty.Any], field_name: str) -> bool:
         if attrs.has(klass):
-            return field_name in (f.name for f in attrs.fields(klass))
+            # Hidden attributes are saved without their leading underscore, which
+            # is what they are initialised with (see `_replace_hidden`)
+            return field_name in (f.name.lstrip("_") for f in attrs.fields(klass))
         else:
             return field_name != "class"
 

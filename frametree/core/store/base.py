@@ -22,7 +22,11 @@ from frametree.core.exceptions import (
 )
 from frametree.core.packaging import list_subclasses
 from frametree.core.serialize import asdict, fromdict
-from frametree.core.utils import NestedContext, get_config_file_path
+from frametree.core.utils import (
+    NestedContext,
+    get_config_file_path,
+    strip_annotated,
+)
 
 from ..axes import Axes
 
@@ -451,8 +455,9 @@ class Store(metaclass=ABCMeta):
                 # Copy across data from dataset to import
                 for cell in column.cells():
                     item = cell.item
-                    if not isinstance(item, imported_col.datatype):
-                        item = imported_col.datatype.convert(item)
+                    imported_dtype = strip_annotated(imported_col.datatype)
+                    if not isinstance(item, imported_dtype):
+                        item = imported_dtype.convert(item)
                     imported_col[
                         tuple(cell.row.frequency_id(a) for a in dataset.axes.bases())
                     ] = item
