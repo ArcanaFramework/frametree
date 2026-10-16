@@ -687,7 +687,10 @@ class ObjectConverter:
                 obj = self.klass(**value_kwargs)
             except TypeError as e:
                 field_names = [f.name for f in attrs.fields(self.klass)]
-                msg = f"when creating {self.klass} from {value_kwargs}, expected {field_names}"
+                msg = (
+                    f"when creating {self.klass} from fields "
+                    f"{list(value_kwargs)}, expected {field_names}"
+                )
                 add_exc_note(e, msg)
                 raise
         elif isinstance(value, (list, tuple)):
