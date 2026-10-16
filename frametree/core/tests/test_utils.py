@@ -4,6 +4,8 @@ import typing as ty
 import pytest
 from fileformats.application import Atfx
 from fileformats.core import from_mime, to_mime
+from fileformats.core.exceptions import FormatMismatchError
+from fileformats.generic import File, UnicodeFile
 from fileformats.image import Png, RasterImage
 from fileformats.testing import EncodedText, Foo
 from fileformats.text import TextFile
@@ -13,6 +15,7 @@ from frametree.core.utils import (
     convertible_from,
     path2varname,
     strip_annotated,
+    to_datatype,
     varname2path,
 )
 
@@ -86,3 +89,39 @@ def test_convertible_from_mime_roundtrip(klass, mime):
     # NB: lists are read as `list[...]` instead of `typing.List[...]`
     assert to_mime(from_mime(mime), official=False) == mime
     assert strip_annotated(from_mime(mime)) == strip_annotated(conv_from)
+    assert convertible_from(klass) == expected
+
+
+@pytest.mark.parametrize(
+    "datatype",
+    [
+        # `FileSet.convertible_from()` sorts its union by class name, so a generic
+        # superclass with a registered converter (e.g. `MedicalImage`, which can be
+        # converted to `ImageFormatGz`) can come before the more specific type the
+        # item actually is (e.g. `NiftiXBvec`)
+        File | TextFile,
+        TextFile | File,
+        File | UnicodeFile | TextFile,
+        File | EncodedText | TextFile,
+        TextFile | None,
+        File | TextFile | None,
+    ],
+)
+def test_to_datatype_union_picks_most_specific(datatype: type, tmp_path) -> None:
+    fspath = tmp_path / "file.txt"
+    fspath.write_text("file.txt")
+    assert type(to_datatype(fspath, datatype)) is TextFile
+
+
+def test_to_datatype_union_falls_back_to_generic(tmp_path) -> None:
+    fspath = tmp_path / "file.txt"
+    fspath.write_text("file.txt")
+    # EncodedText doesn't match a '.txt' file, so the generic type is the best match
+    assert type(to_datatype(fspath, EncodedText | File)) is File
+
+
+def test_to_datatype_union_no_match(tmp_path) -> None:
+    fspath = tmp_path / "file.txt"
+    fspath.write_text("file.txt")
+    with pytest.raises(FormatMismatchError):
+        to_datatype(fspath, EncodedText | Png)
