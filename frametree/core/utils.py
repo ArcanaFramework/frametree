@@ -561,14 +561,32 @@ def to_datatype(
         datatype = optional_type(datatype)
 
     if is_union(datatype):
+        # Try all the types in the union, rather than just returning the first match,
+        # so the most specific type that matches can be selected. Otherwise, a generic
+        # type that happens to appear earlier in the union (e.g. `MedicalImage` in
+        # `ImageFormatGz.convertible_from()`, which is sorted by class name) would be
+        # selected over the more specific type of the item (e.g. `NiftiXBvec`), and the
+        # converter registered for the specific type would be missed.
+        matches = []
         for tp in ty.get_args(datatype):
             try:
-                return to_datatype(item, tp)
+                matches.append(to_datatype(item, tp))
             except FormatMismatchError:
                 pass
-        raise FormatMismatchError(
-            f"Item {item} could not be converted to any of the union types {datatype}"
-        )
+        if not matches:
+            raise FormatMismatchError(
+                f"Item {item} could not be converted to any of the union types {datatype}"
+            )
+        # Drop matches for which there is a match of a more specific (sub)type, keeping
+        # the union order otherwise
+        most_specific = [
+            m
+            for m in matches
+            if not any(
+                type(o) is not type(m) and issubclass(type(o), type(m)) for o in matches
+            )
+        ]
+        return most_specific[0]
 
     return datatype(item)
 

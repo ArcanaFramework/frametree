@@ -6,7 +6,7 @@ from copy import copy
 import attrs
 import attrs.converters
 from fileformats.core import DataType, FileSet, to_mime
-from fileformats.core.exceptions import FormatConversionError
+from fileformats.core.exceptions import FormatConversionError, FormatMismatchError
 from pydra.compose import python, workflow
 from pydra.compose.base import Task
 from pydra.utils import get_fields
@@ -497,13 +497,13 @@ def PipelineRowWorkflow(
             # The source -> input conversion is fixed so we know which converter to use at
             # build time
             msg = []
-            converter = None
+            converter = _NOT_FOUND
             for dt in (
                 ty.get_args(inpt.datatype)
                 if is_union(inpt.datatype)
                 else (inpt.datatype,)
             ):
-                if dt is None:
+                if is_none_type(dt):
                     continue
                 try:
                     converter = dt.get_converter(stored_format)
@@ -511,11 +511,15 @@ def PipelineRowWorkflow(
                     msg.append(str(e))
                 else:
                     break
-            if converter is None:
+            if converter is _NOT_FOUND:
                 raise FormatConversionError(
                     f"Failed to get converter from {stored_format} to {inpt.datatype}:\n"
                     + "\n".join(msg)
                 )
+            if converter is None:
+                # get_converter returns None if no conversion is required, e.g. if
+                # the input datatype is an optional version of the stored format
+                continue
             converter_task = copy(converter.task)
             in_file_name = converter.in_file
             out_file_name = converter.out_file
@@ -768,13 +772,26 @@ def RuntimeConverterWorkflow(
     out_file : DataType
         the converted output file
     """
-    if is_coercible(type(in_file), datatype):
-        return in_file  # type: ignore[return-value]
-    converter = None
+    target_types = [
+        dt
+        for dt in (ty.get_args(datatype) if is_union(datatype) else (datatype,))
+        if not is_none_type(dt)
+    ]
+    # The actual input value is available at this point, so rather than relying on the
+    # class hierarchy alone (i.e. `is_coercible`), which would treat a target type that
+    # is a subclass of the input's type as matching, check whether the value already
+    # is, or can be validated as, one of the target types before looking for a converter
+    for dt in target_types:
+        if isinstance(in_file, dt):
+            return in_file  # type: ignore[return-value]
+    for dt in target_types:
+        try:
+            return dt(in_file)  # type: ignore[no-any-return]
+        except FormatMismatchError:
+            pass
+    converter = _NOT_FOUND
     msg = []
-    for dt in ty.get_args(datatype) if is_union(datatype) else (datatype,):
-        if dt is None:
-            continue
+    for dt in target_types:
         try:
             converter = dt.get_converter(type(in_file))
         except FormatConversionError as e:
@@ -782,11 +799,13 @@ def RuntimeConverterWorkflow(
             continue
         else:
             break
-    if converter is None:
+    if converter is _NOT_FOUND:
         raise FormatConversionError(
             f"Failed to get converter from {type(in_file)} to {datatype}:\n"
             + "\n".join(msg)
         )
+    if converter is None:  # get_converter returns None if no conversion is required
+        return in_file  # type: ignore[return-value]
     task = attrs.evolve(converter.task, **converter_args)
     setattr(task, converter.in_file, in_file)
     out = workflow.add(task)
@@ -800,6 +819,17 @@ def column_datatype(
     the annotations of datatypes such as `ConvertibleTo[Png]`, which are only
     relevant to how the datatype of the column is saved"""
     return strip_annotated(frameset[name].datatype)  # type: ignore[no-any-return]
+
+
+# Sentinel used to distinguish "no converter found" from `get_converter` returning None,
+# which signifies that no conversion is required
+_NOT_FOUND = object()
+
+
+def is_none_type(t: ty.Any) -> bool:
+    """Whether the type is the None member of an optional union, noting that
+    `ty.get_args(ty.Optional[X])` returns `NoneType` rather than None"""
+    return t is None or t is type(None)
 
 
 def is_coercible(t: type[DataType], u: type[DataType]) -> bool:
@@ -833,11 +863,11 @@ def check_convertible(inpt_datatype: type, outpt_datatype: type) -> None:
         ty.get_args(outpt_datatype) if is_union(outpt_datatype) else (outpt_datatype,)
     )
     for inpt_dt in inpt_datatypes:
-        if inpt_dt is None:
+        if is_none_type(inpt_dt):
             continue
         msg = []
         for outpt_dt in outpt_datatypes:
-            if outpt_dt is None:
+            if is_none_type(outpt_dt):
                 continue
             try:
                 return outpt_dt.get_converter(inpt_dt)
