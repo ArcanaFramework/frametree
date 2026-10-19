@@ -6,7 +6,7 @@ from copy import copy
 import attrs
 import attrs.converters
 from fileformats.core import DataType, FileSet, to_mime
-from fileformats.core.exceptions import FormatConversionError
+from fileformats.core.exceptions import FormatConversionError, FormatMismatchError
 from pydra.compose import python, workflow
 from pydra.compose.base import Task
 from pydra.utils import get_fields
@@ -33,7 +33,7 @@ from frametree.core.serialize import (
     pydra_asdict,
     pydra_fromdict,
 )
-from frametree.core.utils import path2varname, strip_annotated
+from frametree.core.utils import path2varname, strip_annotated, to_datatype
 
 logger = logging.getLogger("frametree")
 
@@ -479,14 +479,17 @@ def PipelineRowWorkflow(
             to_mime(inpt.datatype, official=False),
         )
         in_file = sourced[inpt.name]
-        if is_union(stored_format):
-            if all(
-                is_coercible(inpt.datatype, ff) for ff in ty.get_args(stored_format)
-            ):
-                # No conversion is ever required
-                continue
-            # We need to use a workflow to determine the actual converter that needs to
-            # be used at runtime when dealing with union column datatypes
+        if is_union(stored_format) and all(
+            is_coercible(inpt.datatype, ff) for ff in ty.get_args(stored_format)
+        ):
+            # No conversion is ever required
+            continue
+        if is_union(stored_format) or is_specialisation(inpt.datatype, stored_format):
+            # We need to use a workflow to determine whether a conversion is required,
+            # and which converter to use, at runtime when the column has a union
+            # datatype, or the input datatype is more specific than the column's (e.g.
+            # a `MedicalImage` column, which could hold DICOMs or NIfTIs), as it depends
+            # on what the stored item actually is
             converter_task = RuntimeConverterWorkflow(
                 datatype=inpt.datatype,
                 converter_args=converter_args.get(inpt.name, {}),
@@ -497,13 +500,13 @@ def PipelineRowWorkflow(
             # The source -> input conversion is fixed so we know which converter to use at
             # build time
             msg = []
-            converter = None
+            converter = _NOT_FOUND
             for dt in (
                 ty.get_args(inpt.datatype)
                 if is_union(inpt.datatype)
                 else (inpt.datatype,)
             ):
-                if dt is None:
+                if is_none_type(dt):
                     continue
                 try:
                     converter = dt.get_converter(stored_format)
@@ -511,11 +514,15 @@ def PipelineRowWorkflow(
                     msg.append(str(e))
                 else:
                     break
-            if converter is None:
+            if converter is _NOT_FOUND:
                 raise FormatConversionError(
                     f"Failed to get converter from {stored_format} to {inpt.datatype}:\n"
                     + "\n".join(msg)
                 )
+            if converter is None:
+                # get_converter returns None if no conversion is required, e.g. if
+                # the input datatype is an optional version of the stored format
+                continue
             converter_task = copy(converter.task)
             in_file_name = converter.in_file
             out_file_name = converter.out_file
@@ -560,36 +567,61 @@ def PipelineRowWorkflow(
 
     # Do output datatype conversions if required
     for outpt in outputs:
+        if not outpt.datatype:
+            continue
         stored_format = column_datatype(frameset, outpt.name)
         sink_name = path2varname(outpt.name)
-        if (
-            outpt.datatype
-            and not TypeParser.is_subclass(outpt.datatype, stored_format)
-            and not TypeParser.is_subclass(stored_format, outpt.datatype)
+        output_type = (
+            optional_type(outpt.datatype)
+            if is_optional(outpt.datatype)
+            else outpt.datatype
+        )
+        if is_coercible(stored_format, output_type) or (
+            is_union(output_type)
+            and all(is_coercible(stored_format, dt) for dt in ty.get_args(output_type))
         ):
-            output_type = (
-                optional_type(outpt.datatype)
-                if is_optional(outpt.datatype)
-                else outpt.datatype
+            # No conversion required
+            continue
+        logger.info(
+            "Adding implicit conversion for output '%s' from %s to %s",
+            outpt.name,
+            to_mime(outpt.datatype, official=False),
+            to_mime(stored_format, official=False),
+        )
+        if (
+            is_union(output_type)
+            or is_union(stored_format)
+            or is_specialisation(stored_format, output_type)
+        ):
+            # As for inputs, whether a conversion is required, and which converter to
+            # use, can only be determined at runtime from the actual output item when
+            # the output datatype is a union, or more generic than the column's (e.g. a
+            # task that outputs a generic `File`, which could already be of the
+            # column's datatype or need to be converted to it)
+            converter_task = RuntimeConverterWorkflow(
+                datatype=stored_format,
+                converter_args=converter_args.get(outpt.name, {}),
             )
+            in_file_name = "in_file"
+            out_file_name = "out_file"
+        else:
+            # The output -> sink conversion is fixed so we know which converter to use
+            # at build time
             converter = stored_format.get_converter(output_type)
-            logger.info(
-                "Adding implicit conversion for output '%s' " "from %s to %s",
-                outpt.name,
-                to_mime(outpt.datatype, official=False),
-                to_mime(stored_format, official=False),
-            )
-            # Insert converter
-            task_kwargs = {converter.in_file: to_sink.pop(sink_name)}
-            task_kwargs.update(converter_args.get(outpt.name, {}))
+            if converter is None:
+                continue  # no conversion is required
             converter_task = copy(converter.task)
-            for nm, val in task_kwargs.items():
+            in_file_name = converter.in_file
+            out_file_name = converter.out_file
+            for nm, val in converter_args.get(outpt.name, {}).items():
                 setattr(converter_task, nm, val)
-            converter_task = workflow.add(
-                converter_task, name=f"{sink_name}_output_converter"
-            )
-            # Map converter output to workflow output
-            to_sink[sink_name] = getattr(converter_task, converter.out_file)
+        # Insert converter
+        setattr(converter_task, in_file_name, to_sink.pop(sink_name))
+        converter_task = workflow.add(
+            converter_task, name=f"{sink_name}_output_converter"
+        )
+        # Map converter output to workflow output
+        to_sink[sink_name] = getattr(converter_task, out_file_name)
 
     # Dynamically collect the outputs into a dictionary
     sink_types = {o.name: column_datatype(frameset, o.name) for o in outputs}
@@ -746,12 +778,14 @@ def SinkItems(
 
 @workflow.define(outputs=["out_file"])
 def RuntimeConverterWorkflow(
-    in_file: FileSet,
+    in_file: FileSet | None,
     datatype: ty.Type[FileSet],
     converter_args: ty.Dict[str, ty.Any],
-) -> FileSet:
-    """A workflow that selects the appropriate converter for a union datatype
-    at runtime based on the actual type of the input file.
+) -> FileSet | None:
+    """A workflow that determines whether a conversion is required, and selects the
+    appropriate converter, at runtime based on the actual type of the input file, for
+    union datatypes or datatypes more specific than the input's. Used for both pipeline
+    inputs and outputs. A None input (e.g. from an optional output) is passed through.
 
     Parameters
     ----------
@@ -768,13 +802,28 @@ def RuntimeConverterWorkflow(
     out_file : DataType
         the converted output file
     """
-    if is_coercible(type(in_file), datatype):
-        return in_file  # type: ignore[return-value]
-    converter = None
+    if in_file is None:
+        return None
+    target_types = [
+        dt
+        for dt in (ty.get_args(datatype) if is_union(datatype) else (datatype,))
+        if not is_none_type(dt)
+    ]
+    # The actual input value is available at this point, so rather than relying on the
+    # class hierarchy alone (i.e. `is_coercible`), which would treat a target type that
+    # is a subclass of the input's type as matching, check whether the value already
+    # is, or can be validated as, one of the target types before looking for a converter
+    for dt in target_types:
+        if isinstance(in_file, dt):
+            return in_file  # type: ignore[return-value]
+    for dt in target_types:
+        try:
+            return dt(in_file)  # type: ignore[no-any-return]
+        except FormatMismatchError:
+            pass
+    converter = _NOT_FOUND
     msg = []
-    for dt in ty.get_args(datatype) if is_union(datatype) else (datatype,):
-        if dt is None:
-            continue
+    for dt in target_types:
         try:
             converter = dt.get_converter(type(in_file))
         except FormatConversionError as e:
@@ -782,11 +831,33 @@ def RuntimeConverterWorkflow(
             continue
         else:
             break
-    if converter is None:
+    if converter is _NOT_FOUND:
+        # The item may be stored as a more generic type than it actually is (e.g. a
+        # `MedicalImage` that is a DICOM series), in which case there won't be a
+        # converter registered for its stored type. So identify it as the most specific
+        # of the types that the target type can be converted from, which
+        # `convertible_from()` sorts first, and look for a converter for that instead
+        for dt in target_types:
+            try:
+                specific = to_datatype(in_file, strip_annotated(dt.convertible_from()))
+            except FormatMismatchError:
+                continue
+            if type(specific) is type(in_file):
+                continue
+            try:
+                converter = dt.get_converter(type(specific))
+            except FormatConversionError as e:
+                msg.append(str(e))
+            else:
+                in_file = specific
+                break
+    if converter is _NOT_FOUND:
         raise FormatConversionError(
             f"Failed to get converter from {type(in_file)} to {datatype}:\n"
             + "\n".join(msg)
         )
+    if converter is None:  # get_converter returns None if no conversion is required
+        return in_file  # type: ignore[return-value]
     task = attrs.evolve(converter.task, **converter_args)
     setattr(task, converter.in_file, in_file)
     out = workflow.add(task)
@@ -802,9 +873,35 @@ def column_datatype(
     return strip_annotated(frameset[name].datatype)  # type: ignore[no-any-return]
 
 
+# Sentinel used to distinguish "no converter found" from `get_converter` returning None,
+# which signifies that no conversion is required
+_NOT_FOUND = object()
+
+
+def is_none_type(t: ty.Any) -> bool:
+    """Whether the type is the None member of an optional union, noting that
+    `ty.get_args(ty.Optional[X])` returns `NoneType` rather than None"""
+    return t is None or t is type(None)
+
+
 def is_coercible(t: type[DataType], u: type[DataType]) -> bool:
-    return (TypeParser.is_subclass(t, u) or TypeParser.is_subclass(u, t)) and not (
-        is_union(u) or is_union(t)
+    """Whether items stored as `u` can be passed to an input of type `t` without any
+    conversion, i.e. `u` is `t` or a subclass of it, which pydra can then cast. Not if
+    `t` is a subclass of `u` (e.g. `u` is a generic type), as whether the item then
+    needs to be converted depends on what it actually is (see `is_specialisation`).
+    Unions are never considered coercible, as it depends on the member the item is"""
+    return TypeParser.is_subclass(u, t) and not (is_union(u) or is_union(t))
+
+
+def is_specialisation(t: type[DataType], u: type[DataType]) -> bool:
+    """Whether the input type `t`, or any member of it if it is a union, is a more
+    specific type than the stored type `u`, in which case items stored as `u` may or
+    may not need to be converted, depending on what they actually are (e.g. a
+    `MedicalImage` item could already be a `NiftiGz`, or be a DICOM series to convert),
+    so it needs to be determined at runtime by `RuntimeConverterWorkflow`"""
+    return any(
+        not is_none_type(dt) and dt is not u and TypeParser.is_subclass(dt, u)
+        for dt in (ty.get_args(t) if is_union(t) else (t,))
     )
 
 
@@ -833,11 +930,11 @@ def check_convertible(inpt_datatype: type, outpt_datatype: type) -> None:
         ty.get_args(outpt_datatype) if is_union(outpt_datatype) else (outpt_datatype,)
     )
     for inpt_dt in inpt_datatypes:
-        if inpt_dt is None:
+        if is_none_type(inpt_dt):
             continue
         msg = []
         for outpt_dt in outpt_datatypes:
-            if outpt_dt is None:
+            if is_none_type(outpt_dt):
                 continue
             try:
                 return outpt_dt.get_converter(inpt_dt)
