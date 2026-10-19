@@ -682,7 +682,7 @@ def convertible_from(datatype: ty.Type[DataType]) -> ty.Any:
     `fileformats.core.ConvertibleTo`) so that they are written to MIME-like strings as
     "<namespace>/<format>+convertible-to", and determined again from the converters
     that are installed when the string is read. Use `strip_annotated`
-    to get the union of the types themselves.
+    to get the union of the types themselves
 
     Parameters
     ----------
@@ -711,24 +711,10 @@ def convertible_from(datatype: ty.Type[DataType]) -> ty.Any:
         # coarser-frequency pipeline, see `frametree.core.pipeline.SourceItems`) is
         # convertible from a list of whatever the element type is convertible from
         (elem_type,) = ty.get_args(datatype)
-        conv_from = ty.List[convertible_from(elem_type)]  # type: ignore[valid-type]
-    elif issubclass(datatype, FileSet):
-        conv_from = datatype.convertible_from()
-        if is_union(conv_from):
-            # Drop types with "wildcard" classifiers (e.g. `DirectoryOf[T]`), which are
-            # the source types of generic converters that can't be used as concrete
-            # datatypes (e.g. they don't have a MIME-like type)
-            concrete = [
-                t
-                for t in ty.get_args(conv_from)
-                if not (hasattr(t, "wildcard_classifiers") and t.wildcard_classifiers())
-            ]
-            conv_from = functools.reduce(operator.or_, concrete)
-    else:
-        conv_from = datatype
-    if optional:
-        conv_from |= None
-    return conv_from
+        return ty.List[convertible_from(elem_type)]  # type: ignore[misc]
+    if inspect.isclass(datatype) and issubclass(datatype, FileSet):
+        return datatype.convertible_from()
+    return datatype
 
 
 class fromdict_converter:

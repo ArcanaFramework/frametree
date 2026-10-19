@@ -2,14 +2,13 @@ import re
 import typing as ty
 
 import pytest
-from fileformats.application import Atfx
+from fileformats.application import Atfx, Tar, TarGzip, Zip
 from fileformats.core import FileSet, from_mime, to_mime
 from fileformats.core.exceptions import FormatMismatchError
 from fileformats.generic import Directory, DirectoryOf, File, UnicodeFile
 from fileformats.image import Png, RasterImage
 from fileformats.testing import EncodedText, Foo
 from fileformats.text import TextFile
-from pydra.utils.typing import is_union
 
 from frametree.core.packaging import package_from_module
 from frametree.core.utils import (
@@ -55,18 +54,27 @@ def test_triple_path2varname(path: str):
     )
 
 
+def archives_of(klass):
+    """Any type can be extracted from an archive of it (e.g. `Zip[Png]`) by the generic
+    converters from archives"""
+    return TarGzip[klass] | Tar[klass] | Zip[klass]
+
+
 @pytest.mark.parametrize(
     ["klass", "expected"],
     [
-        (Png, Png | RasterImage),
-        (Png | None, Png | RasterImage | None),
+        (Png, Png | RasterImage | archives_of(Png)),
+        (Png | None, Png | RasterImage | archives_of(Png) | None),
         # Testing formats, which don't have converters registered by other packages
-        (Foo | EncodedText, Foo | TextFile | EncodedText),
-        (Atfx, Atfx),
+        (
+            Foo | EncodedText,
+            Foo | TextFile | EncodedText | archives_of(Foo) | archives_of(EncodedText),
+        ),
+        (Atfx, Atfx | archives_of(Atfx)),
         # A list of a type (e.g. items gathered from several rows by a
         # coarser-frequency pipeline, see `frametree.core.pipeline.SourceItems`) is
         # convertible from a list of whatever the element type is convertible from
-        (ty.List[Png], list[Png | RasterImage]),
+        (ty.List[Png], list[Png | RasterImage | archives_of(Png)]),
     ],
 )
 def test_convertible_from(klass, expected):
@@ -163,14 +171,15 @@ def test_resource_fspaths_non_directory_types(datatype, tmp_path):
     )
 
 
-def test_convertible_from_drops_wildcard_types():
-    """Generic converters (e.g. from `SetOf[T]` to `DirectoryOf[T]`) register source
-    types with "wildcard" classifiers, which can't be used as concrete datatypes, e.g.
-    to generate the MIME-like types of the inputs of an XNAT command"""
+@pytest.mark.parametrize("entries", [["file.txt"], ["sub1/", "sub2/", "log.txt"]])
+def test_convertible_from_fileset_sources_items(entries, tmp_path):
+    """Items can be sourced as any fileset type, e.g. for untyped sources of FileSet
+    fields of XNAT commands. The types that FileSet is convertible from used to include
+    the source types of generic converters (e.g. `SetOf[T]` -> `DirectoryOf[T]`), which
+    can't be instantiated so broke sourcing (and generating MIME-like types)"""
     conv_from = convertible_from(FileSet)
-    members = ty.get_args(conv_from) if is_union(conv_from) else (conv_from,)
-    assert FileSet in members
-    assert not any(
-        hasattr(t, "wildcard_classifiers") and t.wildcard_classifiers() for t in members
-    )
-    to_mime(conv_from, official=False)  # shouldn't raise
+    assert to_mime(conv_from, official=False) == "core/file-set+convertible-to"
+    resource_dir = make_resource(tmp_path / "res", entries)
+    fspaths = resource_fspaths(resource_dir, FileSet)
+    item = to_datatype(fspaths if len(fspaths) > 1 else fspaths[0], conv_from)
+    assert isinstance(item, FileSet)
