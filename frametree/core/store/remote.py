@@ -23,6 +23,7 @@ from frametree.core.utils import (
     dict_diff,
     dir_modtime,
     full_path,
+    resource_fspaths,
 )
 
 from ..entry import DataEntry
@@ -466,7 +467,7 @@ class RemoteStore(Store):
                     str(cache_path) + self.CHECKSUM_SUFFIX, "w", **JSON_ENCODING
                 ) as f:
                     json.dump(checksums, f, indent=2)
-        return list(cache_path.iterdir())
+        return resource_fspaths(cache_path, datatype)
 
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
         """

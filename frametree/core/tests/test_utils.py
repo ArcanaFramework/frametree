@@ -2,10 +2,10 @@ import re
 import typing as ty
 
 import pytest
-from fileformats.application import Atfx
-from fileformats.core import from_mime, to_mime
+from fileformats.application import Atfx, Tar, TarGzip, Zip
+from fileformats.core import FileSet, from_mime, to_mime
 from fileformats.core.exceptions import FormatMismatchError
-from fileformats.generic import File, UnicodeFile
+from fileformats.generic import Directory, DirectoryOf, File, UnicodeFile
 from fileformats.image import Png, RasterImage
 from fileformats.testing import EncodedText, Foo
 from fileformats.text import TextFile
@@ -14,6 +14,7 @@ from frametree.core.packaging import package_from_module
 from frametree.core.utils import (
     convertible_from,
     path2varname,
+    resource_fspaths,
     strip_annotated,
     to_datatype,
     varname2path,
@@ -53,18 +54,27 @@ def test_triple_path2varname(path: str):
     )
 
 
+def archives_of(klass):
+    """Any type can be extracted from an archive of it (e.g. `Zip[Png]`) by the generic
+    converters from archives"""
+    return TarGzip[klass] | Tar[klass] | Zip[klass]
+
+
 @pytest.mark.parametrize(
     ["klass", "expected"],
     [
-        (Png, Png | RasterImage),
-        (Png | None, Png | RasterImage | None),
+        (Png, Png | RasterImage | archives_of(Png)),
+        (Png | None, Png | RasterImage | archives_of(Png) | None),
         # Testing formats, which don't have converters registered by other packages
-        (Foo | EncodedText, Foo | TextFile | EncodedText),
-        (Atfx, Atfx),
+        (
+            Foo | EncodedText,
+            Foo | TextFile | EncodedText | archives_of(Foo) | archives_of(EncodedText),
+        ),
+        (Atfx, Atfx | archives_of(Atfx)),
         # A list of a type (e.g. items gathered from several rows by a
         # coarser-frequency pipeline, see `frametree.core.pipeline.SourceItems`) is
         # convertible from a list of whatever the element type is convertible from
-        (ty.List[Png], list[Png | RasterImage]),
+        (ty.List[Png], list[Png | RasterImage | archives_of(Png)]),
     ],
 )
 def test_convertible_from(klass, expected):
@@ -124,3 +134,52 @@ def test_to_datatype_union_no_match(tmp_path) -> None:
     fspath.write_text("file.txt")
     with pytest.raises(FormatMismatchError):
         to_datatype(fspath, EncodedText | Png)
+
+
+def make_resource(resource_dir, entries):
+    for entry in entries:
+        if entry.endswith("/"):
+            (resource_dir / entry).mkdir(parents=True)
+            (resource_dir / entry / "file.txt").write_text("file")
+        else:
+            resource_dir.mkdir(parents=True, exist_ok=True)
+            (resource_dir / entry).write_text("file")
+    return resource_dir
+
+
+@pytest.mark.parametrize(
+    "datatype", [Directory, Directory | None, DirectoryOf[TextFile]]
+)
+def test_resource_fspaths_directory_contents_at_root(datatype, tmp_path):
+    """The contents of a directory stored at the root of the resource directory"""
+    resource_dir = make_resource(tmp_path / "res", ["sub1/", "sub2/", "log.txt"])
+    assert resource_fspaths(resource_dir, datatype) == [resource_dir]
+
+
+def test_resource_fspaths_nested_directory(tmp_path):
+    """A directory nested within the resource directory, as stored by sink columns"""
+    resource_dir = make_resource(tmp_path / "res", ["bundle/"])
+    assert resource_fspaths(resource_dir, Directory) == [resource_dir / "bundle"]
+
+
+@pytest.mark.parametrize("datatype", [FileSet, File, TextFile])
+def test_resource_fspaths_non_directory_types(datatype, tmp_path):
+    """The contents of the resource are returned unchanged for non-directory types"""
+    resource_dir = make_resource(tmp_path / "res", ["sub1/", "log.txt"])
+    assert sorted(resource_fspaths(resource_dir, datatype)) == sorted(
+        resource_dir.iterdir()
+    )
+
+
+@pytest.mark.parametrize("entries", [["file.txt"], ["sub1/", "sub2/", "log.txt"]])
+def test_convertible_from_fileset_sources_items(entries, tmp_path):
+    """Items can be sourced as any fileset type, e.g. for untyped sources of FileSet
+    fields of XNAT commands. The types that FileSet is convertible from used to include
+    the source types of generic converters (e.g. `SetOf[T]` -> `DirectoryOf[T]`), which
+    can't be instantiated so broke sourcing (and generating MIME-like types)"""
+    conv_from = convertible_from(FileSet)
+    assert to_mime(conv_from, official=False) == "core/file-set+convertible-to"
+    resource_dir = make_resource(tmp_path / "res", entries)
+    fspaths = resource_fspaths(resource_dir, FileSet)
+    item = to_datatype(fspaths if len(fspaths) > 1 else fspaths[0], conv_from)
+    assert isinstance(item, FileSet)
