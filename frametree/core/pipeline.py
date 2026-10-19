@@ -567,36 +567,61 @@ def PipelineRowWorkflow(
 
     # Do output datatype conversions if required
     for outpt in outputs:
+        if not outpt.datatype:
+            continue
         stored_format = column_datatype(frameset, outpt.name)
         sink_name = path2varname(outpt.name)
-        if (
-            outpt.datatype
-            and not TypeParser.is_subclass(outpt.datatype, stored_format)
-            and not TypeParser.is_subclass(stored_format, outpt.datatype)
+        output_type = (
+            optional_type(outpt.datatype)
+            if is_optional(outpt.datatype)
+            else outpt.datatype
+        )
+        if is_coercible(stored_format, output_type) or (
+            is_union(output_type)
+            and all(is_coercible(stored_format, dt) for dt in ty.get_args(output_type))
         ):
-            output_type = (
-                optional_type(outpt.datatype)
-                if is_optional(outpt.datatype)
-                else outpt.datatype
+            # No conversion required
+            continue
+        logger.info(
+            "Adding implicit conversion for output '%s' from %s to %s",
+            outpt.name,
+            to_mime(outpt.datatype, official=False),
+            to_mime(stored_format, official=False),
+        )
+        if (
+            is_union(output_type)
+            or is_union(stored_format)
+            or is_specialisation(stored_format, output_type)
+        ):
+            # As for inputs, whether a conversion is required, and which converter to
+            # use, can only be determined at runtime from the actual output item when
+            # the output datatype is a union, or more generic than the column's (e.g. a
+            # task that outputs a generic `File`, which could already be of the
+            # column's datatype or need to be converted to it)
+            converter_task = RuntimeConverterWorkflow(
+                datatype=stored_format,
+                converter_args=converter_args.get(outpt.name, {}),
             )
+            in_file_name = "in_file"
+            out_file_name = "out_file"
+        else:
+            # The output -> sink conversion is fixed so we know which converter to use
+            # at build time
             converter = stored_format.get_converter(output_type)
-            logger.info(
-                "Adding implicit conversion for output '%s' " "from %s to %s",
-                outpt.name,
-                to_mime(outpt.datatype, official=False),
-                to_mime(stored_format, official=False),
-            )
-            # Insert converter
-            task_kwargs = {converter.in_file: to_sink.pop(sink_name)}
-            task_kwargs.update(converter_args.get(outpt.name, {}))
+            if converter is None:
+                continue  # no conversion is required
             converter_task = copy(converter.task)
-            for nm, val in task_kwargs.items():
+            in_file_name = converter.in_file
+            out_file_name = converter.out_file
+            for nm, val in converter_args.get(outpt.name, {}).items():
                 setattr(converter_task, nm, val)
-            converter_task = workflow.add(
-                converter_task, name=f"{sink_name}_output_converter"
-            )
-            # Map converter output to workflow output
-            to_sink[sink_name] = getattr(converter_task, converter.out_file)
+        # Insert converter
+        setattr(converter_task, in_file_name, to_sink.pop(sink_name))
+        converter_task = workflow.add(
+            converter_task, name=f"{sink_name}_output_converter"
+        )
+        # Map converter output to workflow output
+        to_sink[sink_name] = getattr(converter_task, out_file_name)
 
     # Dynamically collect the outputs into a dictionary
     sink_types = {o.name: column_datatype(frameset, o.name) for o in outputs}
@@ -753,12 +778,14 @@ def SinkItems(
 
 @workflow.define(outputs=["out_file"])
 def RuntimeConverterWorkflow(
-    in_file: FileSet,
+    in_file: FileSet | None,
     datatype: ty.Type[FileSet],
     converter_args: ty.Dict[str, ty.Any],
-) -> FileSet:
-    """A workflow that selects the appropriate converter for a union datatype
-    at runtime based on the actual type of the input file.
+) -> FileSet | None:
+    """A workflow that determines whether a conversion is required, and selects the
+    appropriate converter, at runtime based on the actual type of the input file, for
+    union datatypes or datatypes more specific than the input's. Used for both pipeline
+    inputs and outputs. A None input (e.g. from an optional output) is passed through.
 
     Parameters
     ----------
@@ -775,6 +802,8 @@ def RuntimeConverterWorkflow(
     out_file : DataType
         the converted output file
     """
+    if in_file is None:
+        return None
     target_types = [
         dt
         for dt in (ty.get_args(datatype) if is_union(datatype) else (datatype,))

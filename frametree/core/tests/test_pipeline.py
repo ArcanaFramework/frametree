@@ -49,6 +49,18 @@ def ConcatenateEncodedText(in_files: ty.List[EncodedText]) -> TextFile:
     return out_file
 
 
+@python.define(outputs=["out_file"])
+def GenericTextOutput(in_file: TextFile) -> UnicodeFile:
+    # A task with a generic output datatype, whose outputs may or may not need to be
+    # converted to the datatype of the column they are stored in
+    return UnicodeFile(in_file)
+
+
+@python.define(outputs=["out_file"])
+def UnionTextOutput(in_file: EncodedText) -> EncodedText | TextFile:
+    return in_file
+
+
 def test_pipeline_union_column_datatype(
     saved_dataset: FrameSet, data_store: Store, work_dir: Path
 ):
@@ -345,6 +357,72 @@ def test_pipeline_generic_column_with_specific_input(work_dir: Path) -> None:
 
     out = next(iter(frameset.derive("out", cache_dir=work_dir / "cache")[0]))
     # converted to EncodedText for the pipeline, and back to TextFile to be stored
+    assert out.raw_contents == "file.txt"
+
+
+@pytest.mark.parametrize(
+    ("sink_datatype", "converted"),
+    [
+        pytest.param(EncodedText, True, id="needs-conversion"),
+        pytest.param(TextFile, False, id="already-matches"),
+    ],
+)
+def test_pipeline_generic_output_with_specific_column(
+    sink_datatype: type, converted: bool, work_dir: Path
+) -> None:
+    """Checks that a pipeline output with a datatype that is more generic than the
+    datatype of its column (here `UnicodeFile`) is converted to the column's datatype
+    if the output item isn't already of that datatype, rather than being passed to
+    pydra unconverted, which could only cast it if it already was"""
+    bp = TestDatasetBlueprint(
+        hierarchy=["abcd"],
+        axes=TestAxes,
+        dim_lengths=[1, 1, 1, 1],
+        entries=[
+            FileBP(path="file", datatype=TextFile, filenames=["file.txt"]),
+        ],
+    )
+    frameset = bp.make_dataset(FileSystem(), str(work_dir / "dataset"))
+    frameset.add_source("file", TextFile)
+    frameset.add_sink("out", sink_datatype)
+
+    frameset.apply(
+        "a_pipeline",
+        GenericTextOutput(),
+        inputs=[("file", "in_file", TextFile)],
+        outputs=[("out", "out_file", UnicodeFile)],
+    )
+
+    out = next(iter(frameset.derive("out", cache_dir=work_dir / "cache")[0]))
+    assert isinstance(out, sink_datatype)
+    assert (out.raw_contents != "file.txt") is converted
+
+
+def test_pipeline_union_output(work_dir: Path) -> None:
+    """Checks that a pipeline output with a union datatype is converted to the
+    datatype of its column at runtime, depending on which member the item is"""
+    bp = TestDatasetBlueprint(
+        hierarchy=["abcd"],
+        axes=TestAxes,
+        dim_lengths=[1, 1, 1, 1],
+        entries=[
+            FileBP(path="file", datatype=TextFile, filenames=["file.txt"]),
+        ],
+    )
+    frameset = bp.make_dataset(FileSystem(), str(work_dir / "dataset"))
+    frameset.add_source("file", TextFile)
+    frameset.add_sink("out", TextFile)
+
+    frameset.apply(
+        "a_pipeline",
+        UnionTextOutput(),
+        inputs=[("file", "in_file", EncodedText)],
+        outputs=[("out", "out_file", EncodedText | TextFile)],
+    )
+
+    out = next(iter(frameset.derive("out", cache_dir=work_dir / "cache")[0]))
+    # converted to EncodedText for the input, and back to TextFile to be stored
+    assert type(out) is TextFile
     assert out.raw_contents == "file.txt"
 
 
