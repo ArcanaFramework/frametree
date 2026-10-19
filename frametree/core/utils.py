@@ -623,13 +623,66 @@ def strip_annotated(type_: ty.Any) -> ty.Any:
         return type_
 
 
+def is_directory_type(datatype: ty.Any) -> bool:
+    """Whether the datatype, or any member of a union/optional datatype, is a directory
+    type (e.g. `Directory`, `DirectoryOf[...]`)"""
+    from fileformats.generic import Directory
+
+    types = ty.get_args(datatype) if is_union(datatype) else (datatype,)
+    return any(isinstance(t, type) and issubclass(t, Directory) for t in types)
+
+
+def resource_fspaths(
+    resource_dir: Path, datatype: ty.Any, fspaths: ty.Optional[ty.List[Path]] = None
+) -> ty.List[Path]:
+    """Selects the file-system paths of an item stored in a "resource" directory (e.g. an
+    XNAT resource) to be passed to the item's datatype.
+
+    Remote stores return the contents of the resource directory, which works for most
+    datatypes and for directories stored by sink columns (which are nested within the
+    resource). However, a resource can also hold the contents of a directory at its
+    root (e.g. if it was uploaded with `xnat`'s `upload_dir(<dir>)`). In that case the
+    contents won't match a directory datatype but the resource directory itself will,
+    so it is returned instead.
+
+    Parameters
+    ----------
+    resource_dir : Path
+        the directory holding the item
+    datatype : type
+        the datatype the item will be loaded as
+    fspaths : list[Path], optional
+        the paths within the resource directory that make up the item, by default all
+        of its contents
+
+    Returns
+    -------
+    list[Path]
+        the paths to pass to the datatype
+    """
+    if fspaths is None:
+        fspaths = list(resource_dir.iterdir())
+    if not is_directory_type(datatype):
+        return fspaths
+    try:
+        to_datatype(fspaths, datatype)
+    except FormatMismatchError:
+        try:
+            to_datatype([resource_dir], datatype)
+        except FormatMismatchError:
+            pass  # neither match, so leave it to the caller to report the mismatch
+        else:
+            return [resource_dir]
+    return fspaths
+
+
 def convertible_from(datatype: ty.Type[DataType]) -> ty.Any:
     """Determine the types that can be converted into the given datatype or union of
     datatypes, annotated with the datatypes they were determined from (see
     `fileformats.core.ConvertibleTo`) so that they are written to MIME-like strings as
     "<namespace>/<format>+convertible-to", and determined again from the converters
     that are installed when the string is read. Use `strip_annotated`
-    to get the union of the types themselves
+    to get the union of the types themselves.
 
     Parameters
     ----------
@@ -658,10 +711,24 @@ def convertible_from(datatype: ty.Type[DataType]) -> ty.Any:
         # coarser-frequency pipeline, see `frametree.core.pipeline.SourceItems`) is
         # convertible from a list of whatever the element type is convertible from
         (elem_type,) = ty.get_args(datatype)
-        return ty.List[convertible_from(elem_type)]  # type: ignore[misc]
-    if inspect.isclass(datatype) and issubclass(datatype, FileSet):
-        return datatype.convertible_from()
-    return datatype
+        conv_from = ty.List[convertible_from(elem_type)]  # type: ignore[valid-type]
+    elif issubclass(datatype, FileSet):
+        conv_from = datatype.convertible_from()
+        if is_union(conv_from):
+            # Drop types with "wildcard" classifiers (e.g. `DirectoryOf[T]`), which are
+            # the source types of generic converters that can't be used as concrete
+            # datatypes (e.g. they don't have a MIME-like type)
+            concrete = [
+                t
+                for t in ty.get_args(conv_from)
+                if not (hasattr(t, "wildcard_classifiers") and t.wildcard_classifiers())
+            ]
+            conv_from = functools.reduce(operator.or_, concrete)
+    else:
+        conv_from = datatype
+    if optional:
+        conv_from |= None
+    return conv_from
 
 
 class fromdict_converter:

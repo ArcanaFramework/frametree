@@ -3,11 +3,12 @@ import time
 from functools import partial, reduce
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
+import typing as ty
 from typing import Any, Type
 
 import pytest
 from fileformats.field import Text as TextField
-from fileformats.generic import File
+from fileformats.generic import Directory, File
 from fileformats.text import Plain as PlainText
 from fileformats.text import TextFile
 from pydra.utils.typing import is_fileset_or_union
@@ -217,3 +218,72 @@ def test_entry_access(tmp_path: Path) -> None:
     assert PlainText(row.entry("file1", key="2").item).contents == "2.txt"
     with pytest.raises(ValueError):
         row.entry("file1", order=0, key="0")
+
+
+BUNDLE_CONTENTS = ["DWI", "Response", "execution_log.txt"]
+
+
+def make_bundle(dpath: Path) -> Path:
+    """Makes a directory with several entries, like the bundled output directory of a
+    pipeline"""
+    (dpath / "DWI").mkdir(parents=True)
+    (dpath / "DWI" / "dwi.mif").write_text("dwi")
+    (dpath / "Response").mkdir()
+    (dpath / "Response" / "wm.txt").write_text("wm")
+    (dpath / "execution_log.txt").write_text("log")
+    return dpath
+
+
+def bundle_blueprint() -> TestDatasetBlueprint:
+    return TestDatasetBlueprint(
+        hierarchy=["abcd"],
+        axes=TestAxes,
+        dim_lengths=[1, 1, 1, 1],
+        entries=[FileBP(path="file1", datatype=PlainText, filenames=["file1.txt"])],
+    )
+
+
+def bundle_dataset_id(data_store: Store, work_dir: Path, name: str) -> str:
+    return str(work_dir / name) if isinstance(data_store, FileSystem) else name
+
+
+@pytest.mark.parametrize("datatype", [Directory, ty.Optional[Directory]])
+def test_directory_roundtrip(data_store: Store, work_dir: Path, datatype: type) -> None:
+    """Checks that a directory with several entries that is stored by a sink column can
+    be sourced back as a directory"""
+    dataset_id = bundle_dataset_id(data_store, work_dir, "dir_roundtrip")
+    dataset = bundle_blueprint().make_dataset(data_store, dataset_id, name="")
+    dataset.add_sink("bundle", Directory)
+    dataset.save()
+    row = dataset.row(id="a0b0c0d0", frequency=TestAxes.abcd)
+    row["bundle"] = Directory(make_bundle(work_dir / "bundle"))
+
+    reloaded = data_store.load_frameset(dataset_id, name="")
+    reloaded.add_source("bundle_src", datatype, path="bundle@")
+    item = reloaded.row(id="a0b0c0d0", frequency=TestAxes.abcd)["bundle_src"]
+    assert isinstance(item, Directory)
+    assert sorted(p.name for p in item.fspath.iterdir()) == BUNDLE_CONTENTS
+
+
+@pytest.mark.parametrize("datatype", [Directory, ty.Optional[Directory]])
+def test_directory_contents_at_resource_root(
+    data_store: Store, work_dir: Path, datatype: type
+) -> None:
+    """Checks that a directory can be sourced from an entry (e.g. an XNAT resource)
+    that holds the contents of the directory at its root, as created by uploading a
+    directory with other tools (e.g. `xnat`'s `upload_dir(<dir>)`), rather than a
+    single sub-directory as created by a sink column"""
+    dataset_id = bundle_dataset_id(data_store, work_dir, "dir_at_root")
+    dataset = bundle_blueprint().make_dataset(data_store, dataset_id, name="")
+    row = dataset.row(id="a0b0c0d0", frequency=TestAxes.abcd)
+    if isinstance(data_store, MockRemote):
+        entry_dir = data_store.get_row_path(row) / "bundle"
+    else:
+        entry_dir = Path(dataset_id) / data_store._row_relpath(row) / "bundle"
+    make_bundle(entry_dir)
+
+    reloaded = data_store.load_frameset(dataset_id, name="")
+    reloaded.add_source("bundle", datatype)
+    item = reloaded.row(id="a0b0c0d0", frequency=TestAxes.abcd)["bundle"]
+    assert isinstance(item, Directory)
+    assert sorted(p.name for p in item.fspath.iterdir()) == BUNDLE_CONTENTS
