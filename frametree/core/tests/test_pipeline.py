@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from fileformats.core.exceptions import FormatConversionError
 from fileformats.extras.testing import EncodedFromTextConverter, EncodedToTextConverter
-from fileformats.generic import File
+from fileformats.generic import File, UnicodeFile
 from fileformats.testing import EncodedText, Foo
 from fileformats.text import TextFile
 from pydra.compose import python
@@ -173,12 +173,14 @@ def test_pipeline_gathers_source_column_into_list_and_converts(
     "t,u,expected",
     [
         (TextFile, TextFile, True),
-        (TextFile, File, True),
+        # Only if the stored type is the input type or a subclass of it. An input type
+        # that is more specific than the stored type depends on what the item is
+        (TextFile, File, False),
         (File, TextFile, True),
         (TextFile, EncodedText, False),
         # Parameterised generics raise a TypeError with the builtin issubclass
         (list[TextFile], list[TextFile], True),
-        (list[TextFile], list[File], True),
+        (list[TextFile], list[File], False),
         (list[File], ty.List[TextFile], True),
         (list[TextFile], list[EncodedText], False),
         (list[TextFile], TextFile, False),
@@ -317,6 +319,35 @@ def test_runtime_converter_workflow_optional_datatype(
     assert outputs.out_file.raw_contents != "file.txt"
 
 
+def test_pipeline_generic_column_with_specific_input(work_dir: Path) -> None:
+    """Checks that an input datatype that is more specific than the datatype of its
+    column (here `EncodedText` from a `UnicodeFile` column) is converted if the stored
+    item isn't already of that datatype, rather than being passed to pydra unconverted,
+    which could only cast it as one if it already was (i.e. not a '.txt' file)"""
+    bp = TestDatasetBlueprint(
+        hierarchy=["abcd"],
+        axes=TestAxes,
+        dim_lengths=[1, 1, 1, 1],
+        entries=[
+            FileBP(path="file", datatype=TextFile, filenames=["file.txt"]),
+        ],
+    )
+    frameset = bp.make_dataset(FileSystem(), str(work_dir / "dataset"))
+    frameset.add_source("file", UnicodeFile)
+    frameset.add_sink("out", TextFile)
+
+    frameset.apply(
+        "a_pipeline",
+        EncodedTextIdentity(),
+        inputs=[("file", "in_file", EncodedText)],
+        outputs=[("out", "out_file", EncodedText)],
+    )
+
+    out = next(iter(frameset.derive("out", cache_dir=work_dir / "cache")[0]))
+    # converted to EncodedText for the pipeline, and back to TextFile to be stored
+    assert out.raw_contents == "file.txt"
+
+
 def test_pipeline_union_column_with_generic_superclass(work_dir: Path) -> None:
     """Checks that a source column whose union datatype includes a generic superclass
     ahead of the stored item's actual type (as `FileSet.convertible_from()` can produce
@@ -413,11 +444,14 @@ def test_runtime_converter_workflow_validates_generic_input(work_dir: Path) -> N
         in_file=generic, datatype=TextFile | None, converter_args={}
     )(cache_root=work_dir / "cache-1", worker="debug")
     assert type(outputs.out_file) is TextFile
-    # but it isn't a valid EncodedText, so it shouldn't be passed through as one
-    with pytest.raises(FormatConversionError, match="Failed to get converter"):
-        RuntimeConverterWorkflow(
-            in_file=generic, datatype=EncodedText, converter_args={}
-        )(cache_root=work_dir / "cache-2", worker="debug")
+    # but it isn't a valid EncodedText, so it shouldn't be passed through as one, but
+    # identified as a TextFile to find the converter for it, as converters aren't
+    # registered for generic types
+    outputs = RuntimeConverterWorkflow(
+        in_file=generic, datatype=EncodedText, converter_args={}
+    )(cache_root=work_dir / "cache-2", worker="debug")
+    assert isinstance(outputs.out_file, EncodedText)
+    assert outputs.out_file.raw_contents != "file.txt"
 
 
 @pytest.mark.parametrize("datatype", [Foo, Foo | None, ty.Optional[Foo]])

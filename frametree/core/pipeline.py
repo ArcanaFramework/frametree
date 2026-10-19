@@ -33,7 +33,7 @@ from frametree.core.serialize import (
     pydra_asdict,
     pydra_fromdict,
 )
-from frametree.core.utils import path2varname, strip_annotated
+from frametree.core.utils import path2varname, strip_annotated, to_datatype
 
 logger = logging.getLogger("frametree")
 
@@ -479,14 +479,17 @@ def PipelineRowWorkflow(
             to_mime(inpt.datatype, official=False),
         )
         in_file = sourced[inpt.name]
-        if is_union(stored_format):
-            if all(
-                is_coercible(inpt.datatype, ff) for ff in ty.get_args(stored_format)
-            ):
-                # No conversion is ever required
-                continue
-            # We need to use a workflow to determine the actual converter that needs to
-            # be used at runtime when dealing with union column datatypes
+        if is_union(stored_format) and all(
+            is_coercible(inpt.datatype, ff) for ff in ty.get_args(stored_format)
+        ):
+            # No conversion is ever required
+            continue
+        if is_union(stored_format) or is_specialisation(inpt.datatype, stored_format):
+            # We need to use a workflow to determine whether a conversion is required,
+            # and which converter to use, at runtime when the column has a union
+            # datatype, or the input datatype is more specific than the column's (e.g.
+            # a `MedicalImage` column, which could hold DICOMs or NIfTIs), as it depends
+            # on what the stored item actually is
             converter_task = RuntimeConverterWorkflow(
                 datatype=inpt.datatype,
                 converter_args=converter_args.get(inpt.name, {}),
@@ -800,6 +803,26 @@ def RuntimeConverterWorkflow(
         else:
             break
     if converter is _NOT_FOUND:
+        # The item may be stored as a more generic type than it actually is (e.g. a
+        # `MedicalImage` that is a DICOM series), in which case there won't be a
+        # converter registered for its stored type. So identify it as the most specific
+        # of the types that the target type can be converted from, which
+        # `convertible_from()` sorts first, and look for a converter for that instead
+        for dt in target_types:
+            try:
+                specific = to_datatype(in_file, strip_annotated(dt.convertible_from()))
+            except FormatMismatchError:
+                continue
+            if type(specific) is type(in_file):
+                continue
+            try:
+                converter = dt.get_converter(type(specific))
+            except FormatConversionError as e:
+                msg.append(str(e))
+            else:
+                in_file = specific
+                break
+    if converter is _NOT_FOUND:
         raise FormatConversionError(
             f"Failed to get converter from {type(in_file)} to {datatype}:\n"
             + "\n".join(msg)
@@ -833,8 +856,23 @@ def is_none_type(t: ty.Any) -> bool:
 
 
 def is_coercible(t: type[DataType], u: type[DataType]) -> bool:
-    return (TypeParser.is_subclass(t, u) or TypeParser.is_subclass(u, t)) and not (
-        is_union(u) or is_union(t)
+    """Whether items stored as `u` can be passed to an input of type `t` without any
+    conversion, i.e. `u` is `t` or a subclass of it, which pydra can then cast. Not if
+    `t` is a subclass of `u` (e.g. `u` is a generic type), as whether the item then
+    needs to be converted depends on what it actually is (see `is_specialisation`).
+    Unions are never considered coercible, as it depends on the member the item is"""
+    return TypeParser.is_subclass(u, t) and not (is_union(u) or is_union(t))
+
+
+def is_specialisation(t: type[DataType], u: type[DataType]) -> bool:
+    """Whether the input type `t`, or any member of it if it is a union, is a more
+    specific type than the stored type `u`, in which case items stored as `u` may or
+    may not need to be converted, depending on what they actually are (e.g. a
+    `MedicalImage` item could already be a `NiftiGz`, or be a DICOM series to convert),
+    so it needs to be determined at runtime by `RuntimeConverterWorkflow`"""
+    return any(
+        not is_none_type(dt) and dt is not u and TypeParser.is_subclass(dt, u)
+        for dt in (ty.get_args(t) if is_union(t) else (t,))
     )
 
 

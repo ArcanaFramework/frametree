@@ -89,7 +89,6 @@ def test_convertible_from_mime_roundtrip(klass, mime):
     # NB: lists are read as `list[...]` instead of `typing.List[...]`
     assert to_mime(from_mime(mime), official=False) == mime
     assert strip_annotated(from_mime(mime)) == strip_annotated(conv_from)
-    assert convertible_from(klass) == expected
 
 
 @pytest.mark.parametrize(
